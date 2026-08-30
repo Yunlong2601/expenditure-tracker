@@ -1,4 +1,4 @@
-// CuteTracker Service Worker - 离线缓存策略（参考 FRAGILISTIC-lab/routine-tracker 的 sw.js）
+// Expenditure Tracker Service Worker - 离线缓存策略（参考 FRAGILISTIC-lab/routine-tracker 的 sw.js）
 // 采用 Cache First + 运行时缓存，保证离线可用
 
 const CACHE_NAME = 'cute-tracker-v1.0.0';
@@ -8,10 +8,10 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll([
-        '/',
-        '/index.html',
-        '/manifest.json',
-        '/favicon.svg',
+        '/expenditure-tracker/',
+        '/expenditure-tracker/index.html',
+        '/expenditure-tracker/manifest.json',
+        '/expenditure-tracker/favicon.svg',
       ]).catch(() => {
         // 预缓存失败时不影响安装（资源可能尚不存在）
         console.log('[SW] 预缓存部分失败，运行时将补全');
@@ -60,7 +60,7 @@ self.addEventListener('fetch', (event) => {
         .catch(() => {
           // 离线且缓存未命中：返回首页（SPA 兜底）
           if (request.mode === 'navigate') {
-            return caches.match('/index.html');
+            return caches.match('/expenditure-tracker/index.html');
           }
         });
     })
