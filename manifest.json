@@ -1,0 +1,27 @@
+{
+  "name": "CuteTracker 可爱记账",
+  "short_name": "CuteTracker",
+  "description": "可爱卡通风格的个人记账工具，支持多币种、预算、周期性交易",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#fff0f5",
+  "theme_color": "#ff69b4",
+  "orientation": "portrait",
+  "lang": "zh-CN",
+  "categories": ["finance", "productivity"],
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}
