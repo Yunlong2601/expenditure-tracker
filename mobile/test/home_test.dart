@@ -156,6 +156,22 @@ void main() {
     expect(find.text(r'S$3.80'), findsWidgets);
   });
 
+  testWidgets('cash in ringgit, and a new category of her own', (t) async {
+    await t.pumpWidget(wrap(unreadable));
+    await tapAndSettle(t, find.byKey(const Key('cash')));
+    await t.tap(find.byKey(const Key('cur-MYR')));
+    await t.enterText(find.byKey(const Key('quick-amount')), '12');
+    await tapAndSettle(t, find.byKey(const Key('cat-new')));
+    await t.enterText(find.byKey(const Key('new-category')), 'Concert');
+    await tapAndSettle(t, find.byKey(const Key('new-category-save')));
+    final e = ledger.all.single;
+    expect((e.amount, e.currency, e.category), (12.0, 'MYR', 'Concert'));
+
+    // Next time her own category is right there.
+    await tapAndSettle(t, find.byKey(const Key('cash')));
+    expect(find.byKey(const Key('cat-Concert')), findsOneWidget);
+  });
+
   testWidgets('cash quick add: amount then one tap on a category', (t) async {
     await t.pumpWidget(wrap(unreadable));
     await tapAndSettle(t, find.byKey(const Key('cash')));

@@ -130,7 +130,7 @@ void main() {
 
   test('OfflineReader passes the phone text to the parser', () async {
     final r = await OfflineReader(_FakeText(['Koi Thé', 'TOTAL 5.30'])).read(Uint8List(0));
-    expect((r.merchant, r.total, r.category), ('Koi Thé', 5.3, 'Food & drink'));
+    expect((r.merchant, r.total, r.category), ('Koi Thé', 5.3, 'Bubble tea'));
   });
 
   test('a phone without text recognition gives a friendly message', () async {

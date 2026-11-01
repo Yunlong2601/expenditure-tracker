@@ -148,7 +148,7 @@ class _HomeScreenState extends State<HomeScreen> {
       isScrollControlled: true,
       useSafeArea: true,
       showDragHandle: true,
-      builder: (_) => const QuickAddSheet(),
+      builder: (_) => QuickAddSheet(ownCategories: _ledger.categories()),
     );
     if (d != null) await _save(d);
   }
