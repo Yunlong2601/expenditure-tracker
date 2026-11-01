@@ -1,0 +1,3 @@
+[submodule "firefly/firefly-iii"]
+	path = firefly/firefly-iii
+	url = https://github.com/firefly-iii/firefly-iii.git
