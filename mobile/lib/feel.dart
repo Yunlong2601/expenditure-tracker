@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 /// Short interface sounds bundled in assets/sounds, made for this app.
-enum Sound { tap, logged, removed, oops }
+enum Sound { tap, logged, removed, oops, mew }
 
 /// Sound and haptics for taps and results. Sounds play through the iPhone's
 /// system sound player, so the silent switch mutes them. Anything that fails

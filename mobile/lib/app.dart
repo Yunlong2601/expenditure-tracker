@@ -5,6 +5,7 @@ import 'package:path_provider/path_provider.dart';
 
 import 'feel.dart';
 import 'home_screen.dart';
+import 'kitty.dart';
 import 'ledger.dart';
 import 'reader.dart';
 
@@ -55,6 +56,7 @@ class SpendSnapApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: theme(Brightness.light),
       darkTheme: theme(Brightness.dark),
+      builder: (_, child) => KittyLayer(child: child!),
       home: _Root(ledgerDir: ledgerDir, reader: reader ?? OfflineReader(), picker: picker),
     );
   }

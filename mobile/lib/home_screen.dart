@@ -6,6 +6,7 @@ import 'categories.dart';
 import 'draft.dart';
 import 'feel.dart';
 import 'format.dart';
+import 'kitty.dart';
 import 'ledger.dart';
 import 'picker.dart';
 import 'quick_add_sheet.dart';
@@ -59,6 +60,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
     if (!mounted) return;
     Feel.logged();
+    KittyLayer.cheer();
     setState(() => _fresh = e.id);
     _toast(
       'Logged ${_describe(e)}',
@@ -315,7 +317,13 @@ class _HomeScreenState extends State<HomeScreen> {
               if (o.recent.isEmpty)
                 const Padding(
                   padding: EdgeInsets.symmetric(vertical: 16),
-                  child: Text('Nothing yet. Add your first expense above.'),
+                  child: Column(
+                    children: [
+                      SizedBox(width: 120, height: 100, child: CustomPaint(painter: CatPainter(asleep: true))),
+                      SizedBox(height: 12),
+                      Text('Nothing yet. Add your first expense above.', textAlign: TextAlign.center),
+                    ],
+                  ),
                 ),
               for (final e in o.recent)
                 _Arrive(
