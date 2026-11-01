@@ -92,18 +92,39 @@ class _HomeScreenState extends State<HomeScreen> {
       _toast(result.message);
       return;
     }
-    final fields = await showModalBottomSheet<ExpenseFields>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      showDragHandle: true,
-      builder: (_) => ReviewSheet(result: result, image: bytes),
-    );
-    if (fields == null || !mounted) return;
-    final saved = await _withBusy('Saving…', () => widget.api.scan(bytes, filename: img!.name, fields: fields));
-    if (saved == null || !mounted) return;
-    _toast(saved.message);
-    if (saved.saved) _refresh();
+    // Keep the photo and any corrections until the save goes through, so a
+    // dropped connection never means re-taking the picture.
+    ExpenseFields? draft;
+    var current = result;
+    while (mounted) {
+      final fields = await showModalBottomSheet<ExpenseFields>(
+        context: context,
+        isScrollControlled: true,
+        useSafeArea: true,
+        showDragHandle: true,
+        builder: (_) => ReviewSheet(result: current, image: bytes, draft: draft),
+      );
+      if (fields == null || !mounted) return;
+      draft = fields;
+      final saved = await _withBusy('Saving…', () => widget.api.scan(bytes, filename: img!.name, fields: fields));
+      if (!mounted) return;
+      if (saved != null) _toast(saved.message);
+      if (saved != null && saved.saved) {
+        _refresh();
+        return;
+      }
+      if (saved != null) {
+        current = ScanResult(
+          saved: false,
+          needsReview: true,
+          message: saved.message,
+          receipt: current.receipt,
+          account: current.account,
+          accounts: current.accounts,
+          categories: current.categories,
+        );
+      }
+    }
   }
 
   Future<void> _quickAdd() async {

@@ -145,4 +145,48 @@ void main() {
     await t.pumpAndSettle();
     expect(find.text("Can't reach your server."), findsOneWidget);
   });
+
+  testWidgets('a failed save reopens the review with the typed amount kept', (t) async {
+    when(() => api.overview()).thenAnswer((_) async => empty);
+    when(
+      () => api.scan(
+        any(),
+        filename: any(named: 'filename'),
+        fields: any(named: 'fields', that: isNull),
+      ),
+    ).thenAnswer(
+      (_) async => const ScanResult(
+        saved: false,
+        needsReview: true,
+        message: 'Check it',
+        receipt: ReadReceipt(merchant: 'Grab', currency: 'USD'),
+      ),
+    );
+    var attempts = 0;
+    when(
+      () => api.scan(
+        any(),
+        filename: any(named: 'filename'),
+        fields: any(named: 'fields', that: isNotNull),
+      ),
+    ).thenAnswer((_) async {
+      attempts++;
+      if (attempts == 1) throw ApiException("Can't reach your server.");
+      return const ScanResult(saved: true, message: 'Logged US\$9.00 at Grab');
+    });
+    await t.pumpWidget(wrap(api, picker));
+    await t.pumpAndSettle();
+    await t.tap(find.byKey(const Key('snap')));
+    await t.pumpAndSettle();
+    await t.enterText(find.byKey(const Key('review-total')), '9.00');
+    await t.tap(find.byKey(const Key('review-save')));
+    await t.pumpAndSettle();
+    expect(find.text('Quick check'), findsOneWidget);
+    expect(find.widgetWithText(TextFormField, '9.00'), findsOneWidget);
+    expect(find.text('USD'), findsOneWidget);
+    await t.tap(find.byKey(const Key('review-save')));
+    await t.pumpAndSettle();
+    expect(attempts, 2);
+    expect(find.text('Logged US\$9.00 at Grab'), findsOneWidget);
+  });
 }

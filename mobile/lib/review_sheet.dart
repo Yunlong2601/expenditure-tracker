@@ -8,9 +8,12 @@ import 'format.dart';
 /// Shown only when the scanner wasn't sure. Everything is pre-filled;
 /// usually the person just fixes the amount and taps Save.
 class ReviewSheet extends StatefulWidget {
-  const ReviewSheet({super.key, required this.result, required this.image});
+  const ReviewSheet({super.key, required this.result, required this.image, this.draft});
   final ScanResult result;
   final Uint8List image;
+
+  /// What the person already typed, when a save failed and the sheet reopens.
+  final ExpenseFields? draft;
 
   @override
   State<ReviewSheet> createState() => _ReviewSheetState();
@@ -18,12 +21,16 @@ class ReviewSheet extends StatefulWidget {
 
 class _ReviewSheetState extends State<ReviewSheet> {
   late final ReadReceipt r = widget.result.receipt!;
-  late final _total = TextEditingController(text: r.total ?? '');
-  late final _merchant = TextEditingController(text: r.merchant ?? '');
-  late final _category = TextEditingController(text: r.category ?? '');
-  late String _currency = (r.currency ?? 'SGD').toUpperCase();
-  late String? _account = widget.result.accounts.contains(widget.result.account) ? widget.result.account : null;
-  late DateTime _date = DateTime.tryParse(r.date ?? '') ?? DateTime.now();
+  late final ExpenseFields? d = widget.draft;
+  late final _total = TextEditingController(text: d?.total ?? r.total ?? '');
+  late final _merchant = TextEditingController(text: d?.merchant ?? r.merchant ?? '');
+  late final _category = TextEditingController(text: d?.category ?? r.category ?? '');
+  late final String _scanned = (r.currency ?? 'SGD').toUpperCase();
+  late String _currency = (d?.currency ?? _scanned).toUpperCase();
+  late String? _account = widget.result.accounts.contains(d?.account ?? widget.result.account)
+      ? (d?.account ?? widget.result.account)
+      : null;
+  late DateTime _date = DateTime.tryParse(d?.date ?? r.date ?? '') ?? DateTime.now();
   final _form = GlobalKey<FormState>();
 
   @override
@@ -52,7 +59,7 @@ class _ReviewSheetState extends State<ReviewSheet> {
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
-    final currencies = {'SGD', 'CNY', _currency}.toList();
+    final currencies = {'SGD', 'CNY', _scanned, _currency}.toList();
     return Padding(
       padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
       child: Form(
