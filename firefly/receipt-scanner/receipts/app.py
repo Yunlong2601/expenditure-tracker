@@ -98,6 +98,20 @@ def health() -> dict:
     return {"ok": True}
 
 
+@app.get("/api/expenses", dependencies=[Depends(check_key)])
+def expenses(
+    days: int = Query(31, ge=1, le=366, description="How far back the recent list goes"),
+    limit: int = Query(30, ge=1, le=200),
+    service: ReceiptService = Depends(get_service),
+):
+    """This month's totals (per currency and per category) and recent expenses,
+    for the mobile app's home screen."""
+    try:
+        return service.overview(days=days, limit=limit)
+    except FireflyError as exc:
+        return JSONResponse({"message": str(exc)}, status_code=502)
+
+
 @app.post("/api/receipt", dependencies=[Depends(check_key)])
 async def receipt(
     request: Request,

@@ -48,6 +48,37 @@ class Firefly:
                 return items
             page += 1
 
+    def withdrawals(self, start: date, end: date, max_items: int = 500) -> list[dict]:
+        """Expense splits between two dates (inclusive), newest first."""
+        out: list[dict] = []
+        page = 1
+        while len(out) < max_items:
+            r = self.http.get(
+                f"{self.base}/api/v1/transactions",
+                params={"type": "withdrawal", "start": start.isoformat(), "end": end.isoformat(),
+                        "page": page, "limit": 100},
+                headers=self.headers,
+            )
+            self._raise(r)
+            body = r.json()
+            for group in body.get("data", []):
+                for t in group["attributes"]["transactions"]:
+                    out.append({
+                        "id": str(group["id"]),
+                        "date": t["date"][:10],
+                        "amount": str(abs(Decimal(t["amount"]))),
+                        "currency": t["currency_code"],
+                        "description": t.get("description"),
+                        "merchant": t.get("destination_name"),
+                        "category": t.get("category_name"),
+                        "account": t.get("source_name"),
+                        "has_receipt": bool(t.get("has_attachments")),
+                    })
+            if page >= body.get("meta", {}).get("pagination", {}).get("total_pages", 1):
+                break
+            page += 1
+        return out[:max_items]
+
     def categories(self) -> list[str]:
         return sorted(c["attributes"]["name"] for c in self._get_all("categories"))
 

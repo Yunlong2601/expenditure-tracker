@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from decimal import Decimal
 from zoneinfo import ZoneInfo
 
@@ -54,6 +54,33 @@ class ReceiptService:
 
     def today(self) -> date:
         return datetime.now(ZoneInfo(self.s.timezone)).date()
+
+    def overview(self, *, days: int = 31, limit: int = 30) -> dict:
+        today = self.today()
+        month_start = today.replace(day=1)
+        start = min(month_start, today - timedelta(days=days - 1))
+        rows = self.ff.withdrawals(start, today)
+        rows.sort(key=lambda r: (r["date"], r["id"]), reverse=True)
+
+        totals: dict[str, Decimal] = {}
+        by_category: dict[tuple[str, str], Decimal] = {}
+        for r in rows:
+            if r["date"] < month_start.isoformat():
+                continue
+            amt = Decimal(r["amount"])
+            totals[r["currency"]] = totals.get(r["currency"], Decimal(0)) + amt
+            key = (r["category"] or "Uncategorised", r["currency"])
+            by_category[key] = by_category.get(key, Decimal(0)) + amt
+
+        return {
+            "month": month_start.strftime("%Y-%m"),
+            "totals": [{"currency": c, "total": f"{v:.2f}"} for c, v in sorted(totals.items(), key=lambda kv: -kv[1])],
+            "by_category": [
+                {"category": k[0], "currency": k[1], "total": f"{v:.2f}"}
+                for k, v in sorted(by_category.items(), key=lambda kv: -kv[1])
+            ],
+            "recent": rows[:limit],
+        }
 
     def process(
         self,

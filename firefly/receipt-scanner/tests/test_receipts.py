@@ -148,3 +148,30 @@ def test_attachment_failure_still_reports_saved(make_client, ff, png_bytes):
     assert r.status_code == 200 and body["saved"] is True
     assert body["transaction_url"].endswith("/transactions/show/42")
     assert "couldn't be attached" in body["message"]
+
+
+def test_expenses_overview(make_client, ff):
+    from httpx import Response
+    def tx(i, d, amt, cur, cat):
+        return {"id": str(i), "attributes": {"transactions": [{
+            "date": d + "T12:00:00+08:00", "amount": amt, "currency_code": cur, "description": "x",
+            "destination_name": "Shop", "category_name": cat, "source_name": "DBS", "has_attachments": True}]}}
+    import receipts.service as svc
+    ff.get("/api/v1/transactions").mock(return_value=Response(200, json={
+        "data": [tx(1, "2026-11-01", "7.40", "SGD", "Food & drink"), tx(2, "2026-11-02", "12.60", "SGD", "Food & drink"),
+                 tx(3, "2026-11-02", "19.90", "CNY", None), tx(4, "2026-10-20", "100.00", "SGD", "Bills")],
+        "meta": {"pagination": {"total_pages": 1}}}))
+    client, _ = make_client(KOPI)
+    from datetime import date
+    orig = svc.ReceiptService.today
+    svc.ReceiptService.today = lambda self: date(2026, 11, 3)
+    try:
+        r = client.get("/api/expenses", headers=KEY)
+    finally:
+        svc.ReceiptService.today = orig
+    body = r.json()
+    assert body["month"] == "2026-11"
+    assert body["totals"] == [{"currency": "SGD", "total": "20.00"}, {"currency": "CNY", "total": "19.90"}]
+    assert {"category": "Uncategorised", "currency": "CNY", "total": "19.90"} in body["by_category"]
+    assert [x["id"] for x in body["recent"]] == ["3", "2", "1", "4"]
+    assert client.get("/api/expenses").status_code == 401
