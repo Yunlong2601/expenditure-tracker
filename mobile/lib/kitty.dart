@@ -221,12 +221,19 @@ class _CheerState extends State<_Cheer> with SingleTickerProviderStateMixin {
   }
 }
 
+/// How the cat feels about her pocket money.
+enum CatMood { happy, worried, sad }
+
 /// A round, original cat face. [blink] closes the eyes (0 open, 1 shut),
 /// [wave] tilts the raised paw, and [asleep] draws shut eyes with no paw.
 class CatPainter extends CustomPainter {
-  const CatPainter({this.blink = 0, this.wave = 0, this.asleep = false});
+  const CatPainter({this.blink = 0, this.wave = 0, this.asleep = false, this.mood = CatMood.happy, this.paw = true});
   final double blink, wave;
   final bool asleep;
+  final CatMood mood;
+
+  /// Draw the raised paw.
+  final bool paw;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -292,12 +299,33 @@ class CatPainter extends CustomPainter {
         ..close(),
       Paint()..color = _paw,
     );
-    final mouth = Path()
-      ..moveTo(50, 67)
-      ..quadraticBezierTo(48, 72, 44, 70.5)
-      ..moveTo(50, 67)
-      ..quadraticBezierTo(52, 72, 56, 70.5);
+    final mouth = switch (mood) {
+      CatMood.happy =>
+        Path()
+          ..moveTo(50, 67)
+          ..quadraticBezierTo(48, 72, 44, 70.5)
+          ..moveTo(50, 67)
+          ..quadraticBezierTo(52, 72, 56, 70.5),
+      CatMood.worried => Path()..addOval(Rect.fromCenter(center: const Offset(50, 71), width: 5, height: 5.5)),
+      CatMood.sad =>
+        Path()
+          ..moveTo(45, 73)
+          ..quadraticBezierTo(50, 68.5, 55, 73),
+    };
     canvas.drawPath(mouth, line..strokeWidth = 2);
+    if (mood != CatMood.happy && !asleep) {
+      // Brows tipped up in the middle.
+      canvas.drawLine(const Offset(30, 45), const Offset(40, 42.5), line);
+      canvas.drawLine(const Offset(70, 45), const Offset(60, 42.5), line);
+    }
+    if (mood == CatMood.sad && !asleep) {
+      // One small tear.
+      final tear = Path()
+        ..moveTo(29, 58)
+        ..quadraticBezierTo(26, 63, 29, 64.5)
+        ..quadraticBezierTo(32, 63, 29, 58);
+      canvas.drawPath(tear, Paint()..color = const Color(0xFF8FD3FF));
+    }
 
     // Whiskers.
     line.strokeWidth = 1.6;
@@ -307,7 +335,7 @@ class CatPainter extends CustomPainter {
       }
     }
 
-    if (!asleep) {
+    if (!asleep && paw) {
       // The waving paw, raised at the lower right.
       canvas.save();
       canvas.translate(84, 82);
@@ -317,7 +345,7 @@ class CatPainter extends CustomPainter {
       canvas.drawOval(paw, line..strokeWidth = 2.4);
       paintPaw(canvas, const Offset(0, -7), 4.2, 0, _blush);
       canvas.restore();
-    } else {
+    } else if (asleep) {
       // A few drifting z's.
       final z = TextPainter(
         text: const TextSpan(
@@ -332,5 +360,6 @@ class CatPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(CatPainter old) => old.blink != blink || old.wave != wave || old.asleep != asleep;
+  bool shouldRepaint(CatPainter old) =>
+      old.blink != blink || old.wave != wave || old.asleep != asleep || old.mood != mood || old.paw != paw;
 }

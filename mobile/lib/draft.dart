@@ -8,6 +8,7 @@ class ExpenseDraft {
     this.category,
     this.paymentMethod,
     this.summary,
+    this.moneyIn = false,
   });
 
   final double amount;
@@ -17,4 +18,7 @@ class ExpenseDraft {
   final String? category;
   final String? paymentMethod;
   final String? summary;
+
+  /// Money she got rather than spent.
+  final bool moneyIn;
 }

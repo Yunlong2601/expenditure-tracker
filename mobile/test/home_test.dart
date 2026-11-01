@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:spendsnap/app.dart';
 import 'package:spendsnap/home_screen.dart';
 import 'package:spendsnap/ledger.dart';
+import 'package:spendsnap/prefs.dart';
 import 'package:spendsnap/reader.dart';
 
 class FakePicker implements ReceiptPicker {
@@ -53,6 +54,7 @@ void main() {
     dir = await Directory.systemTemp.createTemp('home');
     ledger = Ledger(dir);
     picker = FakePicker();
+    Prefs.current = Prefs.memory();
   });
   tearDown(() async => dir.delete(recursive: true));
 
@@ -67,6 +69,13 @@ void main() {
       await t.tap(f);
       await Future<void>.delayed(const Duration(milliseconds: 200));
     });
+    await t.pumpAndSettle();
+  }
+
+  // A save shows a message; closing it in test time keeps the next save's
+  // message from replacing it after the test has ended.
+  Future<void> dismiss(WidgetTester t) async {
+    t.state<ScaffoldMessengerState>(find.byType(ScaffoldMessenger)).clearSnackBars();
     await t.pumpAndSettle();
   }
 
@@ -170,6 +179,50 @@ void main() {
     // Next time her own category is right there.
     await tapAndSettle(t, find.byKey(const Key('cash')));
     expect(find.byKey(const Key('cat-Concert')), findsOneWidget);
+  });
+
+  testWidgets('pocket money: set it once, see what is left this week, and the cat worries', (t) async {
+    await t.runAsync(() => ledger.add(amount: 50, currency: 'SGD', category: 'Shopping'));
+    await t.pumpWidget(wrap(unreadable));
+    await tapAndSettle(t, find.byKey(const Key('set-allowance')));
+    await t.enterText(find.byKey(const Key('allowance-amount')), '80');
+    await tapAndSettle(t, find.byKey(const Key('allowance-save')));
+    expect(find.text('Left this week'), findsOneWidget);
+    expect(find.text(r'S$30.00'), findsOneWidget);
+    expect(find.byKey(const Key('cat-happy')), findsOneWidget);
+    await dismiss(t);
+
+    // Spend more: 85% used, the cat gets worried.
+    await tapAndSettle(t, find.byKey(const Key('cash')));
+    await t.enterText(find.byKey(const Key('quick-amount')), '18');
+    await tapAndSettle(t, find.byKey(const Key('cat-Bubble tea')));
+    expect(find.text(r'S$12.00'), findsOneWidget);
+    expect(find.byKey(const Key('cat-worried')), findsOneWidget);
+    await dismiss(t);
+
+    // Mum gives S$50: more room this week, happy again.
+    await tapAndSettle(t, find.byKey(const Key('cash')));
+    await t.tap(find.byKey(const Key('mode-in')));
+    await t.pump();
+    await t.enterText(find.byKey(const Key('quick-amount')), '50');
+    await tapAndSettle(t, find.byKey(const Key('cat-From family')));
+    expect(ledger.all.last.moneyIn, isTrue);
+    expect(find.text(r'S$62.00'), findsOneWidget);
+    expect(find.byKey(const Key('cat-happy')), findsOneWidget);
+    expect(find.text(r'+S$50.00'), findsOneWidget);
+    await dismiss(t);
+  });
+
+  testWidgets('over budget: the cat is sad but kind', (t) async {
+    await t.runAsync(() async {
+      await Prefs.current.setAllowance(10, daily: true);
+      await ledger.add(amount: 12, currency: 'SGD', category: 'Food & drink');
+    });
+    await t.pumpWidget(wrap(unreadable));
+    expect(find.text('Over today'), findsOneWidget);
+    expect(find.text(r'S$2.00'), findsOneWidget);
+    expect(find.byKey(const Key('cat-sad')), findsOneWidget);
+    expect(find.text("It's okay. A fresh start tomorrow."), findsOneWidget);
   });
 
   testWidgets('cash quick add: amount then one tap on a category', (t) async {

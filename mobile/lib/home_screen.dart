@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'allowance.dart';
 import 'app.dart';
 import 'categories.dart';
 import 'draft.dart';
@@ -9,6 +10,7 @@ import 'format.dart';
 import 'kitty.dart';
 import 'ledger.dart';
 import 'picker.dart';
+import 'prefs.dart';
 import 'quick_add_sheet.dart';
 import 'reader.dart';
 import 'review_sheet.dart';
@@ -44,7 +46,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   String _describe(Expense e) =>
-      '${money(e.amount, e.currency)}${e.merchant != null ? ' at ${e.merchant}' : ''}'
+      '${e.moneyIn ? 'got ' : ''}${money(e.amount, e.currency)}${e.merchant != null ? ' at ${e.merchant}' : ''}'
       '${e.category != null ? ' (${e.category})' : ''}';
 
   Future<void> _save(ExpenseDraft d, {Uint8List? image}) async {
@@ -57,13 +59,14 @@ class _HomeScreenState extends State<HomeScreen> {
       paymentMethod: d.paymentMethod,
       summary: d.summary,
       receipt: image,
+      moneyIn: d.moneyIn,
     );
     if (!mounted) return;
     Feel.logged();
     KittyLayer.cheer();
     setState(() => _fresh = e.id);
     _toast(
-      'Logged ${_describe(e)}',
+      e.moneyIn ? 'Yay, ${_describe(e)}' : 'Logged ${_describe(e)}',
       action: SnackBarAction(
         label: 'Undo',
         onPressed: () async {
@@ -164,6 +167,8 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
     );
+    // Pocket money may have changed.
+    if (mounted) setState(() {});
   }
 
   Future<void> _edit(Expense e) async {
@@ -269,10 +274,27 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final o = _ledger.overview();
+    final prefs = Prefs.current;
+    final period = prefs.showMonth ? Period.month : (prefs.allowanceDaily ? Period.day : Period.week);
+    final o = _ledger.overview(period: period);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('This month'),
+        title: prefs.allowance == null
+            ? const Text('This month')
+            : SegmentedButton<bool>(
+                key: const Key('period'),
+                showSelectedIcon: false,
+                segments: [
+                  ButtonSegment(value: false, label: Text(prefs.allowanceDaily ? 'Today' : 'This week')),
+                  const ButtonSegment(value: true, label: Text('This month')),
+                ],
+                selected: {prefs.showMonth},
+                onSelectionChanged: (s) async {
+                  HapticFeedback.selectionClick();
+                  await prefs.setShowMonth(s.first);
+                  if (mounted) setState(() {});
+                },
+              ),
         actions: [
           Pressable(
             child: IconButton(
@@ -291,7 +313,15 @@ class _HomeScreenState extends State<HomeScreen> {
           ListView(
             padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
             children: [
-              _TotalCard(overview: o),
+              _TotalCard(
+                overview: o,
+                period: period,
+                allowance: prefs.allowance,
+                onSetAllowance: () async {
+                  Feel.tap();
+                  if (await editAllowance(context) && mounted) setState(() {});
+                },
+              ),
               const SizedBox(height: 20),
               // Payment screenshots come first: PayNow, GrabPay, Alipay, WeChat and
               // card apps all show a success screen, the one record every digital
@@ -385,7 +415,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         Feel.tap();
                         _showExpense(e);
                       },
-                      leading: Icon(iconFor(e.category)),
+                      leading: Icon(e.moneyIn ? Icons.savings_outlined : iconFor(e.category)),
                       title: Text(e.merchant ?? e.category ?? 'Expense', maxLines: 1, overflow: TextOverflow.ellipsis),
                       subtitle: Text(
                         [
@@ -394,7 +424,12 @@ class _HomeScreenState extends State<HomeScreen> {
                           if (e.paymentMethod != null) e.paymentMethod!,
                         ].join(' · '),
                       ),
-                      trailing: Text(money(e.amount, e.currency)),
+                      trailing: e.moneyIn
+                          ? Text(
+                              '+${money(e.amount, e.currency)}',
+                              style: TextStyle(color: cs.tertiary, fontWeight: FontWeight.w600),
+                            )
+                          : Text(money(e.amount, e.currency)),
                     ),
                   ),
                 ),
@@ -435,46 +470,137 @@ class _HomeScreenState extends State<HomeScreen> {
 }
 
 class _TotalCard extends StatelessWidget {
-  const _TotalCard({required this.overview});
+  const _TotalCard({required this.overview, required this.period, this.allowance, required this.onSetAllowance});
   final Overview overview;
+  final Period period;
+
+  /// Pocket money per day or week, in S$.
+  final double? allowance;
+  final VoidCallback onSetAllowance;
 
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
     final cs = Theme.of(context).colorScheme;
+    final on = cs.onPrimaryContainer;
     final totals = overview.totals;
+    final budget = period == Period.month || allowance == null ? null : allowance! + overview.received('SGD');
+    final spent = overview.spent('SGD');
     final main = totals.isEmpty ? null : totals.firstWhere((m) => m.currency == 'SGD', orElse: () => totals.first);
+    final others = totals.where((m) => m.currency != (budget == null ? main?.currency : 'SGD'));
+    final when = period == Period.day ? 'today' : 'this week';
+
+    Widget big(double value, String currency) => FittedBox(
+      fit: BoxFit.scaleDown,
+      alignment: Alignment.centerLeft,
+      child: CountUp(
+        value: value,
+        builder: (context, v) => Text(
+          money(v, currency),
+          key: const Key('total'),
+          style: t.displayMedium?.copyWith(
+            fontWeight: FontWeight.bold,
+            color: on,
+            // Digits keep their width while the total rolls.
+            fontFeatures: const [FontFeature.tabularFigures()],
+          ),
+        ),
+      ),
+    );
+
+    final List<Widget> body;
+    Widget? cat;
+    if (budget != null) {
+      final left = budget - spent;
+      final used = budget <= 0 ? 1.0 : spent / budget;
+      final mood = used > 1 ? CatMood.sad : (used >= 0.8 ? CatMood.worried : CatMood.happy);
+      cat = SizedBox(
+        width: 76,
+        height: 76,
+        child: CustomPaint(
+          key: Key('cat-${mood.name}'),
+          painter: CatPainter(mood: mood, paw: false),
+        ),
+      );
+      body = [
+        Text(left >= 0 ? 'Left $when' : 'Over $when', style: t.titleMedium?.copyWith(color: on)),
+        const SizedBox(height: 4),
+        big(left.abs(), 'SGD'),
+        const SizedBox(height: 8),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: LinearProgressIndicator(
+            value: used.clamp(0.0, 1.0),
+            minHeight: 10,
+            backgroundColor: on.withValues(alpha: 0.15),
+            color: mood == CatMood.happy ? cs.primary : cs.error,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text('Spent ${money(spent, 'SGD')} of ${money(budget, 'SGD')}', style: t.bodyMedium?.copyWith(color: on)),
+        if (overview.received('SGD') > 0)
+          Text(
+            'Includes ${money(overview.received('SGD'), 'SGD')} money in',
+            style: t.bodySmall?.copyWith(color: on.withValues(alpha: 0.8)),
+          ),
+        if (mood != CatMood.happy)
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Text(
+              mood == CatMood.sad
+                  ? "It's okay. A fresh start ${period == Period.day ? 'tomorrow' : 'on Monday'}."
+                  : 'Careful, almost used up!',
+              style: t.bodyMedium?.copyWith(color: on, fontWeight: FontWeight.w600),
+            ),
+          ),
+      ];
+    } else {
+      body = [
+        Text(period == Period.month ? 'Spent this month' : 'Spent $when', style: t.titleMedium?.copyWith(color: on)),
+        const SizedBox(height: 4),
+        big(main?.amount ?? 0, main?.currency ?? 'SGD'),
+        if (overview.received('SGD') > 0)
+          Text('Money in: ${money(overview.received('SGD'), 'SGD')}', style: t.bodyMedium?.copyWith(color: on)),
+        if (allowance == null)
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: TextButton.icon(
+              key: const Key('set-allowance'),
+              onPressed: onSetAllowance,
+              style: TextButton.styleFrom(foregroundColor: on, padding: EdgeInsets.zero),
+              icon: const Icon(Icons.savings_outlined),
+              label: const Text('Set my pocket money'),
+            ),
+          ),
+      ];
+    }
     return Card(
       color: cs.primaryContainer,
       elevation: 0,
+      clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Spent so far', style: t.titleMedium?.copyWith(color: cs.onPrimaryContainer)),
-            const SizedBox(height: 4),
-            FittedBox(
-              fit: BoxFit.scaleDown,
-              alignment: Alignment.centerLeft,
-              child: CountUp(
-                value: main?.amount ?? 0,
-                builder: (context, v) => Text(
-                  money(v, main?.currency ?? 'SGD'),
-                  key: const Key('total'),
-                  style: t.displayMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: cs.onPrimaryContainer,
-                    // Digits keep their width while the total rolls.
-                    fontFeatures: const [FontFeature.tabularFigures()],
-                  ),
+      child: InkWell(
+        key: const Key('total-card'),
+        // Tap to change the pocket money.
+        onTap: allowance == null ? null : onSetAllowance,
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    ...body,
+                    for (final m in others)
+                      Text('+ ${money(m.amount, m.currency)}', style: t.titleMedium?.copyWith(color: on)),
+                  ],
                 ),
               ),
-            ),
-            for (final m in totals.where((m) => m != main))
-              Text('+ ${money(m.amount, m.currency)}', style: t.titleMedium?.copyWith(color: cs.onPrimaryContainer)),
-          ],
+              if (cat != null) ...[const SizedBox(width: 8), cat],
+            ],
+          ),
         ),
       ),
     );

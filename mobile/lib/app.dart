@@ -6,6 +6,7 @@ import 'package:path_provider/path_provider.dart';
 import 'feel.dart';
 import 'home_screen.dart';
 import 'kitty.dart';
+import 'prefs.dart';
 import 'ledger.dart';
 import 'reader.dart';
 
@@ -83,6 +84,7 @@ class _RootState extends State<_Root> {
       final ledger = Ledger(dir);
       await ledger.load();
       await Feel.load(dir);
+      await Prefs.load(dir);
       if (mounted) setState(() => _ledger = ledger);
     }();
   }

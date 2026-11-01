@@ -18,6 +18,7 @@ class Expense {
     this.summary,
     this.receiptFile,
     this.receiptHash,
+    this.moneyIn = false,
     required this.createdAt,
   });
 
@@ -32,6 +33,7 @@ class Expense {
     summary: j['summary'] as String?,
     receiptFile: j['receipt_file'] as String?,
     receiptHash: j['receipt_hash'] as String?,
+    moneyIn: j['money_in'] as bool? ?? false,
     createdAt: DateTime.parse(j['created_at'] as String),
   );
 
@@ -49,6 +51,9 @@ class Expense {
 
   /// Fingerprint of the receipt image, to spot the same picture sent twice.
   final String? receiptHash;
+
+  /// Money received (pocket money, a friend paying back), not spent.
+  final bool moneyIn;
   final DateTime createdAt;
 
   Map<String, dynamic> toJson() => {
@@ -62,6 +67,7 @@ class Expense {
     if (summary != null) 'summary': summary,
     if (receiptFile != null) 'receipt_file': receiptFile,
     if (receiptHash != null) 'receipt_hash': receiptHash,
+    if (moneyIn) 'money_in': true,
     'created_at': createdAt.toIso8601String(),
   };
 }
@@ -79,12 +85,32 @@ class CategoryTotal {
   final double amount;
 }
 
+/// How far back the home screen looks.
+enum Period { day, week, month }
+
 class Overview {
-  const Overview({required this.totals, required this.byCategory, required this.recent});
+  const Overview({required this.totals, required this.byCategory, required this.recent, this.moneyIn = const []});
+
+  /// Spent in the period, per currency, largest first.
   final List<Money> totals;
   final List<CategoryTotal> byCategory;
+
+  /// Everything, newest first, money in included.
   final List<Expense> recent;
+
+  /// Received in the period, per currency.
+  final List<Money> moneyIn;
+
+  double spent(String currency) => totals.where((m) => m.currency == currency).fold(0, (a, m) => a + m.amount);
+  double received(String currency) => moneyIn.where((m) => m.currency == currency).fold(0, (a, m) => a + m.amount);
 }
+
+/// The first moment of the period that [now] falls in. Weeks start on Monday.
+DateTime periodStart(Period p, DateTime now) => switch (p) {
+  Period.day => DateTime(now.year, now.month, now.day),
+  Period.week => DateTime(now.year, now.month, now.day - (now.weekday - DateTime.monday)),
+  Period.month => DateTime(now.year, now.month),
+};
 
 /// All expenses, kept in one JSON file in the app's private folder on the
 /// phone, with receipt images next to it. Nothing leaves the phone.
@@ -137,6 +163,7 @@ class Ledger {
     String? paymentMethod,
     String? summary,
     Uint8List? receipt,
+    bool moneyIn = false,
   }) async {
     await load();
     final id = _newId();
@@ -158,6 +185,7 @@ class Ledger {
       summary: _clean(summary),
       receiptFile: fileName,
       receiptHash: receipt == null ? null : fingerprint(receipt),
+      moneyIn: moneyIn,
       createdAt: now,
     );
     _items.add(e);
@@ -189,6 +217,7 @@ class Ledger {
       summary: old.summary,
       receiptFile: old.receiptFile,
       receiptHash: old.receiptHash,
+      moneyIn: old.moneyIn,
       createdAt: old.createdAt,
     );
     _items[i] = e;
@@ -244,17 +273,25 @@ class Ledger {
   List<String> categories() {
     final seen = <String>{};
     for (final e in _items.reversed) {
-      if (e.category != null) seen.add(e.category!);
+      if (e.category != null && !e.moneyIn) seen.add(e.category!);
     }
     return seen.toList();
   }
 
-  Overview overview({DateTime? now, int recent = 30}) {
+  Overview overview({DateTime? now, int recent = 30, Period period = Period.month}) {
     final today = now ?? DateTime.now();
-    final monthItems = _items.where((e) => e.date.year == today.year && e.date.month == today.month);
+    final start = periodStart(period, today);
+    final inPeriod = _items.where(
+      (e) => !e.date.isBefore(start) && !e.date.isAfter(today.add(const Duration(days: 1))),
+    );
     final totals = <String, double>{};
+    final received = <String, double>{};
     final byCat = <(String, String), double>{};
-    for (final e in monthItems) {
+    for (final e in inPeriod) {
+      if (e.moneyIn) {
+        received[e.currency] = (received[e.currency] ?? 0) + e.amount;
+        continue;
+      }
       totals[e.currency] = (totals[e.currency] ?? 0) + e.amount;
       final k = (e.category ?? 'Other', e.currency);
       byCat[k] = (byCat[k] ?? 0) + e.amount;
@@ -269,6 +306,7 @@ class Ledger {
       byCategory: [for (final c in byCat.entries) CategoryTotal(c.key.$1, c.key.$2, c.value)]
         ..sort((a, b) => b.amount.compareTo(a.amount)),
       recent: sorted.take(recent).toList(),
+      moneyIn: [for (final t in received.entries) Money(t.key, t.value)],
     );
   }
 
@@ -281,7 +319,7 @@ class Ledger {
       for (final e in rows)
         [
           isoDate(e.date),
-          e.amount.toStringAsFixed(2),
+          (e.moneyIn ? -e.amount : e.amount).toStringAsFixed(2),
           e.currency,
           q(e.merchant),
           q(e.category),

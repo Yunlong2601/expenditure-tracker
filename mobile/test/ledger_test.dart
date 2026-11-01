@@ -98,6 +98,20 @@ void main() {
     expect((x.amount, x.currency, x.merchant, x.category, x.receiptFile), (3.5, 'MYR', 'Kedai', 'Food', e.receiptFile));
   });
 
+  test('week and day totals; money in is kept apart from spending', () async {
+    final l = Ledger(dir);
+    final wed = DateTime(2026, 11, 4, 12); // a Wednesday
+    await l.add(amount: 5, currency: 'SGD', date: DateTime(2026, 11, 2)); // Monday, same week
+    await l.add(amount: 7, currency: 'SGD', date: DateTime(2026, 11, 1)); // Sunday, last week
+    await l.add(amount: 3, currency: 'SGD', date: wed);
+    await l.add(amount: 50, currency: 'SGD', date: wed, moneyIn: true, category: 'Pocket money');
+    final week = l.overview(now: wed, period: Period.week);
+    expect((week.spent('SGD'), week.received('SGD')), (8.0, 50.0));
+    expect(l.overview(now: wed, period: Period.day).spent('SGD'), 3.0);
+    expect(l.overview(now: wed).spent('SGD'), 15.0);
+    expect(l.categories(), isNot(contains('Pocket money')));
+  });
+
   test('exports CSV', () async {
     final l = Ledger(dir);
     await l.add(amount: 5.2, currency: 'SGD', merchant: 'Kopi "Corner"', date: DateTime(2026, 11, 1));

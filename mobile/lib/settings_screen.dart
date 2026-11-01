@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 
+import 'allowance.dart';
 import 'feel.dart';
+import 'format.dart';
+import 'prefs.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key, this.onExport});
@@ -21,6 +24,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
         child: ListView(
           padding: const EdgeInsets.all(24),
           children: [
+            ListTile(
+              key: const Key('settings-allowance'),
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.savings_outlined),
+              title: const Text('Pocket money'),
+              subtitle: Text(
+                Prefs.current.allowance == null
+                    ? 'Not set'
+                    : '${money(Prefs.current.allowance!, 'SGD')} ${Prefs.current.allowanceDaily ? 'a day' : 'a week'}',
+              ),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () async {
+                Feel.tap();
+                if (await editAllowance(context)) setState(() {});
+              },
+            ),
             SwitchListTile.adaptive(
               key: const Key('sounds'),
               contentPadding: EdgeInsets.zero,

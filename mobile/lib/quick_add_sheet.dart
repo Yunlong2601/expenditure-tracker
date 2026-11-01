@@ -22,6 +22,17 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
   String _currency = 'SGD';
   String? _error;
 
+  /// Recording money she got instead of money spent.
+  bool _in = false;
+
+  static const _sources = <(String, IconData)>[
+    ('Pocket money', Icons.savings_outlined),
+    ('From family', Icons.family_restroom),
+    ('Friend paid back', Icons.handshake_outlined),
+    ('Red packet', Icons.redeem),
+    ('Other', Icons.more_horiz),
+  ];
+
   /// One tap away; the rest sit under "More".
   static const _main = ['SGD', 'MYR', 'CNY'];
 
@@ -42,7 +53,7 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
 
   void _pick(String category) {
     if (_needAmount()) return;
-    Navigator.of(context).pop(ExpenseDraft(amount: _value, currency: _currency, category: category));
+    Navigator.of(context).pop(ExpenseDraft(amount: _value, currency: _currency, category: category, moneyIn: _in));
   }
 
   Future<void> _newCategory() async {
@@ -79,7 +90,23 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('How much?', style: t.titleLarge),
+            SegmentedButton<bool>(
+              segments: const [
+                ButtonSegment(value: false, label: Text('I spent'), icon: Icon(Icons.shopping_bag_outlined)),
+                ButtonSegment(
+                  value: true,
+                  label: Text('I got money', key: Key('mode-in')),
+                  icon: Icon(Icons.savings_outlined),
+                ),
+              ],
+              selected: {_in},
+              onSelectionChanged: (s) {
+                HapticFeedback.selectionClick();
+                setState(() => _in = s.first);
+              },
+            ),
+            const SizedBox(height: 16),
+            Text(_in ? 'How much did you get?' : 'How much?', style: t.titleLarge),
             const SizedBox(height: 12),
             Wrap(
               spacing: 8,
@@ -125,24 +152,29 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
               onChanged: (_) => _error == null ? null : setState(() => _error = null),
             ),
             const SizedBox(height: 16),
-            Text('Tap what it was for', style: t.titleMedium),
+            Text(_in ? 'Where from?' : 'Tap what it was for', style: t.titleMedium),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
               runSpacing: 8,
               children: [
-                for (final (name, icon) in quickCategories) chip(name, icon),
-                for (final name in own) chip(name, iconFor(name)),
-                Pressable(
-                  scale: 0.92,
-                  child: ActionChip(
-                    key: const Key('cat-new'),
-                    avatar: const Icon(Icons.add, size: 20),
-                    label: const Text('New…'),
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-                    onPressed: _newCategory,
+                if (_in) ...[
+                  for (final (name, icon) in _sources) chip(name, icon),
+                ] else ...[
+                  for (final (name, icon) in quickCategories) chip(name, icon),
+                  for (final name in own) chip(name, iconFor(name)),
+                ],
+                if (!_in)
+                  Pressable(
+                    scale: 0.92,
+                    child: ActionChip(
+                      key: const Key('cat-new'),
+                      avatar: const Icon(Icons.add, size: 20),
+                      label: const Text('New…'),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                      onPressed: _newCategory,
+                    ),
                   ),
-                ),
               ],
             ),
           ],
