@@ -7,9 +7,9 @@ class DevicePicker implements ReceiptPicker {
   final _p = ip.ImagePicker();
 
   Future<PickedImage?> _pick(ip.ImageSource source) async {
-    // Shrinking on the phone makes uploads fast on mobile data; the server
-    // doesn't need more than about 1600 px to read a receipt.
-    final f = await _p.pickImage(source: source, maxWidth: 1600, maxHeight: 1600, imageQuality: 85);
+    // Big enough for the phone to read small print, small enough that a year
+    // of receipt photos doesn't fill the phone.
+    final f = await _p.pickImage(source: source, maxWidth: 2000, maxHeight: 2000, imageQuality: 85);
     if (f == null) return null;
     return PickedImage(await f.readAsBytes(), f.name);
   }

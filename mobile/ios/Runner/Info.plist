@@ -6,12 +6,6 @@
 	<string>Take a photo of a receipt to log the expense.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Pick a payment screenshot or receipt photo to log the expense.</string>
-	<key>NSAppTransportSecurity</key>
-	<dict>
-		<!-- Your receipt scanner usually runs on your own computer or a Tailscale address over plain http. -->
-		<key>NSAllowsArbitraryLoads</key>
-		<true/>
-	</dict>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>

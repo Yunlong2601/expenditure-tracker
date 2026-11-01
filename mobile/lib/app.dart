@@ -1,38 +1,13 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
 
-import 'api.dart';
 import 'home_screen.dart';
-import 'settings.dart';
-import 'settings_screen.dart';
-
-typedef ApiFactory = ScannerApi Function(ServerSettings settings);
-
-ScannerApi _defaultApi(ServerSettings s) => ScannerApi(baseUrl: s.url, apiKey: s.apiKey);
+import 'ledger.dart';
+import 'reader.dart';
 
 const pink = Color(0xFFFF69B4);
-
-class SpendSnapApp extends StatelessWidget {
-  const SpendSnapApp({super.key, required this.store, this.apiFactory = _defaultApi, this.picker});
-
-  final SettingsStore store;
-  final ApiFactory apiFactory;
-  final ReceiptPicker? picker;
-
-  @override
-  Widget build(BuildContext context) {
-    ThemeData theme(Brightness b) => ThemeData(
-      colorScheme: ColorScheme.fromSeed(seedColor: pink, brightness: b),
-      useMaterial3: true,
-    );
-    return MaterialApp(
-      title: 'Spend Snap',
-      debugShowCheckedModeBanner: false,
-      theme: theme(Brightness.light),
-      darkTheme: theme(Brightness.dark),
-      home: _Root(store: store, apiFactory: apiFactory, picker: picker),
-    );
-  }
-}
 
 /// Lets tests replace the camera and photo library.
 abstract class ReceiptPicker {
@@ -46,10 +21,33 @@ class PickedImage {
   final String name;
 }
 
+class SpendSnapApp extends StatelessWidget {
+  const SpendSnapApp({super.key, this.ledgerDir, this.reader, this.picker});
+
+  final Directory? ledgerDir;
+  final ReceiptReader? reader;
+  final ReceiptPicker? picker;
+
+  @override
+  Widget build(BuildContext context) {
+    ThemeData theme(Brightness b) => ThemeData(
+      colorScheme: ColorScheme.fromSeed(seedColor: pink, brightness: b),
+      useMaterial3: true,
+    );
+    return MaterialApp(
+      title: 'Spend Snap',
+      debugShowCheckedModeBanner: false,
+      theme: theme(Brightness.light),
+      darkTheme: theme(Brightness.dark),
+      home: _Root(ledgerDir: ledgerDir, reader: reader ?? OfflineReader(), picker: picker),
+    );
+  }
+}
+
 class _Root extends StatefulWidget {
-  const _Root({required this.store, required this.apiFactory, this.picker});
-  final SettingsStore store;
-  final ApiFactory apiFactory;
+  const _Root({this.ledgerDir, required this.reader, this.picker});
+  final Directory? ledgerDir;
+  final ReceiptReader reader;
   final ReceiptPicker? picker;
 
   @override
@@ -57,41 +55,23 @@ class _Root extends StatefulWidget {
 }
 
 class _RootState extends State<_Root> {
-  ServerSettings? _settings;
-  bool _loading = true;
+  Ledger? _ledger;
 
   @override
   void initState() {
     super.initState();
-    widget.store.load().then(
-      (s) => setState(() {
-        _settings = s;
-        _loading = false;
-      }),
-    );
-  }
-
-  Future<void> _openSettings() async {
-    final s = await Navigator.of(context).push<ServerSettings>(
-      MaterialPageRoute(
-        builder: (_) => SettingsScreen(initial: _settings, store: widget.store),
-      ),
-    );
-    if (s != null) setState(() => _settings = s);
+    () async {
+      final dir = widget.ledgerDir ?? Directory('${(await getApplicationDocumentsDirectory()).path}/spendsnap');
+      final ledger = Ledger(dir);
+      await ledger.load();
+      if (mounted) setState(() => _ledger = ledger);
+    }();
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    final s = _settings;
-    if (s == null) {
-      return SettingsScreen(store: widget.store, firstRun: true, onSaved: (saved) => setState(() => _settings = saved));
-    }
-    return HomeScreen(
-      key: ValueKey('${s.url}|${s.apiKey}'),
-      api: widget.apiFactory(s),
-      picker: widget.picker,
-      onOpenSettings: _openSettings,
-    );
+    final ledger = _ledger;
+    if (ledger == null) return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    return HomeScreen(ledger: ledger, reader: widget.reader, picker: widget.picker);
   }
 }

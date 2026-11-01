@@ -1,20 +1,24 @@
-import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
-import 'api.dart';
 import 'app.dart';
 import 'categories.dart';
+import 'draft.dart';
 import 'format.dart';
+import 'ledger.dart';
 import 'picker.dart';
 import 'quick_add_sheet.dart';
+import 'reader.dart';
 import 'review_sheet.dart';
+import 'settings_screen.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key, required this.api, required this.onOpenSettings, this.picker});
+  const HomeScreen({super.key, required this.ledger, required this.reader, this.picker});
 
-  final ScannerApi api;
-  final VoidCallback onOpenSettings;
+  final Ledger ledger;
+
+  /// Reads receipts on the phone. When it can't, the person types the amount.
+  final ReceiptReader reader;
   final ReceiptPicker? picker;
 
   @override
@@ -23,51 +27,53 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   late final ReceiptPicker _picker = widget.picker ?? DevicePicker();
-  Overview? _overview;
-  String? _error;
   bool _busy = false;
   String _busyText = '';
 
-  @override
-  void initState() {
-    super.initState();
-    _refresh();
-  }
+  Ledger get _ledger => widget.ledger;
 
-  Future<void> _refresh() async {
-    try {
-      final o = await widget.api.overview();
-      if (!mounted) return;
-      setState(() {
-        _overview = o;
-        _error = null;
-      });
-    } on ApiException catch (e) {
-      if (!mounted) return;
-      setState(() => _error = e.message);
-    }
-  }
-
-  void _toast(String text) {
+  void _toast(String text, {SnackBarAction? action}) {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(text), behavior: SnackBarBehavior.floating));
+      ..showSnackBar(SnackBar(content: Text(text), action: action, behavior: SnackBarBehavior.floating));
   }
 
-  Future<T?> _withBusy<T>(String text, Future<T> Function() work) async {
-    setState(() {
-      _busy = true;
-      _busyText = text;
-    });
-    try {
-      return await work();
-    } on ApiException catch (e) {
-      _toast(e.message);
-      return null;
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
+  String _describe(Expense e) =>
+      '${money(e.amount, e.currency)}${e.merchant != null ? ' at ${e.merchant}' : ''}'
+      '${e.category != null ? ' (${e.category})' : ''}';
+
+  Future<void> _save(ExpenseDraft d, {Uint8List? image}) async {
+    final e = await _ledger.add(
+      amount: d.amount,
+      currency: d.currency,
+      date: d.date,
+      merchant: d.merchant,
+      category: d.category,
+      paymentMethod: d.paymentMethod,
+      summary: d.summary,
+      receipt: image,
+    );
+    if (!mounted) return;
+    setState(() {});
+    _toast(
+      'Logged ${_describe(e)}',
+      action: SnackBarAction(
+        label: 'Undo',
+        onPressed: () async {
+          await _ledger.delete(e.id);
+          if (mounted) setState(() {});
+        },
+      ),
+    );
   }
+
+  Future<ExpenseDraft?> _review(ReadReceipt r, Uint8List image, String message) => showModalBottomSheet<ExpenseDraft>(
+    context: context,
+    isScrollControlled: true,
+    useSafeArea: true,
+    showDragHandle: true,
+    builder: (_) => ReviewSheet(receipt: r, image: image, message: message, categories: _ledger.categories()),
+  );
 
   Future<void> _scan({required bool camera}) async {
     final PickedImage? img;
@@ -80,165 +86,215 @@ class _HomeScreenState extends State<HomeScreen> {
     if (img == null || !mounted) return;
     final bytes = Uint8List.fromList(img.bytes);
 
-    final result = await _withBusy('Reading your receipt…', () => widget.api.scan(bytes, filename: img!.name));
-    if (result == null || !mounted) return;
+    var receipt = const ReadReceipt();
+    var message = 'Type in the amount.';
+    {
+      setState(() {
+        _busy = true;
+        _busyText = 'Reading your receipt…';
+      });
+      try {
+        receipt = await widget.reader.read(bytes, categories: _ledger.categories());
+        message = !receipt.isReceipt
+            ? "This doesn't look like a receipt${receipt.problem != null ? ': ${receipt.problem}' : ''}."
+            : receipt.total == null
+            ? "I couldn't read the total."
+            : "I'm not sure about this one${receipt.problem != null ? ' (${receipt.problem})' : ''}.";
+      } on ReadException catch (e) {
+        message = e.message;
+      } finally {
+        if (mounted) setState(() => _busy = false);
+      }
+    }
+    if (!mounted) return;
 
-    if (result.saved) {
-      _toast(result.message);
-      _refresh();
-      return;
-    }
-    if (!result.needsReview || result.receipt == null) {
-      _toast(result.message);
-      return;
-    }
-    // Keep the photo and any corrections until the save goes through, so a
-    // dropped connection never means re-taking the picture.
-    ExpenseFields? draft;
-    var current = result;
-    while (mounted) {
-      final fields = await showModalBottomSheet<ExpenseFields>(
-        context: context,
-        isScrollControlled: true,
-        useSafeArea: true,
-        showDragHandle: true,
-        builder: (_) => ReviewSheet(result: current, image: bytes, draft: draft),
+    final when = receipt.date ?? DateTime.now();
+    final currency = receipt.currency ?? 'SGD';
+    final duplicate =
+        receipt.total != null &&
+        _ledger.isDuplicate(amount: receipt.total!, currency: currency, date: when, merchant: receipt.merchant);
+    if (receipt.confident && !duplicate) {
+      await _save(
+        ExpenseDraft(
+          amount: receipt.total!,
+          currency: currency,
+          date: when,
+          merchant: receipt.merchant,
+          category: receipt.category,
+          paymentMethod: receipt.paymentMethod,
+          summary: receipt.summary,
+        ),
+        image: bytes,
       );
-      if (fields == null || !mounted) return;
-      draft = fields;
-      final saved = await _withBusy('Saving…', () => widget.api.scan(bytes, filename: img!.name, fields: fields));
-      if (!mounted) return;
-      if (saved != null) _toast(saved.message);
-      if (saved != null && saved.saved) {
-        _refresh();
-        return;
-      }
-      if (saved != null) {
-        current = ScanResult(
-          saved: false,
-          needsReview: true,
-          message: saved.message,
-          receipt: current.receipt,
-          account: current.account,
-          accounts: current.accounts,
-          categories: current.categories,
-        );
-      }
+      return;
     }
+    if (duplicate) message = 'This looks like one you already logged. Save it again?';
+    final d = await _review(receipt, bytes, message);
+    if (d != null) await _save(d, image: bytes);
   }
 
   Future<void> _quickAdd() async {
-    final fields = await showModalBottomSheet<ExpenseFields>(
+    final d = await showModalBottomSheet<ExpenseDraft>(
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
       showDragHandle: true,
       builder: (_) => const QuickAddSheet(),
     );
-    if (fields == null || !mounted) return;
-    final r = await _withBusy('Saving…', () => widget.api.addManual(fields));
-    if (r == null || !mounted) return;
-    _toast(r.message);
-    if (r.saved) _refresh();
+    if (d != null) await _save(d);
+  }
+
+  Future<void> _openSettings() async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) => SettingsScreen(
+          onExport: () async {
+            await Clipboard.setData(ClipboardData(text: _ledger.toCsv()));
+            _toast('Copied. Paste it into Notes, Mail or a spreadsheet.');
+          },
+        ),
+      ),
+    );
+  }
+
+  void _showExpense(Expense e) {
+    final f = _ledger.receiptFor(e);
+    showModalBottomSheet<void>(
+      context: context,
+      useSafeArea: true,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (ctx) => ListView(
+        shrinkWrap: true,
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+        children: [
+          Text(money(e.amount, e.currency), style: Theme.of(ctx).textTheme.headlineMedium),
+          Text(
+            [
+              e.merchant ?? 'Expense',
+              shortDate(e.date),
+              if (e.category != null) e.category!,
+              if (e.paymentMethod != null) e.paymentMethod!,
+            ].join(' · '),
+          ),
+          if (e.summary != null) Text(e.summary!),
+          if (f != null) ...[
+            const SizedBox(height: 12),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Image.file(f, errorBuilder: (_, _, _) => const SizedBox.shrink()),
+            ),
+          ],
+          const SizedBox(height: 16),
+          OutlinedButton.icon(
+            key: const Key('delete-expense'),
+            onPressed: () async {
+              Navigator.of(ctx).pop();
+              await _ledger.delete(e.id);
+              if (mounted) {
+                setState(() {});
+                _toast('Deleted ${_describe(e)}');
+              }
+            },
+            icon: const Icon(Icons.delete_outline),
+            label: const Text('Delete'),
+            style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(52)),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final o = _ledger.overview();
     return Scaffold(
       appBar: AppBar(
         title: const Text('This month'),
-        actions: [
-          IconButton(tooltip: 'Settings', icon: const Icon(Icons.settings_outlined), onPressed: widget.onOpenSettings),
-        ],
+        actions: [IconButton(tooltip: 'Settings', icon: const Icon(Icons.settings_outlined), onPressed: _openSettings)],
       ),
       body: Stack(
         children: [
-          RefreshIndicator(
-            onRefresh: _refresh,
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
-              children: [
-                _TotalCard(overview: _overview, error: _error),
-                const SizedBox(height: 20),
-                // Payment screenshots come first: PayNow, GrabPay, Alipay, WeChat
-                // and card apps all show a success screen, and it's the one record
-                // every digital payment leaves.
-                Row(
-                  children: [
-                    Expanded(
-                      child: _BigAction(
-                        key: const Key('screenshot'),
-                        icon: Icons.screenshot_outlined,
-                        label: 'Payment\nscreenshot',
-                        onPressed: _busy ? null : () => _scan(camera: false),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _BigAction(
-                        key: const Key('snap'),
-                        icon: Icons.photo_camera,
-                        label: 'Snap\nreceipt',
-                        onPressed: _busy ? null : () => _scan(camera: true),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  height: 60,
-                  child: FilledButton.tonalIcon(
-                    key: const Key('cash'),
-                    onPressed: _busy ? null : _quickAdd,
-                    icon: const Icon(Icons.payments_outlined),
-                    label: const Text('Paid cash? Type the amount', style: TextStyle(fontSize: 16)),
-                    style: FilledButton.styleFrom(
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          ListView(
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+            children: [
+              _TotalCard(overview: o),
+              const SizedBox(height: 20),
+              // Payment screenshots come first: PayNow, GrabPay, Alipay, WeChat and
+              // card apps all show a success screen, the one record every digital
+              // payment leaves.
+              Row(
+                children: [
+                  Expanded(
+                    child: _BigAction(
+                      key: const Key('screenshot'),
+                      icon: Icons.screenshot_outlined,
+                      label: 'Payment\nscreenshot',
+                      onPressed: _busy ? null : () => _scan(camera: false),
                     ),
                   ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _BigAction(
+                      key: const Key('snap'),
+                      icon: Icons.photo_camera,
+                      label: 'Snap\nreceipt',
+                      onPressed: _busy ? null : () => _scan(camera: true),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 60,
+                child: FilledButton.tonalIcon(
+                  key: const Key('cash'),
+                  onPressed: _busy ? null : _quickAdd,
+                  icon: const Icon(Icons.payments_outlined),
+                  label: const Text('Paid cash? Type the amount', style: TextStyle(fontSize: 16)),
+                  style: FilledButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
                 ),
-                if (_overview != null && _overview!.byCategory.isNotEmpty) ...[
-                  const SizedBox(height: 28),
-                  Text('Where it went', style: Theme.of(context).textTheme.titleMedium),
-                  const SizedBox(height: 8),
-                  for (final c in _overview!.byCategory.take(5))
-                    ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      leading: CircleAvatar(
-                        backgroundColor: cs.primaryContainer,
-                        child: Icon(iconFor(c.category), color: cs.onPrimaryContainer),
-                      ),
-                      title: Text(c.category),
-                      trailing: Text(money(c.amount, c.currency), style: const TextStyle(fontWeight: FontWeight.w600)),
+              ),
+              if (o.byCategory.isNotEmpty) ...[
+                const SizedBox(height: 28),
+                Text('Where it went', style: Theme.of(context).textTheme.titleMedium),
+                const SizedBox(height: 8),
+                for (final c in o.byCategory.take(5))
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: CircleAvatar(
+                      backgroundColor: cs.primaryContainer,
+                      child: Icon(iconFor(c.category), color: cs.onPrimaryContainer),
                     ),
-                ],
-                if (_overview != null) ...[
-                  const SizedBox(height: 20),
-                  Text('Recent', style: Theme.of(context).textTheme.titleMedium),
-                  const SizedBox(height: 8),
-                  if (_overview!.recent.isEmpty)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 16),
-                      child: Text('Nothing yet. Snap your first receipt above.'),
-                    ),
-                  for (final e in _overview!.recent)
-                    ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      leading: Icon(iconFor(e.category)),
-                      title: Text(e.merchant ?? e.category ?? 'Expense', maxLines: 1, overflow: TextOverflow.ellipsis),
-                      subtitle: Text(
-                        [
-                          shortDate(e.date),
-                          if (e.category != null) e.category!,
-                          if (e.account != null) e.account!,
-                        ].join(' · '),
-                      ),
-                      trailing: Text(money(e.amount, e.currency)),
-                    ),
-                ],
+                    title: Text(c.category),
+                    trailing: Text(money(c.amount, c.currency), style: const TextStyle(fontWeight: FontWeight.w600)),
+                  ),
               ],
-            ),
+              const SizedBox(height: 20),
+              Text('Recent', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 8),
+              if (o.recent.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 16),
+                  child: Text('Nothing yet. Add your first expense above.'),
+                ),
+              for (final e in o.recent)
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  onTap: () => _showExpense(e),
+                  leading: Icon(iconFor(e.category)),
+                  title: Text(e.merchant ?? e.category ?? 'Expense', maxLines: 1, overflow: TextOverflow.ellipsis),
+                  subtitle: Text(
+                    [
+                      shortDate(e.date),
+                      if (e.category != null) e.category!,
+                      if (e.paymentMethod != null) e.paymentMethod!,
+                    ].join(' · '),
+                  ),
+                  trailing: Text(money(e.amount, e.currency)),
+                ),
+            ],
           ),
           if (_busy)
             Positioned.fill(
@@ -264,52 +320,40 @@ class _HomeScreenState extends State<HomeScreen> {
 }
 
 class _TotalCard extends StatelessWidget {
-  const _TotalCard({required this.overview, required this.error});
-  final Overview? overview;
-  final String? error;
+  const _TotalCard({required this.overview});
+  final Overview overview;
 
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
     final cs = Theme.of(context).colorScheme;
-    Widget child;
-    if (overview == null && error != null) {
-      child = Text(error!, style: t.bodyLarge);
-    } else if (overview == null) {
-      child = const SizedBox(height: 64, child: Center(child: CircularProgressIndicator()));
-    } else {
-      final totals = overview!.totals;
-      final main = totals.isEmpty ? null : totals.firstWhere((m) => m.currency == 'SGD', orElse: () => totals.first);
-      final others = totals.where((m) => m != main);
-      child = Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Spent so far', style: t.titleMedium?.copyWith(color: cs.onPrimaryContainer)),
-          const SizedBox(height: 4),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
-            child: Text(
-              main == null ? money(0, 'SGD') : money(main.amount, main.currency),
-              key: const Key('total'),
-              style: t.displayMedium?.copyWith(fontWeight: FontWeight.bold, color: cs.onPrimaryContainer),
-            ),
-          ),
-          for (final m in others)
-            Text('+ ${money(m.amount, m.currency)}', style: t.titleMedium?.copyWith(color: cs.onPrimaryContainer)),
-          if (error != null)
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Text(error!, style: t.bodySmall),
-            ),
-        ],
-      );
-    }
+    final totals = overview.totals;
+    final main = totals.isEmpty ? null : totals.firstWhere((m) => m.currency == 'SGD', orElse: () => totals.first);
     return Card(
       color: cs.primaryContainer,
       elevation: 0,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      child: Padding(padding: const EdgeInsets.all(20), child: child),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Spent so far', style: t.titleMedium?.copyWith(color: cs.onPrimaryContainer)),
+            const SizedBox(height: 4),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                main == null ? money(0, 'SGD') : money(main.amount, main.currency),
+                key: const Key('total'),
+                style: t.displayMedium?.copyWith(fontWeight: FontWeight.bold, color: cs.onPrimaryContainer),
+              ),
+            ),
+            for (final m in totals.where((m) => m != main))
+              Text('+ ${money(m.amount, m.currency)}', style: t.titleMedium?.copyWith(color: cs.onPrimaryContainer)),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -321,8 +365,9 @@ class _BigAction extends StatelessWidget {
   final VoidCallback? onPressed;
 
   @override
-  Widget build(BuildContext context) => SizedBox(
-    height: 120,
+  Widget build(BuildContext context) => ConstrainedBox(
+    // Grows with larger text sizes instead of cutting the label off.
+    constraints: const BoxConstraints(minHeight: 120),
     child: FilledButton(
       onPressed: onPressed,
       style: FilledButton.styleFrom(
@@ -330,7 +375,7 @@ class _BigAction extends StatelessWidget {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       ),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, size: 36),
           const SizedBox(height: 8),

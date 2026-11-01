@@ -2,35 +2,38 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 
-import 'api.dart';
+import 'draft.dart';
 import 'format.dart';
+import 'reader.dart';
 
-/// Shown only when the scanner wasn't sure. Everything is pre-filled;
-/// usually the person just fixes the amount and taps Save.
+/// Shown only when the receipt couldn't be read with confidence. Everything
+/// that was read is already filled in.
 class ReviewSheet extends StatefulWidget {
-  const ReviewSheet({super.key, required this.result, required this.image, this.draft});
-  final ScanResult result;
-  final Uint8List image;
+  const ReviewSheet({
+    super.key,
+    required this.receipt,
+    required this.image,
+    required this.message,
+    this.categories = const [],
+  });
 
-  /// What the person already typed, when a save failed and the sheet reopens.
-  final ExpenseFields? draft;
+  final ReadReceipt receipt;
+  final Uint8List image;
+  final String message;
+  final List<String> categories;
 
   @override
   State<ReviewSheet> createState() => _ReviewSheetState();
 }
 
 class _ReviewSheetState extends State<ReviewSheet> {
-  late final ReadReceipt r = widget.result.receipt!;
-  late final ExpenseFields? d = widget.draft;
-  late final _total = TextEditingController(text: d?.total ?? r.total ?? '');
-  late final _merchant = TextEditingController(text: d?.merchant ?? r.merchant ?? '');
-  late final _category = TextEditingController(text: d?.category ?? r.category ?? '');
+  late final ReadReceipt r = widget.receipt;
+  late final _total = TextEditingController(text: r.total?.toStringAsFixed(2) ?? '');
+  late final _merchant = TextEditingController(text: r.merchant ?? '');
+  late final _category = TextEditingController(text: r.category ?? '');
   late final String _scanned = (r.currency ?? 'SGD').toUpperCase();
-  late String _currency = (d?.currency ?? _scanned).toUpperCase();
-  late String? _account = widget.result.accounts.contains(d?.account ?? widget.result.account)
-      ? (d?.account ?? widget.result.account)
-      : null;
-  late DateTime _date = DateTime.tryParse(d?.date ?? r.date ?? '') ?? DateTime.now();
+  late String _currency = _scanned;
+  late DateTime _date = r.date ?? DateTime.now();
   final _form = GlobalKey<FormState>();
 
   @override
@@ -44,13 +47,13 @@ class _ReviewSheetState extends State<ReviewSheet> {
   void _save() {
     if (!_form.currentState!.validate()) return;
     Navigator.of(context).pop(
-      ExpenseFields(
-        total: _total.text.replaceAll(',', '').trim(),
+      ExpenseDraft(
+        amount: double.parse(_total.text.replaceAll(',', '').trim()),
         currency: _currency,
+        date: _date,
         merchant: _merchant.text.trim(),
         category: _category.text.trim(),
-        date: isoDate(_date),
-        account: _account,
+        paymentMethod: r.paymentMethod,
         summary: r.summary,
       ),
     );
@@ -60,6 +63,7 @@ class _ReviewSheetState extends State<ReviewSheet> {
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
     final currencies = {'SGD', 'CNY', _scanned, _currency}.toList();
+    final cats = {...widget.categories, 'Food & drink', 'Transport', 'Groceries', 'Shopping', 'Bills'}.toList();
     return Padding(
       padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
       child: Form(
@@ -70,7 +74,7 @@ class _ReviewSheetState extends State<ReviewSheet> {
           children: [
             Text('Quick check', style: t.titleLarge),
             const SizedBox(height: 4),
-            Text(widget.result.message, style: t.bodyMedium),
+            Text(widget.message, style: t.bodyMedium),
             const SizedBox(height: 12),
             ClipRRect(
               borderRadius: BorderRadius.circular(12),
@@ -90,7 +94,7 @@ class _ReviewSheetState extends State<ReviewSheet> {
                   child: TextFormField(
                     key: const Key('review-total'),
                     controller: _total,
-                    autofocus: (r.total ?? '').isEmpty,
+                    autofocus: r.total == null,
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
                     style: t.headlineSmall,
                     decoration: const InputDecoration(labelText: 'Amount', border: OutlineInputBorder()),
@@ -117,8 +121,7 @@ class _ReviewSheetState extends State<ReviewSheet> {
             const SizedBox(height: 12),
             Autocomplete<String>(
               initialValue: TextEditingValue(text: _category.text),
-              optionsBuilder: (v) =>
-                  widget.result.categories.where((c) => c.toLowerCase().contains(v.text.toLowerCase())),
+              optionsBuilder: (v) => cats.where((c) => c.toLowerCase().contains(v.text.toLowerCase())),
               onSelected: (v) => _category.text = v,
               fieldViewBuilder: (context, controller, focus, _) => TextFormField(
                 controller: controller,
@@ -128,38 +131,19 @@ class _ReviewSheetState extends State<ReviewSheet> {
               ),
             ),
             const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () async {
-                      final d = await showDatePicker(
-                        context: context,
-                        initialDate: _date,
-                        firstDate: DateTime(2000),
-                        lastDate: DateTime.now().add(const Duration(days: 1)),
-                      );
-                      if (d != null) setState(() => _date = d);
-                    },
-                    icon: const Icon(Icons.event),
-                    label: Text(shortDate(_date)),
-                    style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(52)),
-                  ),
-                ),
-                if (widget.result.accounts.isNotEmpty) ...[
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: DropdownButtonFormField<String>(
-                      initialValue: _account,
-                      hint: const Text('Paid from'),
-                      isExpanded: true,
-                      decoration: const InputDecoration(border: OutlineInputBorder()),
-                      items: [for (final a in widget.result.accounts) DropdownMenuItem(value: a, child: Text(a))],
-                      onChanged: (v) => setState(() => _account = v),
-                    ),
-                  ),
-                ],
-              ],
+            OutlinedButton.icon(
+              onPressed: () async {
+                final d = await showDatePicker(
+                  context: context,
+                  initialDate: _date,
+                  firstDate: DateTime(2000),
+                  lastDate: DateTime.now().add(const Duration(days: 1)),
+                );
+                if (d != null) setState(() => _date = d);
+              },
+              icon: const Icon(Icons.event),
+              label: Text(shortDate(_date)),
+              style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(52)),
             ),
             const SizedBox(height: 20),
             FilledButton(

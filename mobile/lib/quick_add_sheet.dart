@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'api.dart';
+import 'draft.dart';
 import 'categories.dart';
 
 /// For cash at the hawker centre: type the amount, tap a category, done.
@@ -28,7 +28,7 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
       setState(() => _error = 'Type the amount first');
       return;
     }
-    Navigator.of(context).pop(ExpenseFields(total: v.toStringAsFixed(2), currency: _currency, category: category));
+    Navigator.of(context).pop(ExpenseDraft(amount: v, currency: _currency, category: category));
   }
 
   @override

@@ -1,7 +1,7 @@
 # Spend Snap (iPhone app, Android-ready)
 
-A Flutter app for the receipt scanner in [`firefly/`](../firefly). Built for
-logging expenses with as little effort as possible:
+An expense tracker for people who don't want to think about it. Everything
+stays on your phone: no account, no server, no internet needed.
 
 - **Payment screenshot**: pick the PayNow, GrabPay, Alipay, WeChat Pay or
   bank-app success screen. Most digital payments in Singapore leave one, so
@@ -10,20 +10,20 @@ logging expenses with as little effort as possible:
 - **Paid cash? Type the amount**: type the number, tap a category, done.
   No receipt needed (hawker centres, kopitiams).
 
-It saves on its own when the scanner is confident. It only shows a
-"Quick check" screen when it couldn't read something, with everything already
-filled in. The home screen shows one big number, what you've spent this month,
-plus where it went and your recent expenses.
+The iPhone reads the text itself with Apple's built-in text recognition (the
+same one behind Live Text in Photos), in English and Chinese, even in flight
+mode. The app then picks out the total, shop, date, currency (SGD, CNY, MYR,
+USD) and a category. When it's confident it saves straight away with an Undo
+button; when it isn't, it shows a "Quick check" with everything filled in.
 
-The server address and access key are stored in the iPhone Keychain (Android
-Keystore on Android).
+Expenses are saved in the app's own folder on the phone together with the
+receipt photos, and are included in your iPhone backup. Settings has a button
+to copy everything as a spreadsheet (CSV).
 
-## Before you start
-
-The receipt scanner from [`firefly/`](../firefly) must be running and reachable
-from your phone (see "Using it from your phone" in that README). In the app
-you enter its address, e.g. `http://100.64.0.5:8082`, and your
-`RECEIPTS_API_KEY`.
+**Limits of reading offline.** It works from patterns (the line that says
+TOTAL, 合计 or 实付, the big number on a payment screen), so unusual layouts,
+crumpled or faded receipts and handwriting will go to the Quick check more
+often.
 
 ## Put it on your iPhone
 
@@ -43,7 +43,10 @@ build and installs like a normal app. You can build in the cloud with
 [Codemagic](https://codemagic.io) if you don't have a Mac.
 
 **Android later:** `flutter build apk --release` builds an installable APK from
-the same code. The GitHub Actions workflow already builds one on every push.
+the same code, and the GitHub Actions workflow builds one on every push. Reading
+receipts on Android still needs its own text-recognition bridge (for example
+Google ML Kit, which also runs on the phone); until then Android users type the
+amount on the Quick check.
 
 ## Develop
 
@@ -56,8 +59,11 @@ flutter test
 
 | File | What it does |
 | --- | --- |
-| `lib/api.dart` | Talks to the receipt scanner (`/api/receipt`, `/api/expense`, `/api/expenses`) |
+| `ios/Runner/AppDelegate.swift` | Reads the text in an image with Apple Vision, on the phone |
+| `lib/receipt_parser.dart` | Finds total, shop, date, currency and category in that text |
+| `lib/reader.dart` | Connects the two (`OfflineReader`) |
+| `lib/ledger.dart` | Saves expenses and receipt photos on the phone, monthly totals, CSV |
 | `lib/home_screen.dart` | Monthly total, the big buttons, recent expenses |
-| `lib/review_sheet.dart` | "Quick check" shown only when the scanner is unsure |
+| `lib/review_sheet.dart` | "Quick check" shown only when the app is unsure |
 | `lib/quick_add_sheet.dart` | Cash entry: amount + one tap on a category |
-| `lib/settings_screen.dart` | Server address and access key |
+| `lib/settings_screen.dart` | Privacy note and spreadsheet export |
