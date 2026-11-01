@@ -1,0 +1,23 @@
+name: spendsnap
+description: "Log expenses from receipts and payment screenshots, read and stored on the phone."
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.13.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  image_picker: ^1.2.4
+  intl: ^0.20.3
+  path_provider: ^2.1.6
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/sounds/
