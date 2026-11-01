@@ -1,3 +1,4 @@
+import AudioToolbox
 import Flutter
 import UIKit
 import Vision
@@ -15,6 +16,9 @@ import Vision
     GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
     if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "SpendSnapText") {
       ReceiptText.register(messenger: registrar.messenger())
+    }
+    if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "SpendSnapFeel") {
+      Feel.register(registrar: registrar)
     }
   }
 }
@@ -94,5 +98,38 @@ enum ReceiptText {
     case .rightMirrored: return .rightMirrored
     @unknown default: return .up
     }
+  }
+}
+
+/// Plays the app's short interface sounds and the system success/warning
+/// haptics. System sounds follow the silent switch and the ringer volume.
+enum Feel {
+  private static var sounds: [String: SystemSoundID] = [:]
+
+  static func register(registrar: FlutterPluginRegistrar) {
+    let channel = FlutterMethodChannel(name: "spendsnap/feel", binaryMessenger: registrar.messenger())
+    channel.setMethodCallHandler { call, result in
+      switch call.method {
+      case "play":
+        if let asset = call.arguments as? String { play(registrar.lookupKey(forAsset: asset)) }
+      case "success":
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+      case "warning":
+        UINotificationFeedbackGenerator().notificationOccurred(.warning)
+      default:
+        return result(FlutterMethodNotImplemented)
+      }
+      result(nil)
+    }
+  }
+
+  private static func play(_ key: String) {
+    if sounds[key] == nil, let path = Bundle.main.path(forResource: key, ofType: nil) {
+      var id: SystemSoundID = 0
+      if AudioServicesCreateSystemSoundID(URL(fileURLWithPath: path) as CFURL, &id) == kAudioServicesNoError {
+        sounds[key] = id
+      }
+    }
+    if let id = sounds[key] { AudioServicesPlaySystemSound(id) }
   }
 }

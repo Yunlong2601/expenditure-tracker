@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'draft.dart';
 import 'categories.dart';
+import 'feel.dart';
 
 /// For cash at the hawker centre: type the amount, tap a category, done.
 class QuickAddSheet extends StatefulWidget {
@@ -25,6 +27,7 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
   void _pick(String category) {
     final v = double.tryParse(_amount.text.replaceAll(',', '').trim()) ?? 0;
     if (v <= 0) {
+      Feel.oops();
       setState(() => _error = 'Type the amount first');
       return;
     }
@@ -79,12 +82,18 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
               runSpacing: 8,
               children: [
                 for (final (name, icon) in quickCategories)
-                  ActionChip(
-                    key: Key('cat-$name'),
-                    avatar: Icon(icon, size: 20),
-                    label: Text(name),
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
-                    onPressed: () => _pick(name),
+                  Pressable(
+                    scale: 0.92,
+                    child: ActionChip(
+                      key: Key('cat-$name'),
+                      avatar: Icon(icon, size: 20),
+                      label: Text(name),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                      onPressed: () {
+                        HapticFeedback.selectionClick();
+                        _pick(name);
+                      },
+                    ),
                   ),
               ],
             ),

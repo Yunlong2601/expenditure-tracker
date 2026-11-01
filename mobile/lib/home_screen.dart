@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'app.dart';
 import 'categories.dart';
 import 'draft.dart';
+import 'feel.dart';
 import 'format.dart';
 import 'ledger.dart';
 import 'picker.dart';
@@ -28,6 +29,9 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   late final ReceiptPicker _picker = widget.picker ?? DevicePicker();
   bool _busy = false;
+
+  /// The expense just logged, so its row can slide in.
+  Object? _fresh;
   String _busyText = '';
 
   Ledger get _ledger => widget.ledger;
@@ -54,12 +58,14 @@ class _HomeScreenState extends State<HomeScreen> {
       receipt: image,
     );
     if (!mounted) return;
-    setState(() {});
+    Feel.logged();
+    setState(() => _fresh = e.id);
     _toast(
       'Logged ${_describe(e)}',
       action: SnackBarAction(
         label: 'Undo',
         onPressed: () async {
+          Feel.removed();
           await _ledger.delete(e.id);
           if (mounted) setState(() {});
         },
@@ -80,6 +86,7 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       img = camera ? await _picker.camera() : await _picker.gallery();
     } catch (_) {
+      Feel.oops();
       _toast(camera ? 'Allow camera access in Settings to snap receipts.' : 'Allow photo access in Settings.');
       return;
     }
@@ -190,6 +197,7 @@ class _HomeScreenState extends State<HomeScreen> {
             key: const Key('delete-expense'),
             onPressed: () async {
               Navigator.of(ctx).pop();
+              Feel.removed();
               await _ledger.delete(e.id);
               if (mounted) {
                 setState(() {});
@@ -246,14 +254,25 @@ class _HomeScreenState extends State<HomeScreen> {
                 ],
               ),
               const SizedBox(height: 12),
-              SizedBox(
-                height: 60,
-                child: FilledButton.tonalIcon(
-                  key: const Key('cash'),
-                  onPressed: _busy ? null : _quickAdd,
-                  icon: const Icon(Icons.payments_outlined),
-                  label: const Text('Paid cash? Type the amount', style: TextStyle(fontSize: 16)),
-                  style: FilledButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
+              Pressable(
+                enabled: !_busy,
+                scale: 0.97,
+                child: SizedBox(
+                  height: 60,
+                  child: FilledButton.tonalIcon(
+                    key: const Key('cash'),
+                    onPressed: _busy
+                        ? null
+                        : () {
+                            Feel.tap();
+                            _quickAdd();
+                          },
+                    icon: const Icon(Icons.payments_outlined),
+                    label: const Text('Paid cash? Type the amount', style: TextStyle(fontSize: 16)),
+                    style: FilledButton.styleFrom(
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    ),
+                  ),
                 ),
               ),
               if (o.byCategory.isNotEmpty) ...[
@@ -280,39 +299,54 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Text('Nothing yet. Add your first expense above.'),
                 ),
               for (final e in o.recent)
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  onTap: () => _showExpense(e),
-                  leading: Icon(iconFor(e.category)),
-                  title: Text(e.merchant ?? e.category ?? 'Expense', maxLines: 1, overflow: TextOverflow.ellipsis),
-                  subtitle: Text(
-                    [
-                      shortDate(e.date),
-                      if (e.category != null) e.category!,
-                      if (e.paymentMethod != null) e.paymentMethod!,
-                    ].join(' · '),
+                _Arrive(
+                  key: ValueKey(e.id),
+                  animate: e.id == _fresh,
+                  child: ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    onTap: () => _showExpense(e),
+                    leading: Icon(iconFor(e.category)),
+                    title: Text(e.merchant ?? e.category ?? 'Expense', maxLines: 1, overflow: TextOverflow.ellipsis),
+                    subtitle: Text(
+                      [
+                        shortDate(e.date),
+                        if (e.category != null) e.category!,
+                        if (e.paymentMethod != null) e.paymentMethod!,
+                      ].join(' · '),
+                    ),
+                    trailing: Text(money(e.amount, e.currency)),
                   ),
-                  trailing: Text(money(e.amount, e.currency)),
                 ),
             ],
           ),
-          if (_busy)
-            Positioned.fill(
-              child: ColoredBox(
-                color: Colors.black38,
-                child: Center(
-                  child: Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [const CircularProgressIndicator(), const SizedBox(height: 16), Text(_busyText)],
+          Positioned.fill(
+            child: IgnorePointer(
+              ignoring: !_busy,
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 180),
+                child: !_busy
+                    ? const SizedBox.shrink()
+                    : ColoredBox(
+                        color: Colors.black38,
+                        child: Center(
+                          child: Card(
+                            child: Padding(
+                              padding: const EdgeInsets.all(24),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const CircularProgressIndicator(),
+                                  const SizedBox(height: 16),
+                                  Text(_busyText),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
-                ),
               ),
             ),
+          ),
         ],
       ),
     );
@@ -343,10 +377,18 @@ class _TotalCard extends StatelessWidget {
             FittedBox(
               fit: BoxFit.scaleDown,
               alignment: Alignment.centerLeft,
-              child: Text(
-                main == null ? money(0, 'SGD') : money(main.amount, main.currency),
-                key: const Key('total'),
-                style: t.displayMedium?.copyWith(fontWeight: FontWeight.bold, color: cs.onPrimaryContainer),
+              child: CountUp(
+                value: main?.amount ?? 0,
+                builder: (context, v) => Text(
+                  money(v, main?.currency ?? 'SGD'),
+                  key: const Key('total'),
+                  style: t.displayMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: cs.onPrimaryContainer,
+                    // Digits keep their width while the total rolls.
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
+                ),
               ),
             ),
             for (final m in totals.where((m) => m != main))
@@ -365,27 +407,58 @@ class _BigAction extends StatelessWidget {
   final VoidCallback? onPressed;
 
   @override
-  Widget build(BuildContext context) => ConstrainedBox(
-    // Grows with larger text sizes instead of cutting the label off.
-    constraints: const BoxConstraints(minHeight: 120),
-    child: FilledButton(
-      onPressed: onPressed,
-      style: FilledButton.styleFrom(
-        padding: const EdgeInsets.all(12),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 36),
-          const SizedBox(height: 8),
-          Text(
-            label,
-            textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
-          ),
-        ],
+  Widget build(BuildContext context) => Pressable(
+    enabled: onPressed != null,
+    child: ConstrainedBox(
+      // Grows with larger text sizes instead of cutting the label off.
+      constraints: const BoxConstraints(minHeight: 120),
+      child: FilledButton(
+        onPressed: onPressed == null
+            ? null
+            : () {
+                Feel.tap();
+                onPressed!();
+              },
+        style: FilledButton.styleFrom(
+          padding: const EdgeInsets.all(12),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 36),
+            const SizedBox(height: 8),
+            Text(
+              label,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
+            ),
+          ],
+        ),
       ),
     ),
   );
+}
+
+/// Slides a just-logged row into the list so it's clear where it went.
+class _Arrive extends StatelessWidget {
+  const _Arrive({super.key, required this.animate, required this.child});
+  final bool animate;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!animate) return child;
+    final still = MediaQuery.disableAnimationsOf(context);
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: const Duration(milliseconds: 420),
+      curve: Curves.easeOutCubic,
+      builder: (context, t, child) => Opacity(
+        opacity: t,
+        child: Transform.translate(offset: Offset(0, still ? 0 : (1 - t) * -14), child: child),
+      ),
+      child: child,
+    );
+  }
 }

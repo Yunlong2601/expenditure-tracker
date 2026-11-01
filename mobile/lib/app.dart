@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 
+import 'feel.dart';
 import 'home_screen.dart';
 import 'ledger.dart';
 import 'reader.dart';
@@ -64,6 +65,7 @@ class _RootState extends State<_Root> {
       final dir = widget.ledgerDir ?? Directory('${(await getApplicationDocumentsDirectory()).path}/spendsnap');
       final ledger = Ledger(dir);
       await ledger.load();
+      await Feel.load(dir);
       if (mounted) setState(() => _ledger = ledger);
     }();
   }

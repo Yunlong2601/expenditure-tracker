@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 
 import 'draft.dart';
+import 'feel.dart';
 import 'format.dart';
 import 'reader.dart';
 
@@ -45,7 +46,10 @@ class _ReviewSheetState extends State<ReviewSheet> {
   }
 
   void _save() {
-    if (!_form.currentState!.validate()) return;
+    if (!_form.currentState!.validate()) {
+      Feel.oops();
+      return;
+    }
     Navigator.of(context).pop(
       ExpenseDraft(
         amount: double.parse(_total.text.replaceAll(',', '').trim()),
@@ -146,11 +150,14 @@ class _ReviewSheetState extends State<ReviewSheet> {
               style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(52)),
             ),
             const SizedBox(height: 20),
-            FilledButton(
-              key: const Key('review-save'),
-              onPressed: _save,
-              style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(56)),
-              child: const Text('Save', style: TextStyle(fontSize: 18)),
+            Pressable(
+              scale: 0.97,
+              child: FilledButton(
+                key: const Key('review-save'),
+                onPressed: _save,
+                style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(56)),
+                child: const Text('Save', style: TextStyle(fontSize: 18)),
+              ),
             ),
           ],
         ),

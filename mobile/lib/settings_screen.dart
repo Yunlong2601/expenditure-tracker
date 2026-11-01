@@ -1,10 +1,17 @@
 import 'package:flutter/material.dart';
 
-class SettingsScreen extends StatelessWidget {
+import 'feel.dart';
+
+class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key, this.onExport});
 
   final VoidCallback? onExport;
 
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
@@ -14,6 +21,19 @@ class SettingsScreen extends StatelessWidget {
         child: ListView(
           padding: const EdgeInsets.all(24),
           children: [
+            SwitchListTile.adaptive(
+              key: const Key('sounds'),
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Sounds'),
+              subtitle: const Text('A soft click and chime when you log. The silent switch mutes them.'),
+              value: Feel.soundOn,
+              onChanged: (v) async {
+                await Feel.setSoundOn(v);
+                if (v) Feel.play(Sound.tap);
+                setState(() {});
+              },
+            ),
+            const Divider(height: 32),
             Text('Your data stays on this phone', style: t.titleMedium),
             const SizedBox(height: 8),
             Text(
@@ -21,11 +41,11 @@ class SettingsScreen extends StatelessWidget {
               'saved only on this phone and included in your iPhone backup. Nothing is sent anywhere.',
               style: t.bodyMedium,
             ),
-            if (onExport != null) ...[
+            if (widget.onExport != null) ...[
               const SizedBox(height: 24),
               OutlinedButton.icon(
                 key: const Key('export'),
-                onPressed: onExport,
+                onPressed: widget.onExport,
                 icon: const Icon(Icons.table_chart_outlined),
                 label: const Text('Copy all expenses as a spreadsheet (CSV)'),
                 style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(52)),
