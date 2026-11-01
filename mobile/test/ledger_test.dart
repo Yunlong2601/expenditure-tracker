@@ -53,17 +53,54 @@ void main() {
     expect(o.recent.last.category, 'Bills');
   });
 
-  test('spots duplicates and exports CSV', () async {
+  test('spots duplicates: the same picture, or the same buy within 10 minutes', () async {
     final l = Ledger(dir);
-    await l.add(amount: 5.2, currency: 'SGD', merchant: 'Kopi "Corner"', date: DateTime(2026, 11, 1));
+    final shot = Uint8List.fromList([1, 2, 3, 4]);
+    final e = await l.add(amount: 5.8, currency: 'SGD', merchant: 'LiHO', receipt: shot);
+    final now = e.createdAt;
+    // Logged a minute ago: probably the same buy.
     expect(
-      l.isDuplicate(amount: 5.2, currency: 'sgd', date: DateTime(2026, 11, 1, 18), merchant: 'kopi "corner"'),
+      l.isDuplicate(amount: 5.8, currency: 'sgd', merchant: 'liho', now: now.add(const Duration(minutes: 1))),
       isTrue,
     );
+    // Same drink again after school: a real second buy.
     expect(
-      l.isDuplicate(amount: 5.2, currency: 'SGD', date: DateTime(2026, 11, 2), merchant: 'Kopi "Corner"'),
+      l.isDuplicate(amount: 5.8, currency: 'SGD', merchant: 'LiHO', now: now.add(const Duration(hours: 3))),
       isFalse,
     );
+    // The very same screenshot, any time later.
+    expect(l.isDuplicate(amount: 1, currency: 'SGD', image: shot, now: now.add(const Duration(days: 2))), isTrue);
+    expect(
+      l.isDuplicate(
+        amount: 1,
+        currency: 'SGD',
+        image: Uint8List.fromList([4, 3, 2, 1]),
+        now: now.add(const Duration(days: 2)),
+      ),
+      isFalse,
+    );
+  });
+
+  test('edits keep the receipt photo', () async {
+    final l = Ledger(dir);
+    final e = await l.add(amount: 3, currency: 'SGD', merchant: 'Canteen', receipt: Uint8List(2));
+    await l.update(
+      e.id,
+      amount: 3.5,
+      currency: 'MYR',
+      date: DateTime(2026, 11, 2),
+      merchant: 'Kedai',
+      category: 'Food',
+    );
+    final again = Ledger(dir);
+    await again.load();
+    final x = again.all.single;
+    expect((x.amount, x.currency, x.merchant, x.category, x.receiptFile), (3.5, 'MYR', 'Kedai', 'Food', e.receiptFile));
+  });
+
+  test('exports CSV', () async {
+    final l = Ledger(dir);
+    await l.add(amount: 5.2, currency: 'SGD', merchant: 'Kopi "Corner"', date: DateTime(2026, 11, 1));
     expect(l.toCsv().split('\n').last, '2026-11-01,5.20,SGD,"Kopi ""Corner""","","",""');
   });
 }

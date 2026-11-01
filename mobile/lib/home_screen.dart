@@ -121,7 +121,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final currency = receipt.currency ?? 'SGD';
     final duplicate =
         receipt.total != null &&
-        _ledger.isDuplicate(amount: receipt.total!, currency: currency, date: when, merchant: receipt.merchant);
+        _ledger.isDuplicate(amount: receipt.total!, currency: currency, merchant: receipt.merchant, image: bytes);
     if (receipt.confident && !duplicate) {
       await _save(
         ExpenseDraft(
@@ -166,6 +166,39 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Future<void> _edit(Expense e) async {
+    final d = await showModalBottomSheet<ExpenseDraft>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      showDragHandle: true,
+      builder: (_) => ReviewSheet(
+        title: 'Edit',
+        receipt: ReadReceipt(
+          merchant: e.merchant,
+          total: e.amount,
+          currency: e.currency,
+          date: e.date,
+          category: e.category,
+        ),
+        categories: _ledger.categories(),
+      ),
+    );
+    if (d == null) return;
+    await _ledger.update(
+      e.id,
+      amount: d.amount,
+      currency: d.currency,
+      date: d.date ?? e.date,
+      merchant: d.merchant,
+      category: d.category,
+    );
+    if (!mounted) return;
+    Feel.logged();
+    setState(() {});
+    _toast('Saved ${money(d.amount, d.currency)}');
+  }
+
   void _showExpense(Expense e) {
     final f = _ledger.receiptFor(e);
     showModalBottomSheet<void>(
@@ -195,6 +228,21 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ],
           const SizedBox(height: 16),
+          Pressable(
+            scale: 0.96,
+            child: FilledButton.tonalIcon(
+              key: const Key('edit-expense'),
+              onPressed: () {
+                Feel.tap();
+                Navigator.of(ctx).pop();
+                _edit(e);
+              },
+              icon: const Icon(Icons.edit_outlined),
+              label: const Text('Edit'),
+              style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52)),
+            ),
+          ),
+          const SizedBox(height: 10),
           Pressable(
             scale: 0.96,
             child: OutlinedButton.icon(

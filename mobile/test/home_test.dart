@@ -142,6 +142,20 @@ void main() {
     expect(find.text('Quick check'), findsOneWidget);
   });
 
+  testWidgets('tap an expense, Edit, and the change is saved', (t) async {
+    await t.runAsync(() => ledger.add(amount: 3, currency: 'SGD', merchant: 'Canteen', category: 'Food & drink'));
+    await t.pumpWidget(wrap(unreadable));
+    await t.tap(find.text('Canteen'));
+    await t.pumpAndSettle();
+    // Started in real time, like the other saves, so the file write finishes.
+    await tapAndSettle(t, find.byKey(const Key('edit-expense')));
+    expect(find.text('Edit'), findsOneWidget);
+    await t.enterText(find.byKey(const Key('review-total')), '3.80');
+    await tapAndSettle(t, find.byKey(const Key('review-save')));
+    expect(ledger.all.single.amount, 3.8);
+    expect(find.text(r'S$3.80'), findsWidgets);
+  });
+
   testWidgets('cash quick add: amount then one tap on a category', (t) async {
     await t.pumpWidget(wrap(unreadable));
     await tapAndSettle(t, find.byKey(const Key('cash')));

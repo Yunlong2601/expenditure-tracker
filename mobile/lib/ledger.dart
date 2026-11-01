@@ -17,6 +17,7 @@ class Expense {
     this.paymentMethod,
     this.summary,
     this.receiptFile,
+    this.receiptHash,
     required this.createdAt,
   });
 
@@ -30,6 +31,7 @@ class Expense {
     paymentMethod: j['payment_method'] as String?,
     summary: j['summary'] as String?,
     receiptFile: j['receipt_file'] as String?,
+    receiptHash: j['receipt_hash'] as String?,
     createdAt: DateTime.parse(j['created_at'] as String),
   );
 
@@ -44,6 +46,9 @@ class Expense {
 
   /// File name of the saved receipt image, inside the ledger's folder.
   final String? receiptFile;
+
+  /// Fingerprint of the receipt image, to spot the same picture sent twice.
+  final String? receiptHash;
   final DateTime createdAt;
 
   Map<String, dynamic> toJson() => {
@@ -56,6 +61,7 @@ class Expense {
     if (paymentMethod != null) 'payment_method': paymentMethod,
     if (summary != null) 'summary': summary,
     if (receiptFile != null) 'receipt_file': receiptFile,
+    if (receiptHash != null) 'receipt_hash': receiptHash,
     'created_at': createdAt.toIso8601String(),
   };
 }
@@ -151,9 +157,41 @@ class Ledger {
       paymentMethod: _clean(paymentMethod),
       summary: _clean(summary),
       receiptFile: fileName,
+      receiptHash: receipt == null ? null : fingerprint(receipt),
       createdAt: now,
     );
     _items.add(e);
+    await _save();
+    return e;
+  }
+
+  /// Changes an expense's details. Its receipt photo stays attached.
+  Future<Expense?> update(
+    String id, {
+    required double amount,
+    required String currency,
+    required DateTime date,
+    String? merchant,
+    String? category,
+  }) async {
+    await load();
+    final i = _items.indexWhere((e) => e.id == id);
+    if (i < 0) return null;
+    final old = _items[i];
+    final e = Expense(
+      id: old.id,
+      date: date,
+      amount: (amount * 100).round() / 100,
+      currency: currency.toUpperCase(),
+      merchant: _clean(merchant),
+      category: _clean(category),
+      paymentMethod: old.paymentMethod,
+      summary: old.summary,
+      receiptFile: old.receiptFile,
+      receiptHash: old.receiptHash,
+      createdAt: old.createdAt,
+    );
+    _items[i] = e;
     await _save();
     return e;
   }
@@ -170,15 +208,36 @@ class Ledger {
     }
   }
 
-  /// Same shop, amount and day already logged? Catches sending one receipt twice.
-  bool isDuplicate({required double amount, required String currency, required DateTime date, String? merchant}) =>
-      _items.any(
-        (e) =>
-            (e.amount - amount).abs() < 0.005 &&
-            e.currency == currency.toUpperCase() &&
-            isoDate(e.date) == isoDate(date) &&
-            (e.merchant ?? '').toLowerCase() == (merchant ?? '').toLowerCase(),
-      );
+  /// Was this already logged? True for the very same picture sent again, or
+  /// the same amount at the same shop logged in the last 10 minutes. Buying
+  /// the same bubble tea twice in a day is normal and doesn't ask.
+  bool isDuplicate({
+    required double amount,
+    required String currency,
+    String? merchant,
+    Uint8List? image,
+    DateTime? now,
+  }) {
+    final hash = image == null ? null : fingerprint(image);
+    final since = (now ?? DateTime.now()).subtract(const Duration(minutes: 10));
+    return _items.any(
+      (e) =>
+          (hash != null && e.receiptHash == hash) ||
+          ((e.amount - amount).abs() < 0.005 &&
+              e.currency == currency.toUpperCase() &&
+              (e.merchant ?? '').toLowerCase() == (merchant ?? '').toLowerCase() &&
+              e.createdAt.isAfter(since)),
+    );
+  }
+
+  /// A short fingerprint of some bytes (FNV-1a plus the length).
+  static String fingerprint(List<int> bytes) {
+    var h = 0x811c9dc5;
+    for (final b in bytes) {
+      h = ((h ^ b) * 0x01000193) & 0xFFFFFFFF;
+    }
+    return '${bytes.length.toRadixString(36)}-${h.toRadixString(36)}';
+  }
 
   File? receiptFor(Expense e) => e.receiptFile == null ? null : File('${dir.path}/${e.receiptFile}');
 

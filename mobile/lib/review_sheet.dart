@@ -13,15 +13,19 @@ class ReviewSheet extends StatefulWidget {
   const ReviewSheet({
     super.key,
     required this.receipt,
-    required this.image,
-    required this.message,
+    this.image,
+    this.message,
     this.categories = const [],
+    this.title = 'Quick check',
   });
 
   final ReadReceipt receipt;
-  final Uint8List image;
-  final String message;
+
+  /// The receipt photo, when there is one to show.
+  final Uint8List? image;
+  final String? message;
   final List<String> categories;
+  final String title;
 
   @override
   State<ReviewSheet> createState() => _ReviewSheetState();
@@ -66,7 +70,7 @@ class _ReviewSheetState extends State<ReviewSheet> {
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
-    final currencies = {'SGD', 'CNY', _scanned, _currency}.toList();
+    final choices = {...currencies, _scanned, _currency}.toList();
     final cats = {...widget.categories, 'Food & drink', 'Transport', 'Groceries', 'Shopping', 'Bills'}.toList();
     return Padding(
       padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
@@ -76,20 +80,20 @@ class _ReviewSheetState extends State<ReviewSheet> {
           shrinkWrap: true,
           padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
           children: [
-            Text('Quick check', style: t.titleLarge),
-            const SizedBox(height: 4),
-            Text(widget.message, style: t.bodyMedium),
+            Text(widget.title, style: t.titleLarge),
+            if (widget.message != null) ...[const SizedBox(height: 4), Text(widget.message!, style: t.bodyMedium)],
             const SizedBox(height: 12),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: Image.memory(
-                widget.image,
-                height: 160,
-                fit: BoxFit.cover,
-                width: double.infinity,
-                errorBuilder: (_, _, _) => const SizedBox.shrink(),
+            if (widget.image != null)
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.memory(
+                  widget.image!,
+                  height: 160,
+                  fit: BoxFit.cover,
+                  width: double.infinity,
+                  errorBuilder: (_, _, _) => const SizedBox.shrink(),
+                ),
               ),
-            ),
             const SizedBox(height: 16),
             Row(
               children: [
@@ -111,7 +115,7 @@ class _ReviewSheetState extends State<ReviewSheet> {
                   child: DropdownButtonFormField<String>(
                     initialValue: _currency,
                     decoration: const InputDecoration(border: OutlineInputBorder()),
-                    items: [for (final c in currencies) DropdownMenuItem(value: c, child: Text(c))],
+                    items: [for (final c in choices) DropdownMenuItem(value: c, child: Text(c))],
                     onChanged: (v) => setState(() => _currency = v ?? _currency),
                   ),
                 ),

@@ -6,10 +6,15 @@ const _symbols = {
   'USD': r'US$',
   'MYR': 'RM',
   'HKD': r'HK$',
-  'JPY': '¥',
+  'JPY': 'JP¥',
+  'THB': '฿',
+  'KRW': '₩',
   'EUR': '€',
   'GBP': '£',
 };
+
+/// Currencies offered when typing an amount, most used first.
+const currencies = ['SGD', 'MYR', 'CNY', 'USD', 'THB', 'JPY', 'KRW', 'HKD'];
 
 String money(double amount, String currency) {
   final f = NumberFormat('#,##0.00');
