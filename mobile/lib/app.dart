@@ -31,10 +31,25 @@ class SpendSnapApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    ThemeData theme(Brightness b) => ThemeData(
-      colorScheme: ColorScheme.fromSeed(seedColor: pink, brightness: b),
-      useMaterial3: true,
-    );
+    ThemeData theme(Brightness b) {
+      final cs = ColorScheme.fromSeed(seedColor: pink, brightness: b);
+      // A clear flash under the finger: light on the filled pink buttons,
+      // pink everywhere else.
+      ButtonStyle flash(Color c) =>
+          ButtonStyle(overlayColor: WidgetStateProperty.resolveWith((s) => s.contains(WidgetState.pressed) ? c : null));
+      final pinkFlash = cs.primary.withValues(alpha: 0.24);
+      return ThemeData(
+        colorScheme: cs,
+        useMaterial3: true,
+        splashColor: pinkFlash,
+        highlightColor: cs.primary.withValues(alpha: 0.12),
+        filledButtonTheme: FilledButtonThemeData(style: flash(Colors.white.withValues(alpha: 0.32))),
+        outlinedButtonTheme: OutlinedButtonThemeData(style: flash(pinkFlash)),
+        textButtonTheme: TextButtonThemeData(style: flash(pinkFlash)),
+        iconButtonTheme: IconButtonThemeData(style: flash(pinkFlash)),
+      );
+    }
+
     return MaterialApp(
       title: 'Spend Snap',
       debugShowCheckedModeBanner: false,

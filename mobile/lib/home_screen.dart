@@ -193,20 +193,23 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ],
           const SizedBox(height: 16),
-          OutlinedButton.icon(
-            key: const Key('delete-expense'),
-            onPressed: () async {
-              Navigator.of(ctx).pop();
-              Feel.removed();
-              await _ledger.delete(e.id);
-              if (mounted) {
-                setState(() {});
-                _toast('Deleted ${_describe(e)}');
-              }
-            },
-            icon: const Icon(Icons.delete_outline),
-            label: const Text('Delete'),
-            style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(52)),
+          Pressable(
+            scale: 0.96,
+            child: OutlinedButton.icon(
+              key: const Key('delete-expense'),
+              onPressed: () async {
+                Navigator.of(ctx).pop();
+                Feel.removed();
+                await _ledger.delete(e.id);
+                if (mounted) {
+                  setState(() {});
+                  _toast('Deleted ${_describe(e)}');
+                }
+              },
+              icon: const Icon(Icons.delete_outline),
+              label: const Text('Delete'),
+              style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(52)),
+            ),
           ),
         ],
       ),
@@ -220,7 +223,18 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('This month'),
-        actions: [IconButton(tooltip: 'Settings', icon: const Icon(Icons.settings_outlined), onPressed: _openSettings)],
+        actions: [
+          Pressable(
+            child: IconButton(
+              tooltip: 'Settings',
+              icon: const Icon(Icons.settings_outlined),
+              onPressed: () {
+                Feel.tap();
+                _openSettings();
+              },
+            ),
+          ),
+        ],
       ),
       body: Stack(
         children: [
@@ -269,9 +283,14 @@ class _HomeScreenState extends State<HomeScreen> {
                           },
                     icon: const Icon(Icons.payments_outlined),
                     label: const Text('Paid cash? Type the amount', style: TextStyle(fontSize: 16)),
-                    style: FilledButton.styleFrom(
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                    ),
+                    style:
+                        FilledButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)))
+                            .copyWith(
+                              // Pink reads better than a white flash on this darker button.
+                              overlayColor: WidgetStateProperty.resolveWith(
+                                (s) => s.contains(WidgetState.pressed) ? cs.primary.withValues(alpha: 0.4) : null,
+                              ),
+                            ),
                   ),
                 ),
               ),
@@ -302,19 +321,25 @@ class _HomeScreenState extends State<HomeScreen> {
                 _Arrive(
                   key: ValueKey(e.id),
                   animate: e.id == _fresh,
-                  child: ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    onTap: () => _showExpense(e),
-                    leading: Icon(iconFor(e.category)),
-                    title: Text(e.merchant ?? e.category ?? 'Expense', maxLines: 1, overflow: TextOverflow.ellipsis),
-                    subtitle: Text(
-                      [
-                        shortDate(e.date),
-                        if (e.category != null) e.category!,
-                        if (e.paymentMethod != null) e.paymentMethod!,
-                      ].join(' · '),
+                  child: Pressable(
+                    scale: 0.97,
+                    child: ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      onTap: () {
+                        Feel.tap();
+                        _showExpense(e);
+                      },
+                      leading: Icon(iconFor(e.category)),
+                      title: Text(e.merchant ?? e.category ?? 'Expense', maxLines: 1, overflow: TextOverflow.ellipsis),
+                      subtitle: Text(
+                        [
+                          shortDate(e.date),
+                          if (e.category != null) e.category!,
+                          if (e.paymentMethod != null) e.paymentMethod!,
+                        ].join(' · '),
+                      ),
+                      trailing: Text(money(e.amount, e.currency)),
                     ),
-                    trailing: Text(money(e.amount, e.currency)),
                   ),
                 ),
             ],

@@ -43,12 +43,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             if (widget.onExport != null) ...[
               const SizedBox(height: 24),
-              OutlinedButton.icon(
-                key: const Key('export'),
-                onPressed: widget.onExport,
-                icon: const Icon(Icons.table_chart_outlined),
-                label: const Text('Copy all expenses as a spreadsheet (CSV)'),
-                style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(52)),
+              Pressable(
+                scale: 0.96,
+                child: OutlinedButton.icon(
+                  key: const Key('export'),
+                  onPressed: () {
+                    Feel.tap();
+                    widget.onExport!();
+                  },
+                  icon: const Icon(Icons.table_chart_outlined),
+                  label: const Text('Copy all expenses as a spreadsheet (CSV)'),
+                  style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(52)),
+                ),
               ),
             ],
           ],

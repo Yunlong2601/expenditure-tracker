@@ -65,7 +65,7 @@ class Feel {
 
 /// Sinks slightly while a finger is down, like a physical key.
 class Pressable extends StatefulWidget {
-  const Pressable({super.key, required this.child, this.enabled = true, this.scale = 0.95});
+  const Pressable({super.key, required this.child, this.enabled = true, this.scale = 0.92});
   final Widget child;
   final bool enabled;
   final double scale;
@@ -76,22 +76,34 @@ class Pressable extends StatefulWidget {
 
 class _PressableState extends State<Pressable> {
   bool _down = false;
+  DateTime _pressedAt = DateTime(0);
 
-  void _set(bool v) {
-    if (widget.enabled && _down != v) setState(() => _down = v);
+  /// A quick tap still shows the whole press before springing back.
+  static const _minPress = Duration(milliseconds: 110);
+
+  void _press() {
+    if (!widget.enabled) return;
+    _pressedAt = DateTime.now();
+    setState(() => _down = true);
+  }
+
+  Future<void> _release() async {
+    final left = _minPress - DateTime.now().difference(_pressedAt);
+    if (left > Duration.zero) await Future<void>.delayed(left);
+    if (mounted && _down) setState(() => _down = false);
   }
 
   @override
   Widget build(BuildContext context) {
     final still = MediaQuery.disableAnimationsOf(context);
     return Listener(
-      onPointerDown: (_) => _set(true),
-      onPointerUp: (_) => _set(false),
-      onPointerCancel: (_) => _set(false),
+      onPointerDown: (_) => _press(),
+      onPointerUp: (_) => _release(),
+      onPointerCancel: (_) => _release(),
       child: AnimatedScale(
         scale: _down && !still ? widget.scale : 1,
-        // Quick in, a touch slower back out so the release is visible.
-        duration: Duration(milliseconds: _down ? 90 : 220),
+        // Quick in, then a springy bounce back out.
+        duration: Duration(milliseconds: _down ? 90 : 320),
         curve: _down ? Curves.easeOut : Curves.easeOutBack,
         child: widget.child,
       ),
