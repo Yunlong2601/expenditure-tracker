@@ -1,4 +1,4 @@
-import AudioToolbox
+import AVFoundation
 import Flutter
 import UIKit
 import UniformTypeIdentifiers
@@ -106,9 +106,12 @@ enum ReceiptText {
 }
 
 /// Plays the app's short interface sounds and the system success/warning
-/// haptics. System sounds follow the silent switch and the ringer volume.
+/// haptics. Sounds use the media volume, mix with her music, and stay quiet
+/// when the silent switch is on.
 enum Feel {
-  private static var sounds: [String: SystemSoundID] = [:]
+  /// A few players per sound, so quick taps in a row each get their pop.
+  private static var players: [String: [AVAudioPlayer]] = [:]
+  private static var sessionReady = false
 
   static func register(registrar: FlutterPluginRegistrar) {
     let channel = FlutterMethodChannel(name: "spendsnap/feel", binaryMessenger: registrar.messenger())
@@ -128,13 +131,24 @@ enum Feel {
   }
 
   private static func play(_ key: String) {
-    if sounds[key] == nil, let path = Bundle.main.path(forResource: key, ofType: nil) {
-      var id: SystemSoundID = 0
-      if AudioServicesCreateSystemSoundID(URL(fileURLWithPath: path) as CFURL, &id) == kAudioServicesNoError {
-        sounds[key] = id
+    if !sessionReady {
+      // Ambient: obeys the silent switch and doesn't stop her music.
+      try? AVAudioSession.sharedInstance().setCategory(.ambient, options: [.mixWithOthers])
+      try? AVAudioSession.sharedInstance().setActive(true)
+      sessionReady = true
+    }
+    if players[key] == nil, let path = Bundle.main.path(forResource: key, ofType: nil) {
+      let url = URL(fileURLWithPath: path)
+      players[key] = (0..<3).compactMap { _ in
+        let p = try? AVAudioPlayer(contentsOf: url)
+        p?.prepareToPlay()
+        return p
       }
     }
-    if let id = sounds[key] { AudioServicesPlaySystemSound(id) }
+    guard let pool = players[key], !pool.isEmpty else { return }
+    let player = pool.first { !$0.isPlaying } ?? pool[0]
+    player.currentTime = 0
+    player.play()
   }
 }
 

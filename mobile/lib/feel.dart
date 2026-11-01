@@ -47,8 +47,14 @@ class Feel {
     _call('play', 'assets/sounds/${s.name}.wav');
   }
 
-  /// A light tick under the finger for presses.
+  static DateTime _lastTap = DateTime(0);
+
+  /// A pop and a light tick under the finger for presses. The press effect and
+  /// the button's own handler can both ask for it; one finger gets one pop.
   static void tap() {
+    final now = DateTime.now();
+    if (now.difference(_lastTap) < const Duration(milliseconds: 80)) return;
+    _lastTap = now;
     HapticFeedback.lightImpact();
     play(Sound.tap);
   }
@@ -95,6 +101,7 @@ class _PressableState extends State<Pressable> {
 
   void _press() {
     if (!widget.enabled) return;
+    Feel.tap();
     _pressedAt = DateTime.now();
     setState(() => _down = true);
   }
