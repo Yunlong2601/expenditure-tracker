@@ -118,11 +118,17 @@ class ReceiptService:
             notes=self._notes(receipt, overrides),
             tags=[self.s.tag],
         )
-        self.ff.attach(created.journal_id, filename.rsplit(".", 1)[0] + ".jpg", jpeg)
         public = (self.s.firefly_public_url or self.s.firefly_url).rstrip("/")
+        message = f"Logged {summary_line} from {account}."
+        try:
+            self.ff.attach(created.journal_id, filename.rsplit(".", 1)[0] + ".jpg", jpeg)
+        except FireflyError:
+            # The expense is already saved; don't report failure, or a retry
+            # would create it again. Only the picture is missing.
+            message += " The receipt image couldn't be attached; add it in Firefly if you need it."
         return Result(
             saved=True,
-            message=f"Logged {summary_line} from {account}.",
+            message=message,
             transaction_url=f"{public}/transactions/show/{created.group_id}",
             **base,
         )

@@ -137,3 +137,14 @@ def test_raw_body_with_form_content_type(make_client, ff, png_bytes):
     r = client.post("/api/receipt", content=png_bytes,
                     headers={**KEY, "Content-Type": "application/x-www-form-urlencoded"})
     assert r.status_code == 200 and r.json()["saved"] is True
+
+
+def test_attachment_failure_still_reports_saved(make_client, ff, png_bytes):
+    from httpx import Response
+    ff.post("/api/v1/attachments").mock(return_value=Response(500, json={"message": "disk full"}))
+    client, _ = make_client(KOPI)
+    r = client.post("/api/receipt", content=png_bytes, headers=KEY)
+    body = r.json()
+    assert r.status_code == 200 and body["saved"] is True
+    assert body["transaction_url"].endswith("/transactions/show/42")
+    assert "couldn't be attached" in body["message"]

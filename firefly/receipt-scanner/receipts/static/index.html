@@ -78,6 +78,7 @@ keyInput.addEventListener("change", () => localStorage.setItem("receiptsKey", ke
 if (!keyInput.value) document.querySelector("details").open = true;
 
 let current = null;
+let selection = 0;  // bumps on every new image so late replies for an old one are ignored
 
 function say(html) { const m = $("msg"); m.innerHTML = html; m.classList.remove("hidden"); }
 function esc(s) { return String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
@@ -95,11 +96,14 @@ async function send(file, fields, save) {
 async function onFile(e) {
   const file = e.target.files[0]; e.target.value = "";
   if (!file) return;
-  current = file;
+  const mine = ++selection;
+  current = null;
   $("preview").src = URL.createObjectURL(file); $("preview").style.display = "block";
   $("review").classList.add("hidden");
   say("Reading the receipt…");
   const r = await send(file, null, false);
+  if (mine !== selection) return;  // a newer image was picked meanwhile
+  current = file;
   say(esc(r.message));
   if (!r.receipt) return;
   const rc = r.receipt;
