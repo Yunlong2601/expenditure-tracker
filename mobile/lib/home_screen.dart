@@ -7,6 +7,7 @@ import 'categories.dart';
 import 'draft.dart';
 import 'feel.dart';
 import 'format.dart';
+import 'goal.dart';
 import 'kitty.dart';
 import 'ledger.dart';
 import 'picker.dart';
@@ -511,6 +512,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
               ],
+              const SizedBox(height: 12),
+              const GoalCard(),
               if (usuals.isNotEmpty) ...[
                 const SizedBox(height: 20),
                 Text('Usual', style: Theme.of(context).textTheme.titleMedium),

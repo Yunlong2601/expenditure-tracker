@@ -93,6 +93,7 @@ void main() {
     await t.pumpWidget(wrap(unreadable));
     expect(find.text(r'S$482.30'), findsWidgets);
     expect(find.text('+ ¥120.00'), findsOneWidget);
+    await t.scrollUntilVisible(find.text('Ya Kun'), 300, scrollable: find.byType(Scrollable).first);
     expect(find.text('Ya Kun'), findsOneWidget);
   });
 
@@ -271,6 +272,24 @@ void main() {
     await tapAndSettle(t, find.byKey(const Key('paid-0')));
     expect(find.text(r'Amy · S$5.00'), findsNothing);
     expect(ledger.owed, hasLength(2));
+  });
+
+  testWidgets('a savings goal fills up and the cat cheers when it is reached', (t) async {
+    await t.pumpWidget(wrap(unreadable));
+    await tapAndSettle(t, find.byKey(const Key('goal-start')));
+    await t.enterText(find.byKey(const Key('goal-name')), 'Concert tickets');
+    await t.enterText(find.byKey(const Key('goal-target')), '120');
+    await tapAndSettle(t, find.byKey(const Key('goal-save')));
+    expect(find.text('Saving for Concert tickets'), findsOneWidget);
+
+    for (final add in ['45', '75']) {
+      await tapAndSettle(t, find.byKey(const Key('goal-add')));
+      await t.enterText(find.byKey(const Key('goal-amount')), add);
+      await tapAndSettle(t, find.byKey(const Key('goal-amount-save')));
+    }
+    expect(find.text(r'S$120.00 of S$120.00'), findsOneWidget);
+    expect(find.text('You did it! Concert tickets'), findsOneWidget);
+    expect(Prefs.current.goalSaved, 120.0);
   });
 
   testWidgets('cash quick add: amount then one tap on a category', (t) async {

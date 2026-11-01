@@ -222,7 +222,7 @@ class _CheerState extends State<_Cheer> with SingleTickerProviderStateMixin {
 }
 
 /// How the cat feels about her pocket money.
-enum CatMood { happy, worried, sad }
+enum CatMood { happy, worried, sad, delighted }
 
 /// A round, original cat face. [blink] closes the eyes (0 open, 1 shut),
 /// [wave] tilts the raised paw, and [asleep] draws shut eyes with no paw.
@@ -281,7 +281,16 @@ class CatPainter extends CustomPainter {
     // Eyes.
     final eye = Paint()..color = _ink;
     for (final x in [36.0, 64.0]) {
-      if (asleep || blink > 0.85) {
+      if (mood == CatMood.delighted && !asleep) {
+        // Happy closed eyes: little upside-down U's.
+        canvas.drawArc(
+          Rect.fromCenter(center: Offset(x, 57), width: 11, height: 9),
+          math.pi + 0.2,
+          math.pi - 0.4,
+          false,
+          line,
+        );
+      } else if (asleep || blink > 0.85) {
         canvas.drawArc(Rect.fromCenter(center: Offset(x, 54), width: 11, height: 8), 0.2, math.pi - 0.4, false, line);
       } else {
         final h = 11 * (1 - blink);
@@ -300,7 +309,7 @@ class CatPainter extends CustomPainter {
       Paint()..color = _paw,
     );
     final mouth = switch (mood) {
-      CatMood.happy =>
+      CatMood.happy || CatMood.delighted =>
         Path()
           ..moveTo(50, 67)
           ..quadraticBezierTo(48, 72, 44, 70.5)
@@ -313,7 +322,7 @@ class CatPainter extends CustomPainter {
           ..quadraticBezierTo(50, 68.5, 55, 73),
     };
     canvas.drawPath(mouth, line..strokeWidth = 2);
-    if (mood != CatMood.happy && !asleep) {
+    if ((mood == CatMood.worried || mood == CatMood.sad) && !asleep) {
       // Brows tipped up in the middle.
       canvas.drawLine(const Offset(30, 45), const Offset(40, 42.5), line);
       canvas.drawLine(const Offset(70, 45), const Offset(60, 42.5), line);

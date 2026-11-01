@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -87,6 +88,7 @@ class Pressable extends StatefulWidget {
 class _PressableState extends State<Pressable> {
   bool _down = false;
   DateTime _pressedAt = DateTime(0);
+  Timer? _up;
 
   /// A quick tap still shows the whole press before springing back.
   static const _minPress = Duration(milliseconds: 110);
@@ -97,10 +99,18 @@ class _PressableState extends State<Pressable> {
     setState(() => _down = true);
   }
 
-  Future<void> _release() async {
+  void _release() {
     final left = _minPress - DateTime.now().difference(_pressedAt);
-    if (left > Duration.zero) await Future<void>.delayed(left);
-    if (mounted && _down) setState(() => _down = false);
+    _up?.cancel();
+    _up = Timer(left > Duration.zero ? left : Duration.zero, () {
+      if (mounted && _down) setState(() => _down = false);
+    });
+  }
+
+  @override
+  void dispose() {
+    _up?.cancel();
+    super.dispose();
   }
 
   @override

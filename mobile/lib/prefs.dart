@@ -50,6 +50,19 @@ class Prefs {
   bool get schoolQuiet => _values['school_quiet'] != false;
   Future<void> setSchoolQuiet(bool v) => _set('school_quiet', v ? null : false);
 
+  /// What she's saving for, how much it costs and how much is in the jar.
+  String? get goalName => _values['goal_name'] as String?;
+  double get goalTarget => (_values['goal_target'] as num?)?.toDouble() ?? 0;
+  double get goalSaved => (_values['goal_saved'] as num?)?.toDouble() ?? 0;
+  Future<void> setGoal(String? name, {double target = 0, double saved = 0}) async {
+    await _set('goal_name', name);
+    await _set('goal_target', name == null ? null : target);
+    await _set('goal_saved', name == null ? null : saved);
+  }
+
+  Future<void> addToGoal(double amount) =>
+      _set('goal_saved', ((goalSaved + amount).clamp(0, double.infinity) * 100).round() / 100);
+
   /// The home screen shows the whole month, else the allowance period.
   bool get showMonth => _values['show_month'] == true || allowance == null;
   Future<void> setShowMonth(bool v) => _set('show_month', v ? true : null);
