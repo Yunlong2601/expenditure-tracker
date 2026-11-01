@@ -72,6 +72,53 @@ class Expense {
   };
 }
 
+/// A friend's part of a bill she paid for.
+class Debt {
+  const Debt({
+    required this.id,
+    required this.who,
+    required this.amount,
+    required this.currency,
+    required this.forWhat,
+    required this.date,
+    this.expenseId,
+    this.paid = false,
+  });
+
+  factory Debt.fromJson(Map<String, dynamic> j) => Debt(
+    id: j['id'] as String,
+    who: j['who'] as String,
+    amount: (j['amount'] as num).toDouble(),
+    currency: j['currency'] as String,
+    forWhat: j['for'] as String,
+    date: DateTime.parse(j['date'] as String),
+    expenseId: j['expense'] as String?,
+    paid: j['paid'] as bool? ?? false,
+  );
+
+  final String id;
+  final String who;
+  final double amount;
+  final String currency;
+  final String forWhat;
+  final DateTime date;
+
+  /// The bill this share belongs to.
+  final String? expenseId;
+  final bool paid;
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'who': who,
+    'amount': amount,
+    'currency': currency,
+    'for': forWhat,
+    'date': isoDate(date),
+    if (expenseId != null) 'expense': expenseId,
+    if (paid) 'paid': true,
+  };
+}
+
 class Money {
   const Money(this.currency, this.amount);
   final String currency;
@@ -132,12 +179,19 @@ class Ledger {
 
   final Directory dir;
   final List<Expense> _items = [];
+  final List<Debt> _debts = [];
   bool _loaded = false;
 
   File get _file => File('${dir.path}/expenses.json');
   Directory get _receipts => Directory('${dir.path}/receipts');
 
   List<Expense> get all => List.unmodifiable(_items);
+
+  /// What friends still owe her, oldest first.
+  List<Debt> get owed => [
+    for (final d in _debts)
+      if (!d.paid) d,
+  ];
 
   Future<void> load() async {
     if (_loaded) return;
@@ -147,6 +201,9 @@ class Ledger {
     _items
       ..clear()
       ..addAll([for (final e in raw['expenses'] as List) Expense.fromJson(e as Map<String, dynamic>)]);
+    _debts
+      ..clear()
+      ..addAll([for (final d in raw['debts'] as List? ?? const []) Debt.fromJson(d as Map<String, dynamic>)]);
   }
 
   Future<void> _save() async {
@@ -157,6 +214,7 @@ class Ledger {
       jsonEncode({
         'version': 1,
         'expenses': [for (final e in _items) e.toJson()],
+        if (_debts.isNotEmpty) 'debts': [for (final d in _debts) d.toJson()],
       }),
       flush: true,
     );
@@ -242,6 +300,8 @@ class Ledger {
     final i = _items.indexWhere((e) => e.id == id);
     if (i < 0) return;
     final e = _items.removeAt(i);
+    // A deleted bill takes its unpaid shares with it.
+    _debts.removeWhere((d) => d.expenseId == id && !d.paid);
     await _save();
     if (e.receiptFile != null) {
       final f = File('${dir.path}/${e.receiptFile}');
@@ -320,6 +380,67 @@ class Ledger {
       recent: sorted.take(recent).toList(),
       moneyIn: [for (final t in received.entries) Money(t.key, t.value)],
     );
+  }
+
+  /// Splits an expense between her and [people] - 1 friends: the expense
+  /// becomes her share and each friend owes theirs. [names] are optional.
+  Future<Expense?> split(String id, int people, {List<String> names = const []}) async {
+    await load();
+    final i = _items.indexWhere((e) => e.id == id);
+    if (i < 0 || people < 2) return null;
+    final old = _items[i];
+    final share = (old.amount / people * 100).round() / 100;
+    final mine = ((old.amount - share * (people - 1)) * 100).round() / 100;
+    final e = Expense(
+      id: old.id,
+      date: old.date,
+      amount: mine,
+      currency: old.currency,
+      merchant: old.merchant,
+      category: old.category,
+      paymentMethod: old.paymentMethod,
+      summary: 'Split $people ways, ${money(old.amount, old.currency)} in total',
+      receiptFile: old.receiptFile,
+      receiptHash: old.receiptHash,
+      createdAt: old.createdAt,
+    );
+    _items[i] = e;
+    final what = old.merchant ?? old.category ?? 'Bill';
+    for (var n = 0; n < people - 1; n++) {
+      final who = n < names.length && names[n].trim().isNotEmpty ? names[n].trim() : 'Friend ${n + 1}';
+      _debts.add(
+        Debt(
+          id: _newId(),
+          who: who,
+          amount: share,
+          currency: old.currency,
+          forWhat: what,
+          date: old.date,
+          expenseId: old.id,
+        ),
+      );
+    }
+    await _save();
+    return e;
+  }
+
+  /// A friend paid her back.
+  Future<void> markPaid(String debtId) async {
+    await load();
+    final i = _debts.indexWhere((d) => d.id == debtId);
+    if (i < 0) return;
+    final d = _debts[i];
+    _debts[i] = Debt(
+      id: d.id,
+      who: d.who,
+      amount: d.amount,
+      currency: d.currency,
+      forWhat: d.forWhat,
+      date: d.date,
+      expenseId: d.expenseId,
+      paid: true,
+    );
+    await _save();
   }
 
   /// Her most repeated buys (the same shop or category at the same price,

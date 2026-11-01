@@ -13,6 +13,7 @@ import 'picker.dart';
 import 'prefs.dart';
 import 'quick_add_sheet.dart';
 import 'reader.dart';
+import 'split.dart';
 import 'review_sheet.dart';
 import 'settings_screen.dart';
 
@@ -50,7 +51,7 @@ class _HomeScreenState extends State<HomeScreen> {
       '${e.category != null ? ' (${e.category})' : ''}';
 
   Future<void> _save(ExpenseDraft d, {Uint8List? image}) async {
-    final e = await _ledger.add(
+    var e = await _ledger.add(
       amount: d.amount,
       currency: d.currency,
       date: d.date,
@@ -61,12 +62,17 @@ class _HomeScreenState extends State<HomeScreen> {
       receipt: image,
       moneyIn: d.moneyIn,
     );
+    if (d.splitPeople > 1) e = await _ledger.split(e.id, d.splitPeople, names: d.splitNames) ?? e;
     if (!mounted) return;
     Feel.logged();
     KittyLayer.cheer();
     setState(() => _fresh = e.id);
     _toast(
-      e.moneyIn ? 'Yay, ${_describe(e)}' : 'Logged ${_describe(e)}',
+      e.moneyIn
+          ? 'Yay, ${_describe(e)}'
+          : d.splitPeople > 1
+          ? 'Logged your share, ${_describe(e)}. Friends owe you ${money(d.amount - e.amount, e.currency)}'
+          : 'Logged ${_describe(e)}',
       action: SnackBarAction(
         label: 'Undo',
         onPressed: () async {
@@ -171,6 +177,55 @@ class _HomeScreenState extends State<HomeScreen> {
     if (mounted) setState(() {});
   }
 
+  String _owedText() {
+    final sums = <String, double>{};
+    for (final d in _ledger.owed) {
+      sums[d.currency] = (sums[d.currency] ?? 0) + d.amount;
+    }
+    return [for (final s in sums.entries) money(s.value, s.key)].join(' + ');
+  }
+
+  void _showOwed() {
+    showModalBottomSheet<void>(
+      context: context,
+      useSafeArea: true,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, refresh) {
+          final owed = _ledger.owed;
+          return ListView(
+            shrinkWrap: true,
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+            children: [
+              Text('Friends owe you', style: Theme.of(ctx).textTheme.titleLarge),
+              const SizedBox(height: 8),
+              if (owed.isEmpty)
+                const Padding(padding: EdgeInsets.symmetric(vertical: 16), child: Text('All paid back. Yay!')),
+              for (final (i, d) in owed.indexed)
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: CircleAvatar(child: Text(d.who.characters.first.toUpperCase())),
+                  title: Text('${d.who} · ${money(d.amount, d.currency)}'),
+                  subtitle: Text('${d.forWhat} · ${shortDate(d.date)}'),
+                  trailing: FilledButton.tonal(
+                    key: Key('paid-$i'),
+                    onPressed: () async {
+                      Feel.logged();
+                      await _ledger.markPaid(d.id);
+                      refresh(() {});
+                      if (mounted) setState(() {});
+                    },
+                    child: const Text('Paid back'),
+                  ),
+                ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
   Future<void> _edit(Expense e) async {
     final d = await showModalBottomSheet<ExpenseDraft>(
       context: context,
@@ -254,6 +309,32 @@ class _HomeScreenState extends State<HomeScreen> {
                 icon: const Icon(Icons.replay),
                 label: const Text('Log again today'),
                 style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52)),
+              ),
+            ),
+            const SizedBox(height: 10),
+          ],
+          if (!e.moneyIn && !(e.summary ?? '').startsWith('Split ')) ...[
+            Pressable(
+              scale: 0.96,
+              child: OutlinedButton.icon(
+                key: const Key('split-expense'),
+                onPressed: () async {
+                  Feel.tap();
+                  final s = await askSplit(ctx, total: e.amount, currency: e.currency);
+                  if (s == null || !ctx.mounted) return;
+                  Navigator.of(ctx).pop();
+                  final mine = await _ledger.split(e.id, s.$1, names: s.$2);
+                  if (mine == null || !mounted) return;
+                  Feel.logged();
+                  setState(() {});
+                  _toast(
+                    'Your share is ${money(mine.amount, mine.currency)}. '
+                    'Friends owe you ${money(e.amount - mine.amount, e.currency)}',
+                  );
+                },
+                icon: const Icon(Icons.groups_outlined),
+                label: const Text('Split with friends'),
+                style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(52)),
               ),
             ),
             const SizedBox(height: 10),
@@ -400,6 +481,33 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
               ),
+              if (_ledger.owed.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Pressable(
+                  scale: 0.97,
+                  child: Card(
+                    margin: EdgeInsets.zero,
+                    elevation: 0,
+                    color: cs.tertiaryContainer,
+                    clipBehavior: Clip.antiAlias,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    child: ListTile(
+                      key: const Key('owed'),
+                      leading: Icon(Icons.groups_outlined, color: cs.onTertiaryContainer),
+                      title: Text(
+                        'Friends owe you ${_owedText()}',
+                        style: TextStyle(color: cs.onTertiaryContainer, fontWeight: FontWeight.w600),
+                      ),
+                      subtitle: Text('Tap when someone pays you back', style: TextStyle(color: cs.onTertiaryContainer)),
+                      trailing: Icon(Icons.chevron_right, color: cs.onTertiaryContainer),
+                      onTap: () {
+                        Feel.tap();
+                        _showOwed();
+                      },
+                    ),
+                  ),
+                ),
+              ],
               if (usuals.isNotEmpty) ...[
                 const SizedBox(height: 20),
                 Text('Usual', style: Theme.of(context).textTheme.titleMedium),

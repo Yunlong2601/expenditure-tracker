@@ -5,6 +5,7 @@ import 'categories.dart';
 import 'draft.dart';
 import 'feel.dart';
 import 'format.dart';
+import 'split.dart';
 
 /// For cash at the canteen: type the amount, tap a category, done.
 class QuickAddSheet extends StatefulWidget {
@@ -24,6 +25,9 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
 
   /// Recording money she got instead of money spent.
   bool _in = false;
+
+  /// Shared with friends: people (her included) and their names.
+  (int, List<String>)? _split;
 
   static const _sources = <(String, IconData)>[
     ('Pocket money', Icons.savings_outlined),
@@ -53,7 +57,17 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
 
   void _pick(String category) {
     if (_needAmount()) return;
-    Navigator.of(context).pop(ExpenseDraft(amount: _value, currency: _currency, category: category, moneyIn: _in));
+    final split = _in ? null : _split;
+    Navigator.of(context).pop(
+      ExpenseDraft(
+        amount: _value,
+        currency: _currency,
+        category: category,
+        moneyIn: _in,
+        splitPeople: split?.$1 ?? 1,
+        splitNames: split?.$2 ?? const [],
+      ),
+    );
   }
 
   Future<void> _newCategory() async {
@@ -151,6 +165,25 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
               ),
               onChanged: (_) => _error == null ? null : setState(() => _error = null),
             ),
+            if (!_in) ...[
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: FilterChip(
+                  key: const Key('split-bill'),
+                  showCheckmark: false,
+                  avatar: const Icon(Icons.groups_outlined, size: 20),
+                  label: Text(_split == null ? 'Split bill with friends' : 'Split ${_split!.$1} ways'),
+                  selected: _split != null,
+                  onSelected: (on) async {
+                    if (!on) return setState(() => _split = null);
+                    if (_needAmount()) return;
+                    final s = await askSplit(context, total: _value, currency: _currency);
+                    if (s != null) setState(() => _split = s);
+                  },
+                ),
+              ),
+            ],
             const SizedBox(height: 16),
             Text(_in ? 'Where from?' : 'Tap what it was for', style: t.titleMedium),
             const SizedBox(height: 8),

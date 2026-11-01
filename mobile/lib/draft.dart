@@ -9,6 +9,8 @@ class ExpenseDraft {
     this.paymentMethod,
     this.summary,
     this.moneyIn = false,
+    this.splitPeople = 1,
+    this.splitNames = const [],
   });
 
   final double amount;
@@ -21,4 +23,8 @@ class ExpenseDraft {
 
   /// Money she got rather than spent.
   final bool moneyIn;
+
+  /// Shared with friends: how many people, her included, and who.
+  final int splitPeople;
+  final List<String> splitNames;
 }

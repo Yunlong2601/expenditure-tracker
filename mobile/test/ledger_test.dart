@@ -112,6 +112,25 @@ void main() {
     expect(l.categories(), isNot(contains('Pocket money')));
   });
 
+  test('splitting a bill: her share is spending, friends owe the rest, even with odd cents', () async {
+    final l = Ledger(dir);
+    final e = await l.add(amount: 20, currency: 'SGD', merchant: 'Pizza Hut', category: 'Food & drink');
+    final mine = await l.split(e.id, 3, names: ['Amy']);
+    expect(mine!.amount, 6.66);
+    expect([for (final d in l.owed) '${d.who} ${d.amount}'], ['Amy 6.67', 'Friend 2 6.67']);
+    await l.markPaid(l.owed.first.id);
+
+    final again = Ledger(dir);
+    await again.load();
+    expect(again.all.single.amount, 6.66);
+    expect(again.all.single.summary, r'Split 3 ways, S$20.00 in total');
+    expect([for (final d in again.owed) d.who], ['Friend 2']);
+
+    // Deleting the bill drops what's still owed for it.
+    await again.delete(e.id);
+    expect(again.owed, isEmpty);
+  });
+
   test('exports CSV', () async {
     final l = Ledger(dir);
     await l.add(amount: 5.2, currency: 'SGD', merchant: 'Kopi "Corner"', date: DateTime(2026, 11, 1));

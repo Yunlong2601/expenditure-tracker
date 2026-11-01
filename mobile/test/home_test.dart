@@ -248,6 +248,31 @@ void main() {
     await dismiss(t);
   });
 
+  testWidgets('split a pizza 4 ways, then tick off a friend who paid back', (t) async {
+    await t.pumpWidget(wrap(unreadable));
+    await tapAndSettle(t, find.byKey(const Key('cash')));
+    await t.enterText(find.byKey(const Key('quick-amount')), '20');
+    await t.tap(find.byKey(const Key('split-bill')));
+    await t.pumpAndSettle();
+    await t.tap(find.byKey(const Key('split-4')));
+    await t.enterText(find.byKey(const Key('split-names')), 'Amy, Bella');
+    await t.tap(find.byKey(const Key('split-save')));
+    await t.pumpAndSettle();
+    expect(find.text('Split 4 ways'), findsOneWidget);
+    await tapAndSettle(t, find.byKey(const Key('cat-Food & drink')));
+    expect(ledger.all.single.amount, 5.0);
+    expect(find.text(r'Friends owe you S$15.00'), findsOneWidget);
+    await dismiss(t);
+
+    await t.tap(find.byKey(const Key('owed')));
+    await t.pumpAndSettle();
+    expect(find.text(r'Amy · S$5.00'), findsOneWidget);
+    expect(find.text(r'Friend 3 · S$5.00'), findsOneWidget);
+    await tapAndSettle(t, find.byKey(const Key('paid-0')));
+    expect(find.text(r'Amy · S$5.00'), findsNothing);
+    expect(ledger.owed, hasLength(2));
+  });
+
   testWidgets('cash quick add: amount then one tap on a category', (t) async {
     await t.pumpWidget(wrap(unreadable));
     await tapAndSettle(t, find.byKey(const Key('cash')));
