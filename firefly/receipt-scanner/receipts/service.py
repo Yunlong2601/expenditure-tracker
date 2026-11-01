@@ -55,6 +55,35 @@ class ReceiptService:
     def today(self) -> date:
         return datetime.now(ZoneInfo(self.s.timezone)).date()
 
+    def add_manual(self, o: Overrides) -> Result:
+        """An expense typed in by hand (cash at the hawker centre, no receipt)."""
+        if not o.total or o.total <= 0:
+            raise ValueError("Enter an amount.")
+        currency = (o.currency or self.s.default_currency).upper()
+        accounts = self.ff.asset_account_names()
+        account = o.account or self.s.account_for("cash", currency)
+        if account not in accounts:
+            raise FireflyError(
+                f'There is no asset account called "{account}" in Firefly. '
+                f"Accounts found: {', '.join(accounts) or 'none'}."
+            )
+        receipt = Receipt(is_receipt=True, merchant=o.merchant, total=o.total, currency=currency,
+                          date=o.date, category=o.category, summary=o.summary, confidence="high")
+        description = o.merchant or o.category or "Expense"
+        if o.summary:
+            description = f"{description}: {o.summary}"
+        created = self.ff.create_withdrawal(
+            amount=o.total, currency=currency, day=o.date or self.today(), description=description[:250],
+            source_account=account, merchant=o.merchant, category=o.category,
+            notes="Added by hand in the app.", tags=[self.s.tag + "-manual"],
+        )
+        public = (self.s.firefly_public_url or self.s.firefly_url).rstrip("/")
+        where = f" at {o.merchant}" if o.merchant else ""
+        cat = f" ({o.category})" if o.category else ""
+        return Result(saved=True, message=f"Logged {money(o.total, currency)}{where}{cat} from {account}.",
+                      receipt=receipt, account=account, accounts=accounts,
+                      transaction_url=f"{public}/transactions/show/{created.group_id}")
+
     def overview(self, *, days: int = 31, limit: int = 30) -> dict:
         today = self.today()
         month_start = today.replace(day=1)

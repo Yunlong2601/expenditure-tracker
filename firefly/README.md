@@ -98,3 +98,10 @@ API: `POST /api/receipt` with header `X-Api-Key`. Send either a raw image body
 corrected fields (`merchant`, `total`, `currency`, `date`, `category`,
 `account`, `summary`). Query options: `save=false` to read without saving,
 `format=text` for a one-line reply (used by the Shortcut).
+
+The mobile app also uses:
+
+- `POST /api/expense` with JSON `{"total": "4.50", "category": "...", "merchant": "...",
+  "currency": "SGD", "date": "2026-11-01"}` to log a cash expense with no image.
+- `GET /api/expenses?days=31&limit=30` for this month's totals per currency and
+  per category, plus recent expenses.

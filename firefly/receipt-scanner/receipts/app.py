@@ -10,6 +10,7 @@ from functools import lru_cache
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
+from pydantic import BaseModel
 from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse
 
 from .config import Settings, get_settings
@@ -96,6 +97,34 @@ def index() -> str:
 @app.get("/health")
 def health() -> dict:
     return {"ok": True}
+
+
+class ManualExpense(BaseModel):
+    total: str
+    currency: str | None = None
+    merchant: str | None = None
+    category: str | None = None
+    date: str | None = None
+    account: str | None = None
+    summary: str | None = None
+
+
+@app.post("/api/expense", dependencies=[Depends(check_key)])
+def add_expense(body: ManualExpense, service: ReceiptService = Depends(get_service)):
+    """Log an expense typed in by hand, with no image."""
+    o = Overrides(
+        merchant=body.merchant or None, total=_dec(body.total), currency=body.currency or None,
+        date=_date(body.date), category=body.category or None, account=body.account or None,
+        summary=body.summary or None,
+    )
+    try:
+        return _payload(service.add_manual(o))
+    except ValueError as exc:
+        return JSONResponse({"saved": False, "message": str(exc)}, status_code=422)
+    except DuplicateTransaction as exc:
+        return JSONResponse({"saved": False, "message": str(exc)}, status_code=409)
+    except FireflyError as exc:
+        return JSONResponse({"saved": False, "message": str(exc)}, status_code=502)
 
 
 @app.get("/api/expenses", dependencies=[Depends(check_key)])

@@ -175,3 +175,14 @@ def test_expenses_overview(make_client, ff):
     assert {"category": "Uncategorised", "currency": "CNY", "total": "19.90"} in body["by_category"]
     assert [x["id"] for x in body["recent"]] == ["3", "2", "1", "4"]
     assert client.get("/api/expenses").status_code == 401
+
+
+def test_manual_expense(make_client, ff):
+    client, fake = make_client(KOPI)
+    r = client.post("/api/expense", headers=KEY, json={"total": "4.50", "category": "Food & drink", "merchant": "Chicken rice"})
+    assert r.status_code == 200 and r.json()["message"] == "Logged S$4.50 at Chicken rice (Food & drink) from DBS."
+    assert fake.calls == 0
+    tx = next(c.request for c in ff.calls if c.request.url.path == "/api/v1/transactions")
+    split = json.loads(tx.content)["transactions"][0]
+    assert split["tags"] == ["receipt-scan-manual"] and split["source_name"] == "DBS"
+    assert client.post("/api/expense", headers=KEY, json={"total": "0"}).status_code == 422
