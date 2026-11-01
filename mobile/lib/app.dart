@@ -54,7 +54,7 @@ class SpendSnapApp extends StatelessWidget {
     }
 
     return MaterialApp(
-      title: 'Spend Snap',
+      title: 'Purrse',
       debugShowCheckedModeBanner: false,
       theme: theme(Brightness.light),
       darkTheme: theme(Brightness.dark),

@@ -221,7 +221,7 @@ class _SummaryCard extends StatelessWidget {
             children: [
               paw(on.withValues(alpha: 0.6)),
               const SizedBox(width: 6),
-              Text('Spend Snap', style: t.labelLarge?.copyWith(color: on.withValues(alpha: 0.8))),
+              Text('Purrse', style: t.labelLarge?.copyWith(color: on.withValues(alpha: 0.8))),
             ],
           ),
         ],

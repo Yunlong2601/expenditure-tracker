@@ -46,7 +46,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final n = Ledger.backupSize(data);
     if (n == null) {
       Feel.oops();
-      return _say("That file isn't a Spend Snap backup.");
+      return _say("That file isn't a Purrse backup.");
     }
     final yes = await showDialog<bool>(
       context: context,
@@ -140,7 +140,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 if (v && !await Remind.ask()) {
                   if (!context.mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Allow notifications for Spend Snap in iPhone Settings first.')),
+                    const SnackBar(content: Text('Allow notifications for Purrse in iPhone Settings first.')),
                   );
                   return;
                 }
