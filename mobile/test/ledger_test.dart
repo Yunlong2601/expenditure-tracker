@@ -131,6 +131,38 @@ void main() {
     expect(again.owed, isEmpty);
   });
 
+  test('a backup brings back expenses, friends\' shares and photos on a new phone', () async {
+    final l = Ledger(dir);
+    final e = await l.add(amount: 20, currency: 'SGD', merchant: 'Pizza', receipt: Uint8List.fromList([9, 8, 7]));
+    await l.split(e.id, 2, names: ['Amy']);
+    await l.add(amount: 50, currency: 'SGD', moneyIn: true, category: 'Pocket money');
+    final data = await l.backup();
+    expect(Ledger.backupSize(data), 2);
+    expect(Ledger.backupSize({'hello': 1}), isNull);
+
+    final phone2 = await Directory.systemTemp.createTemp('phone2');
+    addTearDown(() => phone2.delete(recursive: true));
+    final l2 = Ledger(phone2);
+    await l2.restore(data);
+    final again = Ledger(phone2);
+    await again.load();
+    expect(again.all, hasLength(2));
+    expect(again.owed.single.who, 'Amy');
+    final pizza = again.all.firstWhere((x) => x.merchant == 'Pizza');
+    expect(await again.receiptFor(pizza)!.readAsBytes(), [9, 8, 7]);
+  });
+
+  test('restore ignores photo names that point outside the receipts folder', () async {
+    final l = Ledger(dir);
+    await l.restore({
+      'kind': 'spendsnap-backup',
+      'expenses': <Object>[],
+      'photos': {'../escape.jpg': 'AAAA', 'receipts/ok.jpg': 'AAAA'},
+    });
+    expect(File('${dir.parent.path}/escape.jpg').existsSync(), isFalse);
+    expect(File('${dir.path}/receipts/ok.jpg').existsSync(), isTrue);
+  });
+
   test('exports CSV', () async {
     final l = Ledger(dir);
     await l.add(amount: 5.2, currency: 'SGD', merchant: 'Kopi "Corner"', date: DateTime(2026, 11, 1));

@@ -1,6 +1,7 @@
 import AudioToolbox
 import Flutter
 import UIKit
+import UniformTypeIdentifiers
 import UserNotifications
 import Vision
 
@@ -21,6 +22,7 @@ import Vision
     if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "SpendSnapFeel") {
       Feel.register(registrar: registrar)
       Remind.register(messenger: registrar.messenger())
+      Share.register(messenger: registrar.messenger())
     }
   }
 }
@@ -185,5 +187,60 @@ enum Remind {
         result(FlutterMethodNotImplemented)
       }
     }
+  }
+}
+
+/// The iPhone share sheet (save a picture, send a backup to Files or a chat)
+/// and the Files picker for restoring a backup.
+final class Share: NSObject, UIDocumentPickerDelegate {
+  private static let shared = Share()
+  private var pending: FlutterResult?
+
+  static func register(messenger: FlutterBinaryMessenger) {
+    let channel = FlutterMethodChannel(name: "spendsnap/share", binaryMessenger: messenger)
+    channel.setMethodCallHandler { call, result in
+      guard let top = topController() else {
+        return result(FlutterError(code: "no_window", message: nil, details: nil))
+      }
+      switch call.method {
+      case "file":
+        guard let path = call.arguments as? String else { return result(nil) }
+        let url = URL(fileURLWithPath: path)
+        // A picture shares as an image, so "Save Image" shows up.
+        let item: Any = url.pathExtension == "png" ? (UIImage(contentsOfFile: path) ?? url) : url
+        let sheet = UIActivityViewController(activityItems: [item], applicationActivities: nil)
+        sheet.popoverPresentationController?.sourceView = top.view
+        sheet.popoverPresentationController?.sourceRect = CGRect(
+          x: top.view.bounds.midX, y: top.view.bounds.midY, width: 0, height: 0)
+        sheet.completionWithItemsHandler = { _, done, _, _ in result(done) }
+        top.present(sheet, animated: true)
+      case "pick":
+        shared.pending = result
+        let picker = UIDocumentPickerViewController(forOpeningContentTypes: [.json, .data], asCopy: true)
+        picker.delegate = shared
+        top.present(picker, animated: true)
+      default:
+        result(FlutterMethodNotImplemented)
+      }
+    }
+  }
+
+  private static func topController() -> UIViewController? {
+    let window = UIApplication.shared.connectedScenes
+      .compactMap { ($0 as? UIWindowScene)?.keyWindow }
+      .first
+    var top = window?.rootViewController
+    while let next = top?.presentedViewController { top = next }
+    return top
+  }
+
+  func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
+    pending?(urls.first?.path)
+    pending = nil
+  }
+
+  func documentPickerWasCancelled(_ controller: UIDocumentPickerViewController) {
+    pending?(nil)
+    pending = nil
   }
 }

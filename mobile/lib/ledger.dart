@@ -443,6 +443,50 @@ class Ledger {
     await _save();
   }
 
+  /// Everything in one map: expenses, friends' shares and every receipt
+  /// photo, for a backup file she can keep in Files or send to herself.
+  Future<Map<String, Object?>> backup() async {
+    await load();
+    final photos = <String, String>{};
+    for (final e in _items) {
+      final f = receiptFor(e);
+      if (f != null && await f.exists()) photos[e.receiptFile!] = base64Encode(await f.readAsBytes());
+    }
+    return {
+      'kind': 'spendsnap-backup',
+      'version': 1,
+      'created': DateTime.now().toIso8601String(),
+      'expenses': [for (final e in _items) e.toJson()],
+      'debts': [for (final d in _debts) d.toJson()],
+      'photos': photos,
+    };
+  }
+
+  /// How many expenses a backup holds, or null if it isn't a Spend Snap backup.
+  static int? backupSize(Object? data) =>
+      data is Map && data['kind'] == 'spendsnap-backup' ? (data['expenses'] as List?)?.length : null;
+
+  /// Replaces everything on the phone with a backup's contents.
+  Future<void> restore(Map<String, Object?> data) async {
+    final expenses = [for (final e in data['expenses'] as List) Expense.fromJson(e as Map<String, dynamic>)];
+    final debts = [for (final d in data['debts'] as List? ?? const []) Debt.fromJson(d as Map<String, dynamic>)];
+    if (await _receipts.exists()) await _receipts.delete(recursive: true);
+    await _receipts.create(recursive: true);
+    for (final MapEntry(key: name, value: b64) in (data['photos'] as Map? ?? const {}).entries) {
+      // Only plain names inside the receipts folder.
+      if (!RegExp(r'^receipts/[A-Za-z0-9_-]+\.jpg$').hasMatch(name as String)) continue;
+      await File('${dir.path}/$name').writeAsBytes(base64Decode(b64 as String), flush: true);
+    }
+    _items
+      ..clear()
+      ..addAll(expenses);
+    _debts
+      ..clear()
+      ..addAll(debts);
+    _loaded = true;
+    await _save();
+  }
+
   /// Her most repeated buys (the same shop or category at the same price,
   /// at least twice), most frequent first, for one-tap logging.
   List<Usual> usuals({int max = 4}) {

@@ -6,6 +6,8 @@
 	<string>Take a photo of a receipt to log the expense.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Pick a payment screenshot or receipt photo to log the expense.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Save your monthly summary picture to Photos.</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>

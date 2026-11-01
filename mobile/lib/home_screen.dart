@@ -16,6 +16,7 @@ import 'quick_add_sheet.dart';
 import 'reader.dart';
 import 'remind.dart';
 import 'split.dart';
+import 'summary.dart';
 import 'review_sheet.dart';
 import 'settings_screen.dart';
 
@@ -169,6 +170,7 @@ class _HomeScreenState extends State<HomeScreen> {
     await Navigator.of(context).push<void>(
       MaterialPageRoute(
         builder: (_) => SettingsScreen(
+          ledger: _ledger,
           onReminderChanged: () => Remind.sync(_ledger),
           onExport: () async {
             await Clipboard.setData(ClipboardData(text: _ledger.toCsv()));
@@ -407,6 +409,17 @@ class _HomeScreenState extends State<HomeScreen> {
                 },
               ),
         actions: [
+          Pressable(
+            child: IconButton(
+              key: const Key('open-summary'),
+              tooltip: 'My month as a picture',
+              icon: const Icon(Icons.auto_awesome_outlined),
+              onPressed: () {
+                Feel.tap();
+                Navigator.of(context).push<void>(MaterialPageRoute(builder: (_) => SummaryScreen(ledger: _ledger)));
+              },
+            ),
+          ),
           Pressable(
             child: IconButton(
               tooltip: 'Settings',

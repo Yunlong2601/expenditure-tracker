@@ -30,6 +30,20 @@ class Prefs {
     await f.writeAsString(jsonEncode(_values), flush: true);
   }
 
+  /// Everything, for a backup.
+  Map<String, Object?> toJson() => Map.of(_values);
+
+  /// Replaces every setting with the ones from a backup.
+  Future<void> restore(Map<String, Object?> values) async {
+    _values
+      ..clear()
+      ..addAll(values);
+    final f = _file;
+    if (f == null) return;
+    await f.parent.create(recursive: true);
+    await f.writeAsString(jsonEncode(_values), flush: true);
+  }
+
   /// Pocket money in S$, per [allowanceDaily] day or else per week. Null when not set.
   double? get allowance => (_values['allowance'] as num?)?.toDouble();
   bool get allowanceDaily => _values['allowance_daily'] == true;
