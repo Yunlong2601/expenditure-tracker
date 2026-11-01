@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'prefs.dart';
+
 /// Short interface sounds bundled in assets/sounds, made for this app.
 enum Sound { tap, logged, removed, oops, mew }
 
@@ -31,8 +33,16 @@ class Feel {
     } on FileSystemException catch (_) {}
   }
 
+  /// Weekdays 7:30 am to 2:30 pm, when the school-hours switch is on.
+  static bool inSchoolHours([DateTime? now]) {
+    final t = now ?? DateTime.now();
+    if (t.weekday > DateTime.friday) return false;
+    final m = t.hour * 60 + t.minute;
+    return m >= 7 * 60 + 30 && m < 14 * 60 + 30;
+  }
+
   static void play(Sound s) {
-    if (!soundOn) return;
+    if (!soundOn || (Prefs.current.schoolQuiet && inSchoolHours())) return;
     _call('play', 'assets/sounds/${s.name}.wav');
   }
 

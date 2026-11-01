@@ -38,6 +38,18 @@ class Prefs {
     await _set('allowance_daily', daily ? true : null);
   }
 
+  /// The cat's evening reminder, at [reminderAt] minutes after midnight.
+  bool get reminderOn => _values['reminder'] == true;
+  int get reminderAt => (_values['reminder_at'] as num?)?.toInt() ?? 21 * 60;
+  Future<void> setReminder({required bool on, int? at}) async {
+    await _set('reminder', on ? true : null);
+    if (at != null) await _set('reminder_at', at);
+  }
+
+  /// No sounds on weekdays from 7:30 am to 2:30 pm. On unless she turns it off.
+  bool get schoolQuiet => _values['school_quiet'] != false;
+  Future<void> setSchoolQuiet(bool v) => _set('school_quiet', v ? null : false);
+
   /// The home screen shows the whole month, else the allowance period.
   bool get showMonth => _values['show_month'] == true || allowance == null;
   Future<void> setShowMonth(bool v) => _set('show_month', v ? true : null);

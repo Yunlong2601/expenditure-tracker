@@ -7,6 +7,7 @@ import 'feel.dart';
 import 'home_screen.dart';
 import 'kitty.dart';
 import 'prefs.dart';
+import 'remind.dart';
 import 'ledger.dart';
 import 'reader.dart';
 
@@ -85,6 +86,7 @@ class _RootState extends State<_Root> {
       await ledger.load();
       await Feel.load(dir);
       await Prefs.load(dir);
+      Remind.sync(ledger);
       if (mounted) setState(() => _ledger = ledger);
     }();
   }

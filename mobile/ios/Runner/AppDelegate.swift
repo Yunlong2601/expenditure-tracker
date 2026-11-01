@@ -1,6 +1,7 @@
 import AudioToolbox
 import Flutter
 import UIKit
+import UserNotifications
 import Vision
 
 @main
@@ -19,6 +20,7 @@ import Vision
     }
     if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "SpendSnapFeel") {
       Feel.register(registrar: registrar)
+      Remind.register(messenger: registrar.messenger())
     }
   }
 }
@@ -131,5 +133,57 @@ enum Feel {
       }
     }
     if let id = sounds[key] { AudioServicesPlaySystemSound(id) }
+  }
+}
+
+/// The cat's evening reminder: one local notification per day for the next
+/// week, at her chosen time. Nothing is sent anywhere.
+enum Remind {
+  private static let ids = (0..<7).map { "evening-\($0)" }
+  private static let lines = [
+    "Meow! Did you spend anything today?",
+    "Psst... any bubble tea today? Log it in 3 seconds.",
+    "Canteen, snacks, bus? Tell me before you forget!",
+    "Quick check before bed: anything to log today?",
+  ]
+
+  static func register(messenger: FlutterBinaryMessenger) {
+    let channel = FlutterMethodChannel(name: "spendsnap/remind", binaryMessenger: messenger)
+    let center = UNUserNotificationCenter.current()
+    channel.setMethodCallHandler { call, result in
+      switch call.method {
+      case "ask":
+        center.requestAuthorization(options: [.alert, .sound]) { granted, _ in
+          DispatchQueue.main.async { result(granted) }
+        }
+      case "schedule":
+        guard let a = call.arguments as? [String: Any], let hour = a["hour"] as? Int,
+          let minute = a["minute"] as? Int
+        else { return result(FlutterError(code: "bad_args", message: nil, details: nil)) }
+        let skipToday = a["skipToday"] as? Bool ?? false
+        center.removePendingNotificationRequests(withIdentifiers: ids)
+        let cal = Calendar.current
+        let now = Date()
+        for day in 0..<7 {
+          guard let date = cal.date(byAdding: .day, value: day, to: now),
+            let at = cal.date(bySettingHour: hour, minute: minute, second: 0, of: date),
+            at > now, !(day == 0 && skipToday)
+          else { continue }
+          let content = UNMutableNotificationContent()
+          content.title = "Spend Snap"
+          content.body = lines[day % lines.count]
+          content.sound = .default
+          let when = cal.dateComponents([.year, .month, .day, .hour, .minute], from: at)
+          let trigger = UNCalendarNotificationTrigger(dateMatching: when, repeats: false)
+          center.add(UNNotificationRequest(identifier: ids[day], content: content, trigger: trigger))
+        }
+        result(nil)
+      case "cancel":
+        center.removePendingNotificationRequests(withIdentifiers: ids)
+        result(nil)
+      default:
+        result(FlutterMethodNotImplemented)
+      }
+    }
   }
 }

@@ -13,6 +13,7 @@ import 'picker.dart';
 import 'prefs.dart';
 import 'quick_add_sheet.dart';
 import 'reader.dart';
+import 'remind.dart';
 import 'split.dart';
 import 'review_sheet.dart';
 import 'settings_screen.dart';
@@ -63,6 +64,7 @@ class _HomeScreenState extends State<HomeScreen> {
       moneyIn: d.moneyIn,
     );
     if (d.splitPeople > 1) e = await _ledger.split(e.id, d.splitPeople, names: d.splitNames) ?? e;
+    Remind.sync(_ledger);
     if (!mounted) return;
     Feel.logged();
     KittyLayer.cheer();
@@ -166,6 +168,7 @@ class _HomeScreenState extends State<HomeScreen> {
     await Navigator.of(context).push<void>(
       MaterialPageRoute(
         builder: (_) => SettingsScreen(
+          onReminderChanged: () => Remind.sync(_ledger),
           onExport: () async {
             await Clipboard.setData(ClipboardData(text: _ledger.toCsv()));
             _toast('Copied. Paste it into Notes, Mail or a spreadsheet.');
