@@ -85,6 +85,18 @@ class CategoryTotal {
   final double amount;
 }
 
+/// Something she buys again and again, like canteen chicken rice.
+class Usual {
+  const Usual({required this.amount, required this.currency, this.merchant, this.category, required this.times});
+  final double amount;
+  final String currency;
+  final String? merchant;
+  final String? category;
+  final int times;
+
+  String get label => merchant ?? category ?? 'Expense';
+}
+
 /// How far back the home screen looks.
 enum Period { day, week, month }
 
@@ -308,6 +320,32 @@ class Ledger {
       recent: sorted.take(recent).toList(),
       moneyIn: [for (final t in received.entries) Money(t.key, t.value)],
     );
+  }
+
+  /// Her most repeated buys (the same shop or category at the same price,
+  /// at least twice), most frequent first, for one-tap logging.
+  List<Usual> usuals({int max = 4}) {
+    final groups = <(String, String, double, String), List<Expense>>{};
+    for (final e in _items) {
+      if (e.moneyIn) continue;
+      final k = ((e.merchant ?? '').toLowerCase(), (e.category ?? '').toLowerCase(), e.amount, e.currency);
+      (groups[k] ??= []).add(e);
+    }
+    final repeated = groups.values.where((g) => g.length >= 2).toList()
+      ..sort((a, b) {
+        final n = b.length.compareTo(a.length);
+        return n != 0 ? n : b.last.createdAt.compareTo(a.last.createdAt);
+      });
+    return [
+      for (final g in repeated.take(max))
+        Usual(
+          amount: g.last.amount,
+          currency: g.last.currency,
+          merchant: g.last.merchant,
+          category: g.last.category,
+          times: g.length,
+        ),
+    ];
   }
 
   /// Spreadsheet-friendly copy of everything, for backups or Excel.

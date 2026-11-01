@@ -225,6 +225,29 @@ void main() {
     expect(find.text("It's okay. A fresh start tomorrow."), findsOneWidget);
   });
 
+  testWidgets('her usual chicken rice logs with one tap, and Log again repeats any entry', (t) async {
+    await t.runAsync(() async {
+      for (var i = 0; i < 3; i++) {
+        await ledger.add(amount: 3.5, currency: 'SGD', merchant: 'Chicken rice', category: 'Food & drink');
+      }
+      await ledger.add(amount: 5.8, currency: 'SGD', merchant: 'LiHO', category: 'Bubble tea');
+    });
+    await t.pumpWidget(wrap(unreadable));
+    expect(find.text(r'Chicken rice S$3.50'), findsOneWidget);
+    // Bought only once: not a usual yet.
+    expect(find.textContaining('LiHO S'), findsNothing);
+    await tapAndSettle(t, find.byKey(const Key('usual-0')));
+    expect(ledger.all.where((e) => e.merchant == 'Chicken rice'), hasLength(4));
+    await dismiss(t);
+
+    await t.scrollUntilVisible(find.text('LiHO'), 300, scrollable: find.byType(Scrollable).first);
+    await t.tap(find.text('LiHO'));
+    await t.pumpAndSettle();
+    await tapAndSettle(t, find.byKey(const Key('log-again')));
+    expect(ledger.all.where((e) => e.merchant == 'LiHO'), hasLength(2));
+    await dismiss(t);
+  });
+
   testWidgets('cash quick add: amount then one tap on a category', (t) async {
     await t.pumpWidget(wrap(unreadable));
     await tapAndSettle(t, find.byKey(const Key('cash')));

@@ -233,6 +233,31 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ],
           const SizedBox(height: 16),
+          if (!e.moneyIn) ...[
+            Pressable(
+              scale: 0.96,
+              child: FilledButton.icon(
+                key: const Key('log-again'),
+                onPressed: () {
+                  Feel.tap();
+                  Navigator.of(ctx).pop();
+                  _save(
+                    ExpenseDraft(
+                      amount: e.amount,
+                      currency: e.currency,
+                      merchant: e.merchant,
+                      category: e.category,
+                      paymentMethod: e.paymentMethod,
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.replay),
+                label: const Text('Log again today'),
+                style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52)),
+              ),
+            ),
+            const SizedBox(height: 10),
+          ],
           Pressable(
             scale: 0.96,
             child: FilledButton.tonalIcon(
@@ -277,6 +302,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final prefs = Prefs.current;
     final period = prefs.showMonth ? Period.month : (prefs.allowanceDaily ? Period.day : Period.week);
     final o = _ledger.overview(period: period);
+    final usuals = _ledger.usuals();
     return Scaffold(
       appBar: AppBar(
         title: prefs.allowance == null
@@ -374,6 +400,40 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
               ),
+              if (usuals.isNotEmpty) ...[
+                const SizedBox(height: 20),
+                Text('Usual', style: Theme.of(context).textTheme.titleMedium),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final (i, u) in usuals.indexed)
+                      Pressable(
+                        scale: 0.92,
+                        child: ActionChip(
+                          key: Key('usual-$i'),
+                          avatar: Icon(iconFor(u.category), size: 20),
+                          label: Text('${u.label} ${money(u.amount, u.currency)}'),
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                          onPressed: _busy
+                              ? null
+                              : () {
+                                  Feel.tap();
+                                  _save(
+                                    ExpenseDraft(
+                                      amount: u.amount,
+                                      currency: u.currency,
+                                      merchant: u.merchant,
+                                      category: u.category,
+                                    ),
+                                  );
+                                },
+                        ),
+                      ),
+                  ],
+                ),
+              ],
               if (o.byCategory.isNotEmpty) ...[
                 const SizedBox(height: 28),
                 Text('Where it went', style: Theme.of(context).textTheme.titleMedium),
