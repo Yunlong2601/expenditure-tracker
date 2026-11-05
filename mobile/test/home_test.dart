@@ -58,7 +58,9 @@ void main() {
   });
   tearDown(() async {
     // A save can still be writing on a slow machine; let it finish first.
-    await ledger.idle;
+    // A save started in test time (like Undo's) may never resume, so don't
+    // wait on it forever.
+    await ledger.idle.timeout(const Duration(seconds: 3), onTimeout: () {});
     await dir.delete(recursive: true);
   });
 
