@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart' show DateFormat;
 
 import 'companion.dart';
 import 'day.dart';
@@ -8,6 +7,7 @@ import 'format.dart';
 import 'home_tab.dart';
 import 'kitty.dart';
 import 'ledger.dart';
+import 'l10n.dart';
 import 'theme.dart';
 
 /// What she spent on [day], like "S$12.40", or null if nothing.
@@ -62,7 +62,7 @@ class _DashboardTabState extends State<DashboardTab> {
     final t = Theme.of(context).textTheme;
     final top = MediaQuery.paddingOf(context).top;
     final isToday = sameDay(_picked, DateTime.now());
-    final dayLabel = isToday ? 'Today' : DateFormat('d MMM').format(_picked);
+    final dayLabel = isToday ? tr('Today', '今日') : dayMonth(_picked);
     final tasks = _s.tasksOn(_picked);
     final done = _s.doneOn(_picked);
     final timed = tasks.where((x) => x.minutes != null).length;
@@ -83,13 +83,13 @@ class _DashboardTabState extends State<DashboardTab> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Dashboard',
+                    tr('Dashboard', '看板'),
                     style: t.headlineMedium?.copyWith(
                       fontWeight: FontWeight.w800,
                     ),
                   ),
                   Text(
-                    'Every day of effort, recorded',
+                    tr('Every day of effort, recorded', '记录努力的每一天'),
                     style: t.bodyMedium?.copyWith(color: Palette.muted),
                   ),
                   const SizedBox(height: 14),
@@ -105,7 +105,7 @@ class _DashboardTabState extends State<DashboardTab> {
                                 child: Row(
                                   children: [
                                     IconButton(
-                                      tooltip: 'Last week',
+                                      tooltip: tr('Last week', '上一周'),
                                       visualDensity: VisualDensity.compact,
                                       onPressed: () => _pick(
                                         _picked.subtract(
@@ -116,7 +116,7 @@ class _DashboardTabState extends State<DashboardTab> {
                                     ),
                                     Flexible(
                                       child: Text(
-                                        DateFormat('MMM yyyy').format(_picked),
+                                        monthYear(_picked),
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                         style: t.titleSmall?.copyWith(
@@ -125,7 +125,7 @@ class _DashboardTabState extends State<DashboardTab> {
                                       ),
                                     ),
                                     IconButton(
-                                      tooltip: 'Next week',
+                                      tooltip: tr('Next week', '下一周'),
                                       visualDensity: VisualDensity.compact,
                                       onPressed: () => _pick(
                                         _picked.add(const Duration(days: 7)),
@@ -137,7 +137,7 @@ class _DashboardTabState extends State<DashboardTab> {
                               ),
                               PillButton(
                                 key: const Key('dash-today'),
-                                label: 'Today',
+                                label: tr('Today', '今天'),
                                 onPressed: () => _pick(DateTime.now()),
                               ),
                             ],
@@ -163,7 +163,7 @@ class _DashboardTabState extends State<DashboardTab> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                '$dayLabel’s review',
+                tr('$dayLabel’s review', '$dayLabel复盘'),
                 style: t.titleLarge?.copyWith(fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: 10),
@@ -179,10 +179,10 @@ class _DashboardTabState extends State<DashboardTab> {
                     Expanded(
                       child: Text(
                         done.isEmpty && mood == null && focus == 0
-                            ? 'No review for this day yet.\nWhen you’re done, we’ll look back together.'
-                            : '${done.length} done · $focus min focus'
-                                  '${mood == null ? '' : ' · felt ${mood.label.toLowerCase()}'}'
-                                  '${spent == null ? '' : ' · spent $spent'}',
+                            ? tr('No review for this day yet.\nWhen you’re done, we’ll look back together.', '还没有这一天的复盘。\n忙完后，我们一起回顾。')
+                            : '${tr('${done.length} done · $focus min focus', '完成 ${done.length} 件 · 专注 $focus 分钟')}'
+                                  '${mood == null ? '' : tr(' · felt ${mood.label.toLowerCase()}', ' · 心情${mood.zh}')}'
+                                  '${spent == null ? '' : tr(' · spent $spent', ' · 花了 $spent')}',
                         style: t.bodyLarge?.copyWith(
                           color: Palette.sage,
                           height: 1.45,
@@ -208,7 +208,7 @@ class _DashboardTabState extends State<DashboardTab> {
               Row(
                 children: [
                   Text(
-                    'Tasks',
+                    tr('Tasks', '任务'),
                     style: t.titleLarge?.copyWith(fontWeight: FontWeight.w700),
                   ),
                   const Spacer(),
@@ -219,7 +219,7 @@ class _DashboardTabState extends State<DashboardTab> {
                       (_) => CompletedSheet(store: _s, day: _picked),
                       tall: true,
                     ),
-                    child: const Text('Completed ›'),
+                    child: Text(tr('Completed ›', '完成记录 ›')),
                   ),
                 ],
               ),
@@ -231,25 +231,25 @@ class _DashboardTabState extends State<DashboardTab> {
                     icon: Icons.check_circle,
                     color: const Color(0xFF6FAE6A),
                     value: '${done.length}',
-                    label: 'Done',
+                    label: tr('Done', '完成'),
                   ),
                   _Stat(
                     icon: Icons.schedule,
                     color: const Color(0xFFE8B067),
                     value: '$timed',
-                    label: 'Timed',
+                    label: tr('Timed', '定时'),
                   ),
                   _Stat(
                     icon: Icons.track_changes,
                     color: const Color(0xFF7FB58A),
                     value: '$focus',
-                    label: 'Focus min',
+                    label: tr('Focus min', '专注分钟'),
                   ),
                   _Stat(
                     icon: Icons.local_fire_department,
                     color: const Color(0xFFEB8A5A),
                     value: '${_streak()}',
-                    label: 'Day streak',
+                    label: tr('Day streak', '连续天数'),
                   ),
                 ],
               ),
@@ -266,8 +266,18 @@ class _DashboardTabState extends State<DashboardTab> {
             store: _s,
             ledger: widget.ledger,
             onMonth: (m) => setState(() => _month = m),
+            onAdd: (d) {
+              Feel.tap();
+              showTinySheet<void>(
+                context,
+                (_) => TaskSheet(store: _s, day: dayOf(d)),
+              );
+            },
+            // The first tap picks a day and shows its +; a second tap opens it.
             onPick: (d) {
+              final again = sameDay(d, _picked);
               _pick(d);
+              if (!again) return;
               showTinySheet<void>(
                 context,
                 (_) =>
@@ -290,13 +300,13 @@ class _DashboardTabState extends State<DashboardTab> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Mood diary',
+                      tr('Mood diary', '心情日记'),
                       style: t.titleMedium?.copyWith(
                         fontWeight: FontWeight.w700,
                       ),
                     ),
                     Text(
-                      'How are you feeling right now?',
+                      tr('How are you feeling right now?', '此刻心情如何？'),
                       style: t.bodyMedium?.copyWith(color: Palette.muted),
                     ),
                   ],
@@ -331,14 +341,14 @@ class _DashboardTabState extends State<DashboardTab> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Money',
+                        tr('Money', '记账'),
                         style: t.titleMedium?.copyWith(
                           fontWeight: FontWeight.w700,
                         ),
                       ),
                       Text(
                         spent == null
-                            ? 'Nothing spent ${isToday ? 'today' : 'this day'}'
+                            ? tr('Nothing spent ${isToday ? 'today' : 'this day'}', isToday ? '今天还没花钱' : '这天没有花钱')
                             : '$dayLabel: $spent',
                         style: t.bodyMedium?.copyWith(color: Palette.muted),
                       ),
@@ -359,7 +369,7 @@ class _DashboardTabState extends State<DashboardTab> {
               Row(
                 children: [
                   Text(
-                    'Countdowns',
+                    tr('Countdowns', '倒数日'),
                     style: t.titleLarge?.copyWith(fontWeight: FontWeight.w700),
                   ),
                   const Spacer(),
@@ -367,32 +377,32 @@ class _DashboardTabState extends State<DashboardTab> {
                     key: const Key('add-countdown'),
                     onPressed: () => addCountdown(context, _s),
                     icon: const Icon(Icons.add),
-                    label: const Text('Add'),
+                    label: Text(tr('Add', '添加')),
                   ),
                 ],
               ),
               if (_s.upcoming().isEmpty)
                 Text(
-                  'Exams, trips, birthdays: count down to what matters.',
+                  tr('Exams, trips, birthdays: count down to what matters.', '考试、旅行、生日：给重要的日子倒数。'),
                   style: t.bodyMedium?.copyWith(color: Palette.muted),
                 ),
               for (final c in _s.upcoming())
                 ListTile(
                   contentPadding: EdgeInsets.zero,
                   title: Text(c.title),
-                  subtitle: Text(DateFormat('EEE, d MMM yyyy').format(c.date)),
+                  subtitle: Text('${fullDate(c.date)} ${weekdayShort(c.date)}'),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        c.daysLeft() == 0 ? 'Today' : '${c.daysLeft()} days',
+                        c.daysLeft() == 0 ? tr('Today', '就是今天') : tr('${c.daysLeft()} days', '${c.daysLeft()} 天'),
                         style: t.titleMedium?.copyWith(
                           color: Palette.sage,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
                       IconButton(
-                        tooltip: 'Delete',
+                        tooltip: tr('Delete', '删除'),
                         icon: const Icon(Icons.close, size: 18),
                         onPressed: () => _s.remove(_s.countdowns, c),
                       ),
@@ -447,7 +457,6 @@ class _Stat extends StatelessWidget {
   }
 }
 
-const _weekdays = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
 class _WeekStrip extends StatelessWidget {
   const _WeekStrip({
@@ -470,13 +479,14 @@ class _WeekStrip extends StatelessWidget {
               builder: (_) {
                 final d = start.add(Duration(days: i));
                 final on = sameDay(d, picked);
+                final isToday = sameDay(d, DateTime.now());
                 return InkWell(
                   borderRadius: BorderRadius.circular(10),
                   onTap: () => onPick(d),
                   child: Column(
                     children: [
                       Text(
-                        _weekdays[i],
+                        weekdayHeads[i],
                         style: t.labelSmall?.copyWith(color: Palette.muted),
                       ),
                       const SizedBox(height: 4),
@@ -488,12 +498,30 @@ class _WeekStrip extends StatelessWidget {
                           color: on ? cs.primary : null,
                           borderRadius: BorderRadius.circular(10),
                         ),
-                        child: Text(
-                          '${d.day}',
-                          style: t.titleSmall?.copyWith(
-                            color: on ? cs.onPrimary : null,
-                            fontWeight: FontWeight.w600,
-                          ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              '${d.day}',
+                              style: t.titleSmall?.copyWith(
+                                color: on ? cs.onPrimary : null,
+                                fontWeight: FontWeight.w600,
+                                height: 1.1,
+                              ),
+                            ),
+                            // The small dot under today, as in the wireframe.
+                            Container(
+                              key: isToday ? const Key('week-today-dot') : null,
+                              width: 4,
+                              height: 4,
+                              decoration: BoxDecoration(
+                                color: isToday
+                                    ? (on ? cs.onPrimary : cs.primary)
+                                    : Colors.transparent,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
@@ -514,12 +542,16 @@ class _MonthGrid extends StatelessWidget {
     required this.store,
     required this.onMonth,
     required this.onPick,
+    required this.onAdd,
     this.ledger,
   });
   final DateTime month, picked;
   final DayStore store;
   final Ledger? ledger;
   final ValueChanged<DateTime> onMonth, onPick;
+
+  /// The + on the picked day: plan something for it.
+  final ValueChanged<DateTime> onAdd;
 
   @override
   Widget build(BuildContext context) {
@@ -533,7 +565,7 @@ class _MonthGrid extends StatelessWidget {
           children: [
             const SizedBox(width: 6),
             Text(
-              DateFormat('MMMM').format(month),
+              monthLong(month),
               style: t.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
             ),
             const SizedBox(width: 8),
@@ -543,12 +575,12 @@ class _MonthGrid extends StatelessWidget {
             ),
             const Spacer(),
             IconButton(
-              tooltip: 'Last month',
+              tooltip: tr('Last month', '上个月'),
               onPressed: () => onMonth(DateTime(month.year, month.month - 1)),
               icon: const Icon(Icons.chevron_left),
             ),
             IconButton(
-              tooltip: 'Next month',
+              tooltip: tr('Next month', '下个月'),
               onPressed: () => onMonth(DateTime(month.year, month.month + 1)),
               icon: const Icon(Icons.chevron_right),
             ),
@@ -557,12 +589,14 @@ class _MonthGrid extends StatelessWidget {
         const SizedBox(height: 6),
         Row(
           children: [
-            for (final w in _weekdays)
+            for (final (i, w) in weekdayHeads.indexed)
               Expanded(
                 child: Center(
                   child: Text(
                     w,
-                    style: t.labelMedium?.copyWith(color: Palette.muted),
+                    style: t.labelMedium?.copyWith(
+                      color: i == 6 ? cs.primary : Palette.muted,
+                    ),
                   ),
                 ),
               ),
@@ -595,9 +629,11 @@ class _MonthGrid extends StatelessWidget {
                           onTap: () => onPick(d),
                           child: Container(
                             height: 64,
-                            padding: const EdgeInsets.fromLTRB(6, 5, 4, 4),
+                            padding: const EdgeInsets.fromLTRB(5, 5, 3, 4),
                             decoration: BoxDecoration(
-                              color: inMonth
+                              color: on
+                                  ? cs.primary.withValues(alpha: 0.1)
+                                  : inMonth
                                   ? Palette.sand
                                   : Palette.sand.withValues(alpha: 0.4),
                               borderRadius: BorderRadius.circular(10),
@@ -609,18 +645,28 @@ class _MonthGrid extends StatelessWidget {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
+                                Row(
+                                  children: [
                                 Container(
+                                  constraints: isToday
+                                      ? const BoxConstraints(
+                                          minWidth: 19,
+                                          minHeight: 19,
+                                        )
+                                      : null,
+                                  alignment: isToday ? Alignment.center : null,
                                   padding: isToday
                                       ? const EdgeInsets.symmetric(
-                                          horizontal: 5,
-                                          vertical: 1,
+                                          horizontal: 3,
                                         )
                                       : null,
                                   decoration: isToday
                                       ? BoxDecoration(
-                                          color: cs.primary,
+                                          color: cs.primary.withValues(
+                                            alpha: on ? 0.75 : 1,
+                                          ),
                                           borderRadius: BorderRadius.circular(
-                                            8,
+                                            11,
                                           ),
                                         )
                                       : null,
@@ -637,6 +683,16 @@ class _MonthGrid extends StatelessWidget {
                                       fontWeight: FontWeight.w600,
                                     ),
                                   ),
+                                ),
+                                    if (on) ...[
+                                      const SizedBox(width: 1),
+                                      Expanded(
+                                        child: _AddDay(
+                                          onTap: () => onAdd(d),
+                                        ),
+                                      ),
+                                    ],
+                                  ],
                                 ),
                                 const Spacer(),
                                 Row(
@@ -663,16 +719,16 @@ class _MonthGrid extends StatelessWidget {
           children: [
             _dot(const Color(0xFF6FAE6A)),
             Text(
-              ' Done   ',
+              tr(' Done   ', ' 完成   '),
               style: t.labelSmall?.copyWith(color: Palette.muted),
             ),
             _dot(const Color(0xFFE8B067)),
             Text(
-              ' Spent   ',
+              tr(' Spent   ', ' 花销   '),
               style: t.labelSmall?.copyWith(color: Palette.muted),
             ),
             const MoodFace(mood: Mood.happy, size: 12),
-            Text(' Mood', style: t.labelSmall?.copyWith(color: Palette.muted)),
+            Text(tr(' Mood', ' 心情'), style: t.labelSmall?.copyWith(color: Palette.muted)),
           ],
         ),
       ],
@@ -698,7 +754,7 @@ class CompletedSheet extends StatelessWidget {
     final v = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Add something you did'),
+        title: Text(tr('Add something you did', '补记一件做完的事')),
         content: TextField(
           key: const Key('past-field'),
           controller: c,
@@ -707,11 +763,11 @@ class CompletedSheet extends StatelessWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cancel'),
+            child: Text(tr('Cancel', '取消')),
           ),
           FilledButton(
             onPressed: () => Navigator.of(ctx).pop(c.text),
-            child: const Text('Add'),
+            child: Text(tr('Add', '添加')),
           ),
         ],
       ),
@@ -732,11 +788,11 @@ class CompletedSheet extends StatelessWidget {
       listenable: store,
       builder: (context, _) {
         final done = store.doneOn(day);
-        final label = sameDay(day, DateTime.now()) ? 'Today · ' : '';
+        final label = sameDay(day, DateTime.now()) ? tr('Today · ', '今天 · ') : '';
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SheetHeader(title: 'Completed'),
+            SheetHeader(title: tr('Completed', '完成记录')),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Row(
@@ -756,11 +812,11 @@ class CompletedSheet extends StatelessWidget {
                               ),
                             ),
                             const SizedBox(width: 6),
-                            Text('done', style: t.titleMedium),
+                            Text(tr('done', '件完成'), style: t.titleMedium),
                           ],
                         ),
                         Text(
-                          '$label${DateFormat('d MMM, EEE').format(day)}',
+                          '$label${dayMonthWeekday(day)}',
                           style: t.bodyMedium?.copyWith(color: Palette.muted),
                         ),
                       ],
@@ -768,7 +824,7 @@ class CompletedSheet extends StatelessWidget {
                   ),
                   PillButton(
                     key: const Key('add-past'),
-                    label: '+ Add past',
+                    label: tr('+ Add past', '+ 补记'),
                     onPressed: () => _addPast(context),
                   ),
                 ],
@@ -782,14 +838,14 @@ class CompletedSheet extends StatelessWidget {
                         const CatFigure(size: 110, mood: CatMood.worried),
                         const SizedBox(height: 12),
                         Text(
-                          'Nothing finished this day yet',
+                          tr('Nothing finished this day yet', '这一天还没有完成的任务'),
                           style: t.titleMedium?.copyWith(
                             fontWeight: FontWeight.w700,
                           ),
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'Finish one and it shows up here',
+                          tr('Finish one and it shows up here', '完成一件，它就会出现在这里'),
                           style: t.bodyMedium?.copyWith(color: Palette.muted),
                         ),
                       ],
@@ -806,7 +862,7 @@ class CompletedSheet extends StatelessWidget {
                             ),
                             title: Text(x.title),
                             trailing: Text(
-                              DateFormat('HH:mm').format(x.doneAt!),
+                              hhmm(x.doneAt!),
                               style: t.bodySmall,
                             ),
                           ),
@@ -852,8 +908,8 @@ class DaySheet extends StatelessWidget {
         return Column(
           children: [
             SheetHeader(
-              title: DateFormat('EEEE, d MMM').format(day),
-              action: 'Add',
+              title: longDay(day),
+              action: tr('Add', '添加'),
               onAction: () => showTinySheet<void>(
                 context,
                 (_) => TaskSheet(store: store, day: day),
@@ -863,10 +919,10 @@ class DaySheet extends StatelessWidget {
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
                 children: [
-                  head('Tasks'),
+                  head(tr('Tasks', '任务')),
                   if (tasks.isEmpty)
                     Text(
-                      'No tasks',
+                      tr('No tasks', '没有任务'),
                       style: t.bodyMedium?.copyWith(color: Palette.muted),
                     ),
                   for (final x in tasks)
@@ -878,10 +934,10 @@ class DaySheet extends StatelessWidget {
                         onTap: () {},
                       ),
                     ),
-                  head('Mood'),
+                  head(tr('Mood', '心情')),
                   if (moods.isEmpty)
                     Text(
-                      'Not logged',
+                      tr('Not logged', '没有记录'),
                       style: t.bodyMedium?.copyWith(color: Palette.muted),
                     ),
                   Wrap(
@@ -892,27 +948,27 @@ class DaySheet extends StatelessWidget {
                           Chip(
                             avatar: MoodFace(mood: mood, size: 22),
                             label: Text(
-                              '${mood.label} · ${DateFormat('HH:mm').format(m.at)}',
+                              '${zh ? mood.zh : mood.label} · ${hhmm(m.at)}',
                             ),
                           ),
                     ],
                   ),
-                  head('Focus'),
+                  head(tr('Focus', '专注')),
                   Text(
-                    '${store.focusMinutesOn(day)} minutes',
+                    tr('${store.focusMinutesOn(day)} minutes', '${store.focusMinutesOn(day)} 分钟'),
                     style: t.bodyLarge,
                   ),
                   if (lines.isNotEmpty) ...[
-                    head('Timeline'),
+                    head(tr('Timeline', '时间轴')),
                     for (final e in lines)
                       Text(
-                        '${DateFormat('HH:mm').format(e.at)}  ${e.text}',
+                        '${hhmm(e.at)}  ${e.text}',
                         style: t.bodyLarge,
                       ),
                   ],
                   if (ledger != null) ...[
-                    head('Money'),
-                    Text(spent ?? 'Nothing spent', style: t.bodyLarge),
+                    head(tr('Money', '记账')),
+                    Text(spent ?? tr('Nothing spent', '没有花钱'), style: t.bodyLarge),
                   ],
                 ],
               ),
@@ -922,4 +978,60 @@ class DaySheet extends StatelessWidget {
       },
     );
   }
+}
+
+/// The small dashed + on the picked calendar day (IMG_6791).
+class _AddDay extends StatelessWidget {
+  const _AddDay({required this.onTap});
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = Theme.of(context).colorScheme.primary;
+    return Semantics(
+      button: true,
+      label: tr('Add for this day', '给这天添加'),
+      excludeSemantics: true,
+      child: GestureDetector(
+        key: const Key('day-add'),
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        // The whole space beside the date takes the tap, not just the ring.
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: FittedBox(
+            child: CustomPaint(
+              painter: _DashedCircle(c.withValues(alpha: 0.7)),
+              child: SizedBox.square(
+                dimension: 17,
+                child: Icon(Icons.add, size: 12, color: c),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DashedCircle extends CustomPainter {
+  const _DashedCircle(this.color);
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final p = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.1;
+    final r = Rect.fromLTWH(0.6, 0.6, size.width - 1.2, size.height - 1.2);
+    const n = 12;
+    const step = 2 * 3.141592653589793 / n;
+    for (var i = 0; i < n; i++) {
+      canvas.drawArc(r, i * step, step * 0.55, false, p);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_DashedCircle old) => old.color != color;
 }

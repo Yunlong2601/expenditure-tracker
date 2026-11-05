@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'day.dart';
 import 'feel.dart';
+import 'l10n.dart';
 import 'theme.dart';
 
 /// Edit stack (IMG_6797, 6798): the stack's name, a help note, numbered step
@@ -30,7 +31,7 @@ class _StackSheetState extends State<StackSheet> {
   void initState() {
     super.initState();
     if (_steps.isEmpty) _steps.add(StackStep(''));
-    _help = widget.task?.title == DayStore.gettingStartedTitle;
+    _help = DayStore.isGettingStarted(widget.task);
   }
 
   @override
@@ -42,7 +43,7 @@ class _StackSheetState extends State<StackSheet> {
   Future<void> _save() async {
     final steps = _steps.where((s) => s.title.trim().isNotEmpty).toList();
     final title = _title.text.trim().isEmpty
-        ? (steps.firstOrNull?.title ?? 'Stack')
+        ? (steps.firstOrNull?.title ?? tr('Stack', '一叠'))
         : _title.text.trim();
     final t = widget.task;
     if (steps.isEmpty) {
@@ -67,7 +68,7 @@ class _StackSheetState extends State<StackSheet> {
     final v = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Step'),
+        title: Text(tr('Step', '步骤')),
         content: TextField(
           key: const Key('step-field'),
           controller: c,
@@ -78,11 +79,11 @@ class _StackSheetState extends State<StackSheet> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cancel'),
+            child: Text(tr('Cancel', '取消')),
           ),
           FilledButton(
             onPressed: () => Navigator.of(ctx).pop(c.text),
-            child: const Text('OK'),
+            child: Text(tr('OK', '好')),
           ),
         ],
       ),
@@ -97,7 +98,7 @@ class _StackSheetState extends State<StackSheet> {
     final done = _steps.where((s) => s.done).length;
     return Column(
       children: [
-        SheetHeader(title: 'Edit stack', action: 'Save', onAction: _save),
+        SheetHeader(title: tr('Edit stack', '编辑一叠'), action: tr('Save', '保存'), onAction: _save),
         Expanded(
           child: ListView(
             padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
@@ -111,15 +112,15 @@ class _StackSheetState extends State<StackSheet> {
                       style: t.titleLarge?.copyWith(
                         fontWeight: FontWeight.w700,
                       ),
-                      decoration: const InputDecoration(
-                        hintText: 'Name this stack',
+                      decoration: InputDecoration(
+                        hintText: tr('Name this stack', '给这叠起个名字'),
                         border: InputBorder.none,
                         isDense: true,
                       ),
                     ),
                   ),
                   IconButton.outlined(
-                    tooltip: 'How stacks work',
+                    tooltip: tr('How stacks work', '一叠是怎么用的'),
                     iconSize: 18,
                     visualDensity: VisualDensity.compact,
                     icon: const Icon(Icons.question_mark),
@@ -131,8 +132,7 @@ class _StackSheetState extends State<StackSheet> {
                 Padding(
                   padding: const EdgeInsets.only(top: 6),
                   child: Text(
-                    'Steps stacked on top of each other: your list shows only the top one, and the next '
-                    'appears when you check it off. Hold a step to reorder; swipe left to delete.',
+                    tr('Steps stacked on top of each other: your list shows only the top one, and the next appears when you check it off. Hold a step to reorder; swipe left to delete.', '步骤一层层叠在一起：清单上只显示最上面那一步，勾掉后下一步才出现。长按步骤可以排序，左滑删除。'),
                     style: t.bodyMedium?.copyWith(
                       color: Palette.muted,
                       height: 1.4,
@@ -144,7 +144,7 @@ class _StackSheetState extends State<StackSheet> {
                 children: [
                   Expanded(
                     child: Text(
-                      '$done of ${_steps.length} steps done',
+                      tr('$done of ${_steps.length} steps done', '已完成 $done/${_steps.length} 步'),
                       style: t.bodyMedium?.copyWith(color: Palette.muted),
                     ),
                   ),
@@ -155,9 +155,9 @@ class _StackSheetState extends State<StackSheet> {
                         s.done = v == 'all';
                       }
                     }),
-                    itemBuilder: (_) => const [
-                      PopupMenuItem(value: 'all', child: Text('Mark all done')),
-                      PopupMenuItem(value: 'none', child: Text('Start over')),
+                    itemBuilder: (_) => [
+                      PopupMenuItem(value: 'all', child: Text(tr('Mark all done', '全部完成'))),
+                      PopupMenuItem(value: 'none', child: Text(tr('Start over', '重新开始'))),
                     ],
                   ),
                 ],
@@ -219,8 +219,8 @@ class _StackSheetState extends State<StackSheet> {
               child: TextButton.icon(
                 key: const Key('add-step'),
                 icon: const Icon(Icons.add),
-                label: const Text(
-                  'Add step',
+                label: Text(
+                  tr('Add step', '添加步骤'),
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                 ),
                 onPressed: () async {
@@ -298,7 +298,7 @@ class _StepCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      step.title.isEmpty ? 'New step' : step.title,
+                      step.title.isEmpty ? tr('New step', '新步骤') : step.title,
                       style: t.titleMedium?.copyWith(
                         fontWeight: FontWeight.w600,
                         color: step.title.isEmpty ? Palette.muted : null,
@@ -309,7 +309,7 @@ class _StepCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      step.done ? 'Done' : 'To-do',
+                      step.done ? tr('Done', '已完成') : tr('To-do', '待办'),
                       style: t.bodySmall?.copyWith(color: Palette.muted),
                     ),
                     InkWell(
@@ -325,7 +325,7 @@ class _StepCard extends StatelessWidget {
                               color: Palette.muted,
                             ),
                             Text(
-                              ' Note',
+                              tr(' Note', ' 备注'),
                               style: t.bodySmall?.copyWith(
                                 color: Palette.muted,
                               ),
@@ -339,8 +339,8 @@ class _StepCard extends StatelessWidget {
                         initialValue: step.note,
                         maxLines: null,
                         onChanged: onNote,
-                        decoration: const InputDecoration(
-                          hintText: 'Add a note',
+                        decoration: InputDecoration(
+                          hintText: tr('Add a note', '写点备注'),
                           isDense: true,
                         ),
                       ),
@@ -353,11 +353,11 @@ class _StepCard extends StatelessWidget {
                 itemBuilder: (_) => [
                   PopupMenuItem(
                     value: 'toggle',
-                    child: Text(step.done ? 'Mark to-do' : 'Mark done'),
+                    child: Text(step.done ? tr('Mark to-do', '改回待办') : tr('Mark done', '标为完成')),
                   ),
-                  const PopupMenuItem(
+                  PopupMenuItem(
                     value: 'delete',
-                    child: Text('Delete step'),
+                    child: Text(tr('Delete step', '删除这一步')),
                   ),
                 ],
               ),

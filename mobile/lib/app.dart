@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:path_provider/path_provider.dart';
 
 import 'feel.dart';
@@ -8,6 +9,7 @@ import 'day.dart';
 import 'shell.dart';
 import 'theme.dart';
 import 'kitty.dart';
+import 'l10n.dart';
 import 'prefs.dart';
 import 'remind.dart';
 import 'ledger.dart';
@@ -54,6 +56,10 @@ class _SpendSnapAppState extends State<SpendSnapApp> {
         'dark' => ThemeMode.dark,
         _ => ThemeMode.system,
       },
+      // English unless Chinese is picked in Me → Language.
+      locale: Locale(zh ? 'zh' : 'en'),
+      supportedLocales: const [Locale('en'), Locale('zh')],
+      localizationsDelegates: GlobalMaterialLocalizations.delegates,
       builder: (_, child) => KittyLayer(child: child!),
       home: _Root(
         ledgerDir: widget.ledgerDir,

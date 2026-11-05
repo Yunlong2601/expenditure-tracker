@@ -104,4 +104,8 @@ class Prefs {
   /// 'light', 'dark' or null to follow the phone.
   String? get themeMode => _values['theme'] as String?;
   Future<void> setThemeMode(String? v) => _set('theme', v);
+
+  /// 'zh', 'en' or null to follow the phone.
+  String? get language => _values['language'] as String?;
+  Future<void> setLanguage(String? v) => _set('language', v);
 }

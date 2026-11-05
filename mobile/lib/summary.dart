@@ -8,6 +8,7 @@ import 'categories.dart';
 import 'feel.dart';
 import 'format.dart';
 import 'kitty.dart';
+import 'l10n.dart';
 import 'ledger.dart';
 import 'share.dart';
 
@@ -50,7 +51,7 @@ class _SummaryScreenState extends State<SummaryScreen> {
     final now = DateTime.now();
     final isThisMonth = _month.year == now.year && _month.month == now.month;
     return Scaffold(
-      appBar: AppBar(title: const Text('My month')),
+      appBar: AppBar(title: Text(tr('My month', '我的月度'))),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.all(20),
@@ -58,10 +59,10 @@ class _SummaryScreenState extends State<SummaryScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                IconButton(tooltip: 'Previous month', onPressed: () => _go(-1), icon: const Icon(Icons.chevron_left)),
-                Text(DateFormat('MMMM yyyy').format(_month), style: Theme.of(context).textTheme.titleMedium),
+                IconButton(tooltip: tr('Previous month', '上个月'), onPressed: () => _go(-1), icon: const Icon(Icons.chevron_left)),
+                Text(zh ? monthYear(_month) : DateFormat('MMMM yyyy').format(_month), style: Theme.of(context).textTheme.titleMedium),
                 IconButton(
-                  tooltip: 'Next month',
+                  tooltip: tr('Next month', '下个月'),
                   onPressed: isThisMonth ? null : () => _go(1),
                   icon: const Icon(Icons.chevron_right),
                 ),
@@ -79,7 +80,7 @@ class _SummaryScreenState extends State<SummaryScreen> {
                 key: const Key('share-summary'),
                 onPressed: _sharing ? null : _share,
                 icon: const Icon(Icons.ios_share),
-                label: const Text('Save or share picture'),
+                label: Text(tr('Save or share picture', '保存或分享图片')),
                 style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(56)),
               ),
             ),
@@ -135,7 +136,7 @@ class _SummaryCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'My ${DateFormat('MMMM').format(month)}',
+                      tr('My ${DateFormat('MMMM').format(month)}', '我的${monthLong(month)}'),
                       style: t.titleLarge?.copyWith(color: on, fontWeight: FontWeight.w700),
                     ),
                     const SizedBox(height: 4),
@@ -149,7 +150,7 @@ class _SummaryCard extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      items.isEmpty ? 'Nothing logged yet' : '${items.length} things logged',
+                      items.isEmpty ? tr('Nothing logged yet', '还没有记录') : tr('${items.length} things logged', '记了 ${items.length} 笔'),
                       style: t.bodyMedium?.copyWith(color: on),
                     ),
                   ],
@@ -175,7 +176,7 @@ class _SummaryCard extends StatelessWidget {
                   SizedBox(
                     width: 96,
                     child: Text(
-                      c.category,
+                      catLabel(c.category),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(color: on),
@@ -208,11 +209,15 @@ class _SummaryCard extends StatelessWidget {
               children: [
                 if (biggest != null)
                   _Fact(
-                    'Biggest buy: ${biggest.merchant ?? biggest.category ?? 'something'}, '
-                    '${money(biggest.amount, biggest.currency)}',
+                    tr(
+                      'Biggest buy: ${biggest.merchant ?? biggest.category ?? 'something'}, '
+                          '${money(biggest.amount, biggest.currency)}',
+                      '最大一笔：${biggest.merchant ?? (biggest.category == null ? '某样东西' : catLabel(biggest.category!))}，'
+                          '${money(biggest.amount, biggest.currency)}',
+                    ),
                   ),
-                if (teas > 0) _Fact('$teas bubble tea${teas == 1 ? '' : 's'}'),
-                if (o.received('SGD') > 0) _Fact('Got ${money(o.received('SGD'), 'SGD')}'),
+                if (teas > 0) _Fact(tr('$teas bubble tea${teas == 1 ? '' : 's'}', '$teas 杯奶茶')),
+                if (o.received('SGD') > 0) _Fact(tr('Got ${money(o.received('SGD'), 'SGD')}', '收入 ${money(o.received('SGD'), 'SGD')}')),
               ],
             ),
           ],

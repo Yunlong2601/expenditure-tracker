@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:intl/intl.dart' show DateFormat;
 
 import 'companion.dart';
 import 'day.dart';
@@ -9,6 +8,7 @@ import 'kitty.dart';
 import 'onboarding.dart';
 import 'prefs.dart';
 import 'stack_sheet.dart';
+import 'l10n.dart';
 import 'theme.dart';
 
 String clock(BuildContext context, int minutes) =>
@@ -40,10 +40,10 @@ class _HomeTabState extends State<HomeTab> {
   String _greeting() {
     final h = DateTime.now().hour;
     final name = Prefs.current.catName;
-    if (h < 11) return 'Good morning! $name is ready for today.';
-    if (h < 17) return 'Hi again. One small thing at a time.';
-    if (h < 22) return 'Evening. How did today go?';
-    return 'It’s late. $name says rest is a task too.';
+    if (h < 11) return tr('Good morning! $name is ready for today.', '早上好！$name 准备好陪你开始今天啦。');
+    if (h < 17) return tr('Hi again. One small thing at a time.', '又见面啦，一次做好一件小事。');
+    if (h < 22) return tr('Evening. How did today go?', '晚上好，今天过得怎么样？');
+    return tr('It’s late. $name says rest is a task too.', '很晚啦，$name 说休息也是一件要做的事。');
   }
 
   Future<void> _addTask() async {
@@ -167,8 +167,8 @@ class _HomeTabState extends State<HomeTab> {
                                 ),
                                 label: Text(
                                   c.daysLeft() == 0
-                                      ? '${c.title} is today!'
-                                      : '${c.title} in ${c.daysLeft()}d',
+                                      ? tr('${c.title} is today!', '${c.title} 就是今天！')
+                                      : tr('${c.title} in ${c.daysLeft()}d', '${c.title} 还有 ${c.daysLeft()} 天'),
                                 ),
                               ),
                           ],
@@ -182,13 +182,13 @@ class _HomeTabState extends State<HomeTab> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'Today',
+                                  tr('Today', '今天'),
                                   style: t.headlineSmall?.copyWith(
                                     fontWeight: FontWeight.w800,
                                   ),
                                 ),
                                 Text(
-                                  DateFormat('EEEE, d MMM').format(today),
+                                  longDay(today),
                                   style: t.bodyMedium?.copyWith(
                                     color: Palette.muted,
                                   ),
@@ -204,7 +204,7 @@ class _HomeTabState extends State<HomeTab> {
                             },
                             child: IconButton.filled(
                               key: const Key('add-task'),
-                              tooltip: 'Add for today (hold to make a stack)',
+                              tooltip: tr('Add for today (hold to make a stack)', '添加今天的事（长按做成一叠）'),
                               iconSize: 28,
                               onPressed: _addTask,
                               icon: const Icon(Icons.add),
@@ -221,7 +221,7 @@ class _HomeTabState extends State<HomeTab> {
                               const SizedBox(width: 14),
                               Expanded(
                                 child: Text(
-                                  'Nothing here yet. Tap + and add one small thing for today.',
+                                  tr('Nothing here yet. Tap + and add one small thing for today.', '这里还空着。点 +，给今天加一件小事。'),
                                   style: t.bodyMedium?.copyWith(
                                     color: Palette.muted,
                                   ),
@@ -252,7 +252,7 @@ class _HomeTabState extends State<HomeTab> {
                               Icons.sentiment_satisfied_alt,
                               size: 18,
                             ),
-                            label: const Text('Log mood'),
+                            label: Text(tr('Log mood', '记心情')),
                             onPressed: () => showMoodSheet(context, _s),
                           ),
                           ActionChip(
@@ -261,7 +261,7 @@ class _HomeTabState extends State<HomeTab> {
                               Icons.hourglass_bottom,
                               size: 18,
                             ),
-                            label: const Text('Countdown'),
+                            label: Text(tr('Countdown', '倒数日')),
                             onPressed: () => addCountdown(context, _s),
                           ),
                           if (widget.onExpense != null)
@@ -271,7 +271,7 @@ class _HomeTabState extends State<HomeTab> {
                                 Icons.payments_outlined,
                                 size: 18,
                               ),
-                              label: const Text('Expense'),
+                              label: Text(tr('Expense', '记一笔')),
                               onPressed: widget.onExpense,
                             ),
                         ],
@@ -287,7 +287,7 @@ class _HomeTabState extends State<HomeTab> {
             top: MediaQuery.paddingOf(context).top + 150,
             child: EdgeTab(
               key: const Key('edge-chat'),
-              label: 'Chat',
+              label: tr('Chat', '聊天'),
               left: true,
               onTap: widget.onChat,
             ),
@@ -297,7 +297,7 @@ class _HomeTabState extends State<HomeTab> {
             top: MediaQuery.paddingOf(context).top + 150,
             child: EdgeTab(
               key: const Key('edge-records'),
-              label: 'Records',
+              label: tr('Records', '记录'),
               left: false,
               onTap: widget.onRecords,
             ),
@@ -345,7 +345,7 @@ class TaskRow extends StatelessWidget {
         children: [
           IconButton(
             key: Key('tick-${task.id}'),
-            tooltip: task.done ? 'Mark to-do' : 'Done',
+            tooltip: task.done ? tr('Mark to-do', '改回待办') : tr('Done', '完成'),
             onPressed: onTick,
             icon: Icon(
               task.done ? Icons.check_circle : Icons.radio_button_unchecked,
@@ -367,18 +367,25 @@ class TaskRow extends StatelessWidget {
                 ),
                 if (task.isStack)
                   Text(
-                    '${task.title} · ${task.stepsDone} of ${task.steps.length}',
+                    tr('${task.title} · ${task.stepsDone} of ${task.steps.length}', '${task.title} · ${task.stepsDone}/${task.steps.length}'),
                     style: t.bodySmall?.copyWith(color: Palette.muted),
                   ),
               ],
             ),
           ),
+          if (task.private)
+            Icon(
+              Icons.lock_outline,
+              size: 16,
+              color: Palette.muted,
+              semanticLabel: tr('Private', '不公开'),
+            ),
           if (task.isStack)
             const Icon(Icons.layers_outlined, size: 18, color: Palette.muted),
           TextButton(
             onPressed: onTime,
             child: Text(
-              task.minutes == null ? 'Any time' : clock(context, task.minutes!),
+              task.minutes == null ? tr('Any time', '随时') : clock(context, task.minutes!),
             ),
           ),
         ],
@@ -402,6 +409,7 @@ class _TaskSheetState extends State<TaskSheet> {
   late final _title = TextEditingController(text: widget.task?.title);
   late final _note = TextEditingController(text: widget.task?.note);
   late int? _minutes = widget.task?.minutes;
+  late bool _private = widget.task?.private ?? false;
 
   @override
   void dispose() {
@@ -419,6 +427,7 @@ class _TaskSheetState extends State<TaskSheet> {
         title,
         day: widget.day,
         minutes: _minutes,
+        private: _private,
       );
       n.note = _note.text.trim().isEmpty ? null : _note.text.trim();
       await widget.store.save();
@@ -426,6 +435,7 @@ class _TaskSheetState extends State<TaskSheet> {
       t
         ..title = title
         ..minutes = _minutes
+        ..private = _private
         ..note = _note.text.trim().isEmpty ? null : _note.text.trim();
       await widget.store.save();
     }
@@ -441,8 +451,12 @@ class _TaskSheetState extends State<TaskSheet> {
         mainAxisSize: MainAxisSize.min,
         children: [
           SheetHeader(
-            title: t == null ? 'Add for today' : 'Edit',
-            action: 'Save',
+            title: t != null
+                ? tr('Edit', '编辑')
+                : widget.day == null || sameDay(widget.day!, DateTime.now())
+                ? tr('Add for today', '添加今天的事')
+                : tr('Add for ${dayMonth(widget.day!)}', '添加到${dayMonth(widget.day!)}'),
+            action: tr('Save', '保存'),
             onAction: _save,
           ),
           Padding(
@@ -454,16 +468,16 @@ class _TaskSheetState extends State<TaskSheet> {
                   controller: _title,
                   autofocus: t == null,
                   textCapitalization: TextCapitalization.sentences,
-                  decoration: const InputDecoration(
-                    hintText: 'What’s one small thing?',
+                  decoration: InputDecoration(
+                    hintText: tr('What’s one small thing?', '想做的一件小事是？'),
                   ),
                   onSubmitted: (_) => _save(),
                 ),
                 const SizedBox(height: 8),
                 TextField(
                   controller: _note,
-                  decoration: const InputDecoration(
-                    hintText: 'Note (optional)',
+                  decoration: InputDecoration(
+                    hintText: tr('Note (optional)', '备注（可不填）'),
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -484,29 +498,49 @@ class _TaskSheetState extends State<TaskSheet> {
                       },
                       child: Text(
                         _minutes == null
-                            ? 'Set a time'
+                            ? tr('Set a time', '设个时间')
                             : clock(context, _minutes!),
                       ),
                     ),
                     if (_minutes != null)
                       IconButton(
-                        tooltip: 'No time',
+                        tooltip: tr('No time', '不定时间'),
                         onPressed: () => setState(() => _minutes = null),
                         icon: const Icon(Icons.close, size: 18),
                       ),
                     const Spacer(),
-                    if (t != null)
-                      TextButton.icon(
+                    FilterChip(
+                      key: const Key('task-private'),
+                      avatar: Icon(
+                        _private ? Icons.lock_outline : Icons.public,
+                        size: 18,
+                      ),
+                      showCheckmark: false,
+                      selected: _private,
+                      label: Text(
+                        _private ? tr('Private', '不公开') : tr('Public', '公开'),
+                      ),
+                      tooltip: tr(
+                        'Private tasks aren’t shared with the cat',
+                        '不公开的事不会发给小猫',
+                      ),
+                      onSelected: (v) => setState(() => _private = v),
+                    ),
+                  ],
+                ),
+                if (t != null)
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton.icon(
                         onPressed: () async {
                           await widget.store.removeTask(t);
                           Feel.removed();
                           if (context.mounted) Navigator.of(context).pop();
                         },
                         icon: const Icon(Icons.delete_outline),
-                        label: const Text('Delete'),
+                        label: Text(tr('Delete', '删除')),
                       ),
-                  ],
-                ),
+                  ),
               ],
             ),
           ),
@@ -545,8 +579,8 @@ class _MoodSheetState extends State<MoodSheet> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SheetHeader(
-            title: 'Mood diary',
-            action: 'Record',
+            title: tr('Mood diary', '心情日记'),
+            action: tr('Record', '记录'),
             onAction: _picked == null
                 ? null
                 : () async {
@@ -564,14 +598,14 @@ class _MoodSheetState extends State<MoodSheet> {
                   children: [
                     Expanded(
                       child: Text(
-                        'Today · ${DateFormat('d MMM, EEE').format(today)}',
+                        '${tr('Today', '今天')} · ${dayMonthWeekday(today)}',
                         style: t.titleMedium?.copyWith(
                           fontWeight: FontWeight.w700,
                         ),
                       ),
                     ),
                     Text(
-                      '${s.moodsOn(today).length} entries',
+                      tr('${s.moodsOn(today).length} entries', '${s.moodsOn(today).length} 条记录'),
                       style: t.bodyMedium?.copyWith(color: Palette.muted),
                     ),
                   ],
@@ -584,7 +618,7 @@ class _MoodSheetState extends State<MoodSheet> {
                       Column(
                         children: [
                           Text(
-                            sameDay(d, today) ? 'Today' : '${d.day}',
+                            sameDay(d, today) ? tr('Today', '今') : '${d.day}',
                             style: t.labelMedium?.copyWith(
                               color: Palette.muted,
                             ),
@@ -606,7 +640,7 @@ class _MoodSheetState extends State<MoodSheet> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'How are you feeling right now?',
+                        tr('How are you feeling right now?', '此刻心情如何？'),
                         style: t.titleSmall?.copyWith(
                           fontWeight: FontWeight.w700,
                         ),
@@ -633,7 +667,7 @@ class _MoodSheetState extends State<MoodSheet> {
                                       selected: _picked == m,
                                     ),
                                     const SizedBox(height: 4),
-                                    Text(m.label, style: t.labelSmall),
+                                    Text(zh ? m.zh : m.label, style: t.labelSmall),
                                   ],
                                 ),
                               ),
@@ -782,7 +816,7 @@ Future<void> addCountdown(BuildContext context, DayStore s) async {
     context: context,
     builder: (ctx) => StatefulBuilder(
       builder: (ctx, set) => AlertDialog(
-        title: const Text('New countdown'),
+        title: Text(tr('New countdown', '新的倒数日')),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -790,8 +824,8 @@ Future<void> addCountdown(BuildContext context, DayStore s) async {
               key: const Key('countdown-name'),
               controller: name,
               autofocus: true,
-              decoration: const InputDecoration(
-                hintText: 'Exams, a trip, a birthday…',
+              decoration: InputDecoration(
+                hintText: tr('Exams, a trip, a birthday…', '考试、旅行、生日……'),
               ),
             ),
             const SizedBox(height: 12),
@@ -800,8 +834,8 @@ Future<void> addCountdown(BuildContext context, DayStore s) async {
               icon: const Icon(Icons.event),
               label: Text(
                 date == null
-                    ? 'Pick the day'
-                    : DateFormat('d MMM yyyy').format(date!),
+                    ? tr('Pick the day', '选日子')
+                    : fullDate(date!),
               ),
               onPressed: () async {
                 final now = DateTime.now();
@@ -819,12 +853,12 @@ Future<void> addCountdown(BuildContext context, DayStore s) async {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
+            child: Text(tr('Cancel', '取消')),
           ),
           FilledButton(
             key: const Key('countdown-save'),
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Add'),
+            child: Text(tr('Add', '添加')),
           ),
         ],
       ),

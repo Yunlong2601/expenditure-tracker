@@ -72,6 +72,7 @@ void main() {
       await s.addTask(
         'Read',
         minutes: 600,
+        private: true,
         steps: [StackStep('Ch 1', note: 'slowly')],
       );
       await s.addMood(Mood.calm);
@@ -82,6 +83,7 @@ void main() {
       await s.add(s.focus, '25');
       final again = await DayStore.load(dir);
       expect(again.tasks.single.steps.single.note, 'slowly');
+      expect(again.tasks.single.private, isTrue);
       expect(again.moodOf(DateTime.now()), Mood.calm);
       expect(again.upcoming().single.daysLeft(), 3);
       expect(again.focusMinutesOn(DateTime.now()), 25);
@@ -109,6 +111,27 @@ void main() {
       final s = DayStore.memory();
       await s.addTask('Homework');
       expect(catReply('what’s left?', s), contains('Homework'));
+    });
+
+    test('never reads private tasks', () async {
+      final s = DayStore.memory();
+      await s.addTask('Diary', private: true);
+      await s.addTask('Homework');
+      final reply = catReply('what’s left?', s);
+      expect(reply, contains('Homework'));
+      expect(reply, isNot(contains('Diary')));
+      expect(reply, contains('1 left'));
+    });
+
+    test('answers in Chinese when Chinese is picked', () async {
+      Prefs.current = Prefs.memory();
+      await Prefs.current.setLanguage('zh');
+      addTearDown(() => Prefs.current = Prefs.memory());
+      final s = DayStore.memory();
+      await s.addTask('作业');
+      expect(catReply('今天还剩什么？', s), contains('还剩 1 件'));
+      expect(catReply('记住我喜欢燕麦奶', s), contains('我喜欢燕麦奶'));
+      expect(s.memories.single.text, '我喜欢燕麦奶');
     });
 
     test('writes a notebook page for a past day of chat, once', () {

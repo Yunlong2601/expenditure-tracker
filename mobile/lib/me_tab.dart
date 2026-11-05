@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 
 import 'companion.dart';
-import 'feel.dart';
 import 'day.dart';
+import 'feel.dart';
+import 'l10n.dart';
 import 'prefs.dart';
 import 'remind.dart';
 import 'theme.dart';
@@ -14,11 +15,15 @@ class MeTab extends StatefulWidget {
     super.key,
     required this.onSettings,
     required this.onThemeChanged,
+    this.onLanguageChanged,
   });
 
   /// Opens the full settings: reminders, pocket money, backup and restore.
   final VoidCallback onSettings;
   final VoidCallback onThemeChanged;
+
+  /// Called after the language changes, to reword the reminders.
+  final VoidCallback? onLanguageChanged;
 
   @override
   State<MeTab> createState() => _MeTabState();
@@ -27,19 +32,46 @@ class MeTab extends StatefulWidget {
 class _MeTabState extends State<MeTab> {
   Prefs get _p => Prefs.current;
 
-  void _say(String s) => ScaffoldMessenger.of(context)
-    ..hideCurrentSnackBar()
-    ..showSnackBar(
-      SnackBar(content: Text(s), behavior: SnackBarBehavior.floating),
-    );
-
-  static const _chatty = ['Quiet', 'Sometimes', 'Often'];
+  List<String> get _chatty => zh
+      ? const ['安静', '偶尔', '经常']
+      : const ['Quiet', 'Sometimes', 'Often'];
 
   String get _themeLabel => switch (_p.themeMode) {
-    'light' => 'Light',
-    'dark' => 'Dark',
-    _ => 'Same as phone',
+    'light' => tr('Light', '白色'),
+    'dark' => tr('Dark', '深色'),
+    _ => tr('Same as phone', '跟随系统'),
   };
+
+  String get _on => tr('On', '开');
+  String get _off => tr('Off', '关');
+
+  Future<void> _pickLanguage() async {
+    final v = await showModalBottomSheet<String>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (final (k, label) in [('en', 'English'), ('zh', '中文')])
+              ListTile(
+                key: Key('lang-$k'),
+                title: Text(label),
+                trailing: (zh ? 'zh' : 'en') == k
+                    ? const Icon(Icons.check)
+                    : null,
+                onTap: () => Navigator.of(ctx).pop(k),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (v == null || v == (zh ? 'zh' : 'en')) return;
+    await _p.setLanguage(v);
+    widget.onThemeChanged();
+    widget.onLanguageChanged?.call();
+    Remind.syncCheckIns(DayStore.current);
+    redrawAll();
+  }
 
   Future<void> _pickTheme() async {
     final v = await showModalBottomSheet<String>(
@@ -49,9 +81,9 @@ class _MeTabState extends State<MeTab> {
           mainAxisSize: MainAxisSize.min,
           children: [
             for (final (k, label) in [
-              ('system', 'Same as phone'),
-              ('light', 'Light'),
-              ('dark', 'Dark'),
+              ('system', tr('Same as phone', '跟随系统')),
+              ('light', tr('Light', '白色')),
+              ('dark', tr('Dark', '深色')),
             ])
               ListTile(
                 title: Text(label),
@@ -119,7 +151,7 @@ class _MeTabState extends State<MeTab> {
                               ],
                             ),
                             Text(
-                              'Plan life slowly, together',
+                              tr('Plan life slowly, together', '一起把生活慢慢安排好'),
                               style: t.bodySmall?.copyWith(
                                 color: Palette.muted,
                               ),
@@ -144,8 +176,8 @@ class _MeTabState extends State<MeTab> {
                 icon: Icons.notifications_none,
                 bg: Palette.mint,
                 fg: const Color(0xFF5E9B63),
-                label: 'Reminders',
-                value: _p.reminderOn ? 'On' : 'Off',
+                label: tr('Reminders', '系统通知'),
+                value: _p.reminderOn ? _on : _off,
                 onTap: widget.onSettings,
               ),
               _Tile(
@@ -153,7 +185,7 @@ class _MeTabState extends State<MeTab> {
                 icon: Icons.favorite_border,
                 bg: Palette.rose,
                 fg: const Color(0xFFD9686B),
-                label: 'Chattiness',
+                label: tr('Chattiness', '主动程度'),
                 value: _chatty[_p.chatty],
                 onTap: () async {
                   await _p.setChatty((_p.chatty + 1) % 3);
@@ -166,8 +198,8 @@ class _MeTabState extends State<MeTab> {
                 icon: Icons.schedule,
                 bg: Palette.peach,
                 fg: const Color(0xFFD08A4A),
-                label: 'Quiet mode',
-                value: _p.quiet ? 'On' : 'Off',
+                label: tr('Quiet mode', '安静模式'),
+                value: _p.quiet ? _on : _off,
                 onTap: () async {
                   await _p.setQuiet(!_p.quiet);
                   Remind.syncCheckIns(DayStore.current);
@@ -179,8 +211,8 @@ class _MeTabState extends State<MeTab> {
                 icon: Icons.bolt_outlined,
                 bg: Palette.sky,
                 fg: const Color(0xFF5C8FC7),
-                label: 'Sounds',
-                value: Feel.soundOn ? 'On' : 'Off',
+                label: tr('Sounds', '通知声音'),
+                value: Feel.soundOn ? _on : _off,
                 onTap: () async {
                   await Feel.setSoundOn(!Feel.soundOn);
                   if (Feel.soundOn) Feel.play(Sound.tap);
@@ -192,32 +224,34 @@ class _MeTabState extends State<MeTab> {
         ),
         const SizedBox(height: 14),
         _Section(
-          title: 'My preferences',
+          title: tr('My preferences', '我的偏好'),
           rows: [
             _Row(
               icon: Icons.palette_outlined,
               bg: Palette.peach,
-              label: 'Theme',
+              label: tr('Theme', '主题'),
               value: _themeLabel,
               onTap: _pickTheme,
             ),
             _Row(
               icon: Icons.menu_book_outlined,
               bg: Palette.mint,
-              label: 'Language',
-              value: 'English',
-              onTap: () => _say('Chinese is coming soon.'),
+              key: const Key('row-language'),
+              label: tr('Language', '语言'),
+              value: zh ? '中文' : 'English',
+              onTap: _pickLanguage,
             ),
           ],
         ),
         const SizedBox(height: 14),
         _Section(
-          title: 'More',
+          title: tr('More', '更多功能'),
           rows: [
             _Row(
               icon: Icons.person_outline,
               bg: Palette.peach,
-              label: 'Privacy',
+              key: const Key('row-account'),
+              label: tr('Account & security', '账号与安全'),
               onTap: () =>
                   showTinySheet<void>(context, (_) => const _PrivacySheet()),
             ),
@@ -225,26 +259,28 @@ class _MeTabState extends State<MeTab> {
               key: const Key('row-data'),
               icon: Icons.cloud_outlined,
               bg: Palette.mint,
-              label: 'Data, backup and reminders',
+              label: tr('Data, backup and reminders', '数据与备份'),
               onTap: widget.onSettings,
             ),
             _Row(
               icon: Icons.help_outline,
               bg: Palette.rose,
-              label: 'Help and feedback',
+              label: tr('Help and feedback', '帮助与反馈'),
               onTap: () =>
                   showTinySheet<void>(context, (_) => const _HelpSheet()),
             ),
             _Row(
               icon: Icons.info_outline,
               bg: Palette.sky,
-              label: 'About',
+              label: tr('About us', '关于我们'),
               onTap: () => showAboutDialog(
                 context: context,
                 applicationName: 'Tiny Habits Cat',
                 applicationVersion: '0.2.0',
-                applicationLegalese:
-                    'By Shenetic. Everything stays on your phone.',
+                applicationLegalese: tr(
+                  'By Shenetic. Everything stays on your phone.',
+                  '由 Shenetic 制作。所有数据都留在你的手机上。',
+                ),
               ),
             ),
           ],
@@ -363,7 +399,10 @@ class _Row extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         if (value != null)
-          Text(value!, style: const TextStyle(color: Palette.muted)),
+          Text(
+            value!,
+            style: const TextStyle(color: Palette.muted, fontSize: 15),
+          ),
         const Icon(Icons.chevron_right, color: Palette.muted, size: 20),
       ],
     ),
@@ -397,8 +436,8 @@ class _CompanionSheetState extends State<CompanionSheet> {
       mainAxisSize: MainAxisSize.min,
       children: [
         SheetHeader(
-          title: 'Your companion',
-          action: 'Save',
+          title: tr('Your companion', '你的伙伴'),
+          action: tr('Save', '保存'),
           onAction: () async {
             await Prefs.current.setCatName(_name.text);
             Remind.syncCheckIns(DayStore.current);
@@ -441,12 +480,15 @@ class _PrivacySheetState extends State<_PrivacySheet> {
     child: Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const SheetHeader(title: 'Privacy'),
+        SheetHeader(title: tr('Account & security', '账号与安全')),
         SwitchListTile.adaptive(
           key: const Key('chat-on'),
-          title: const Text('Chat with the cat'),
-          subtitle: const Text(
-            'Replies are made on this phone. Turn off to stop the cat reading your day.',
+          title: Text(tr('Chat with the cat', '和小猫聊天')),
+          subtitle: Text(
+            tr(
+              'Replies are made on this phone. Turn off to stop the cat reading your day.',
+              '回复在这台手机上生成。关掉后，小猫就不会读取你的一天。',
+            ),
           ),
           value: Prefs.current.chatOn,
           onChanged: (v) async {
@@ -454,11 +496,24 @@ class _PrivacySheetState extends State<_PrivacySheet> {
             setState(() {});
           },
         ),
-        const ListTile(
-          leading: Icon(Icons.lock_outline),
-          title: Text('Everything stays on your phone'),
+        ListTile(
+          leading: const Icon(Icons.visibility_off_outlined),
+          title: Text(tr('Private tasks', '不公开的事')),
           subtitle: Text(
-            'Tasks, moods, notes and expenses are never uploaded. Back them up from Data.',
+            tr(
+              'Tasks marked Private are never read or shared by the cat.',
+              '标为不公开的事，小猫不会读取，也不会分享。',
+            ),
+          ),
+        ),
+        ListTile(
+          leading: const Icon(Icons.lock_outline),
+          title: Text(tr('Everything stays on your phone', '所有数据都留在手机上')),
+          subtitle: Text(
+            tr(
+              'Tasks, moods, notes and expenses are never uploaded. Back them up from Data.',
+              '任务、心情、笔记和账目都不会上传。可以在「数据」里备份。',
+            ),
           ),
         ),
         const SizedBox(height: 16),
@@ -472,30 +527,55 @@ class _HelpSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const tips = [
-      ('Add a task', 'Tap + on Home. Tap the time on the right to set when.'),
+    final tips = [
       (
-        'Make a stack',
-        'Hold + to make a list of steps. Home shows only the next step.',
+        tr('Add a task', '添加一件事'),
+        tr(
+          'Tap + on Home. Tap the time on the right to set when.',
+          '在首页点 +。点右边的时间设定什么时候做。',
+        ),
       ),
       (
-        'Chat and Records',
-        'Swipe in from the left edge for Chat, from the right for Focus, Timeline and Notes.',
+        tr('Make a stack', '做成一叠'),
+        tr(
+          'Hold + to make a list of steps. Home shows only the next step.',
+          '长按 + 做一串步骤。首页只显示下一步。',
+        ),
       ),
       (
-        'Mood and calendar',
-        'The Dashboard shows each day: done tasks, mood and spending.',
+        tr('Keep it private', '不公开'),
+        tr(
+          'Turn on Private when adding a task, and the cat won’t read it.',
+          '添加时打开「不公开」，小猫就不会读取。',
+        ),
       ),
       (
-        'Money',
-        'Open Money on the Dashboard to snap receipts and see your month.',
+        tr('Chat and Records', '聊天和记录'),
+        tr(
+          'Swipe in from the left edge for Chat, from the right for Focus, Timeline and Notes.',
+          '从左边缘滑进来聊天，从右边缘滑进来是专注、时间轴和笔记。',
+        ),
+      ),
+      (
+        tr('Mood and calendar', '心情和日历'),
+        tr(
+          'The Dashboard shows each day: done tasks, mood and spending. Tap + on a day to plan it.',
+          '看板展示每一天：完成的事、心情和花销。点某天的 + 就能安排那天。',
+        ),
+      ),
+      (
+        tr('Money', '记账'),
+        tr(
+          'Open Money on the Dashboard to snap receipts and see your month.',
+          '在看板打开「记账」，拍小票、看本月花销。',
+        ),
       ),
     ];
     return SafeArea(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const SheetHeader(title: 'Help'),
+          SheetHeader(title: tr('Help', '帮助')),
           for (final (title, body) in tips)
             ListTile(title: Text(title), subtitle: Text(body)),
           const SizedBox(height: 16),

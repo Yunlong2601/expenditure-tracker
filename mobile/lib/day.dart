@@ -4,6 +4,8 @@ import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 
+import 'l10n.dart';
+
 String _id() =>
     '${DateTime.now().microsecondsSinceEpoch}${Random().nextInt(999)}';
 DateTime dayOf(DateTime t) => DateTime(t.year, t.month, t.day);
@@ -39,6 +41,7 @@ class Task {
     this.done = false,
     this.doneAt,
     this.note,
+    this.private = false,
     List<StackStep>? steps,
   }) : id = id ?? _id(),
        steps = steps ?? [];
@@ -52,6 +55,9 @@ class Task {
   bool done;
   DateTime? doneAt;
   String? note;
+
+  /// Private tasks stay out of what the cat reads and shares.
+  bool private;
   final List<StackStep> steps;
 
   bool get isStack => steps.isNotEmpty;
@@ -70,6 +76,7 @@ class Task {
         ? null
         : DateTime.parse(j['done_at'] as String),
     note: j['note'] as String?,
+    private: j['private'] == true,
     steps: [
       for (final s in (j['steps'] as List? ?? const []))
         StackStep.fromJson((s as Map).cast()),
@@ -83,6 +90,7 @@ class Task {
     if (done) 'done': true,
     if (doneAt != null) 'done_at': doneAt!.toIso8601String(),
     if (note != null) 'note': note,
+    if (private) 'private': true,
     if (steps.isNotEmpty) 'steps': [for (final s in steps) s.toJson()],
   };
 }
@@ -161,6 +169,10 @@ class CheckIn {
     'Cheer me on',
     'Review the day together',
   ];
+  static const kindsZh = ['看看进度', '给我打气', '一起复盘今天'];
+
+  /// The kind's name in the app's language.
+  static String label(int kind) => (zh ? kindsZh : kinds)[kind];
 
   factory CheckIn.fromJson(Map<String, dynamic> j) => CheckIn(
     id: j['id'] as String,
@@ -300,11 +312,13 @@ class DayStore extends ChangeNotifier {
     DateTime? day,
     int? minutes,
     List<StackStep>? steps,
+    bool private = false,
   }) async {
     final t = Task(
       title: title,
       day: dayOf(day ?? DateTime.now()),
       minutes: minutes,
+      private: private,
       steps: steps,
     );
     tasks.add(t);
@@ -336,22 +350,37 @@ class DayStore extends ChangeNotifier {
 
   /// The guided list from the welcome cards, added once.
   Future<void> addGettingStarted() async {
-    if (tasks.any((t) => t.title == gettingStartedTitle)) return;
+    if (tasks.any(isGettingStarted)) return;
     await addTask(
       gettingStartedTitle,
       steps: [for (final s in gettingStartedSteps) StackStep(s)],
     );
   }
 
-  static const gettingStartedTitle = 'Part 1 · Plan your day';
-  static const gettingStartedSteps = [
-    'Tap + to add something for today',
-    'Tap the time on the right to set when',
-    'Tap the circle on the left when it’s done',
-    'Hold + and drag down to make a stack',
-    'Tap this task to see how stacks work',
-    'Swipe in from the right edge to start a focus',
+  static const _gettingStartedTitles = [
+    'Part 1 · Plan your day',
+    '第一部分 · 安排你的一天',
   ];
+  static bool isGettingStarted(Task? t) =>
+      t != null && _gettingStartedTitles.contains(t.title);
+  static String get gettingStartedTitle => _gettingStartedTitles[zh ? 1 : 0];
+  static List<String> get gettingStartedSteps => zh
+      ? const [
+          '点 + 添加今天要做的事',
+          '点右边的时间，设定什么时候做',
+          '做完了就点左边的圆圈',
+          '按住 + 往下拖，做成一叠',
+          '点这件事，看看一叠是怎么用的',
+          '从屏幕右边缘往里滑，开始专注',
+        ]
+      : const [
+          'Tap + to add something for today',
+          'Tap the time on the right to set when',
+          'Tap the circle on the left when it’s done',
+          'Hold + and drag down to make a stack',
+          'Tap this task to see how stacks work',
+          'Swipe in from the right edge to start a focus',
+        ];
 
   // Moods and the rest.
 

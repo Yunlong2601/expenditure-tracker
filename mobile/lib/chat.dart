@@ -1,12 +1,12 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart' show DateFormat;
 
 import 'companion.dart';
 import 'day.dart';
 import 'feel.dart';
 import 'home_tab.dart' show clock;
+import 'l10n.dart';
 import 'prefs.dart';
 import 'remind.dart';
 import 'theme.dart';
@@ -90,16 +90,16 @@ class _ChatScreenState extends State<ChatScreen> {
     final yes = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Clear this chat?'),
-        content: const Text('Memories and the notebook stay.'),
+        title: Text(tr('Clear this chat?', '清空聊天记录？')),
+        content: Text(tr('Memories and the notebook stay.', '宠物记忆和小本本会保留。')),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
+            child: Text(tr('Cancel', '取消')),
           ),
           FilledButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Clear'),
+            child: Text(tr('Clear', '清空')),
           ),
         ],
       ),
@@ -141,7 +141,7 @@ class _ChatScreenState extends State<ChatScreen> {
                     ),
                     const SizedBox(width: 5),
                     Text(
-                      'Online',
+                      tr('Online', '在线'),
                       style: t.bodySmall?.copyWith(color: Palette.muted),
                     ),
                   ],
@@ -153,7 +153,7 @@ class _ChatScreenState extends State<ChatScreen> {
         actions: [
           IconButton.filledTonal(
             key: const Key('chat-clear'),
-            tooltip: 'Clear chat',
+            tooltip: tr('Clear chat', '清空聊天'),
             onPressed: _clear,
             icon: const Icon(Icons.delete_outline),
           ),
@@ -161,10 +161,10 @@ class _ChatScreenState extends State<ChatScreen> {
             key: const Key('chat-menu'),
             icon: const Icon(Icons.more_horiz),
             onSelected: _menu,
-            itemBuilder: (_) => const [
-              PopupMenuItem(value: 'checkins', child: Text('Check-ins')),
-              PopupMenuItem(value: 'memory', child: Text('What I remember')),
-              PopupMenuItem(value: 'notebook', child: Text('My notebook')),
+            itemBuilder: (_) => [
+              PopupMenuItem(value: 'checkins', child: Text(tr('Check-ins', '主动关心'))),
+              PopupMenuItem(value: 'memory', child: Text(tr('What I remember', '宠物记忆'))),
+              PopupMenuItem(value: 'notebook', child: Text(tr('My notebook', '小本本'))),
             ],
           ),
           const SizedBox(width: 8),
@@ -185,10 +185,10 @@ class _ChatScreenState extends State<ChatScreen> {
                     for (final e in lines)
                       _Bubble(text: e.text, mine: e.kind == 'me'),
                     _Bubble(
-                      text: 'Hi! You’re here~\nHow’s your day going?',
+                      text: tr('Hi! You’re here~\nHow’s your day going?', '嗨！你来啦~\n今天过得怎么样？'),
                       mine: false,
-                      link: 'See what I can help with',
-                      onLink: () => _send('What can you help with?'),
+                      link: tr('See what I can help with', '看看我能帮你做什么'),
+                      onLink: () => _send(tr('What can you help with?', '你能帮我做什么？')),
                     ),
                   ],
                 ),
@@ -209,44 +209,38 @@ class _ChatScreenState extends State<ChatScreen> {
                     child: Row(
                       children: [
                         IconButton(
-                          tooltip: 'Share today’s list',
+                          tooltip: tr('Share today’s list', '分享今天的清单'),
                           icon: const Icon(Icons.add),
-                          onPressed: () => _send('Here’s my list for today'),
+                          onPressed: () => _send(tr('Here’s my list for today', '这是我今天的清单')),
                         ),
                         Expanded(
                           child: TextField(
                             key: const Key('chat-field'),
                             controller: _c,
                             textCapitalization: TextCapitalization.sentences,
-                            decoration: const InputDecoration(
-                              hintText: 'Chat with me…',
+                            decoration: InputDecoration(
+                              hintText: tr('Chat with me…', '和我聊聊吧…'),
                               border: InputBorder.none,
                             ),
                             onSubmitted: _send,
                           ),
                         ),
                         PopupMenuButton<String>(
-                          tooltip: 'Quick asks',
+                          tooltip: tr('Quick asks', '快捷提问'),
                           icon: const Icon(Icons.bolt_outlined),
                           onSelected: _send,
-                          itemBuilder: (_) => const [
-                            PopupMenuItem(
-                              value: 'Cheer me on',
-                              child: Text('Cheer me on'),
-                            ),
-                            PopupMenuItem(
-                              value: 'What’s left today?',
-                              child: Text('What’s left today?'),
-                            ),
-                            PopupMenuItem(
-                              value: 'Let’s review my day',
-                              child: Text('Let’s review my day'),
-                            ),
+                          itemBuilder: (_) => [
+                            for (final q in [
+                              tr('Cheer me on', '给我打气'),
+                              tr('What’s left today?', '今天还剩什么？'),
+                              tr('Let’s review my day', '一起复盘今天吧'),
+                            ])
+                              PopupMenuItem(value: q, child: Text(q)),
                           ],
                         ),
                         IconButton.filled(
                           key: const Key('chat-send'),
-                          tooltip: 'Send',
+                          tooltip: tr('Send', '发送'),
                           style: IconButton.styleFrom(
                             backgroundColor: cs.primary.withValues(alpha: 0.75),
                           ),
@@ -344,79 +338,96 @@ String catReply(
 }) {
   final r = random ?? Random();
   final m = said.toLowerCase();
+  bool has(List<String> words) => words.any(m.contains);
   final today = DateTime.now();
-  final left = s.tasksOn(today).where((t) => !t.done).toList();
-  final done = s.doneOn(today).length;
+  // Private tasks are never read by the cat.
+  final mine = s.tasksOn(today).where((t) => !t.private).toList();
+  final left = mine.where((t) => !t.done).toList();
+  final done = s.doneOn(today).where((t) => !t.private).length;
   String pick(List<String> o) => o[r.nextInt(o.length)];
 
-  if (m.startsWith('remember ')) {
-    final what = said.substring(9).trim();
-    s.memories.add(Entry(at: today, text: what));
-    return 'Got it, I’ll remember: “$what”. You can see it under What I remember.';
+  for (final start in ['remember ', '记住', '帮我记住']) {
+    if (m.startsWith(start)) {
+      final what = said.substring(start.length).replaceFirst(RegExp(r'^[:：，,\s]+'), '').trim();
+      s.memories.add(Entry(at: today, text: what));
+      return tr(
+        'Got it, I’ll remember: “$what”. You can see it under What I remember.',
+        '记住啦：“$what”。在「宠物记忆」里可以看到。',
+      );
+    }
   }
-  if (m.contains('help')) {
-    return 'I can tell you what’s left today, cheer you on, review your day with you, and remember small things. '
-        'Start a message with “remember” and I’ll keep it.';
+  if (has(['help', '帮', '能做什么'])) {
+    return tr(
+      'I can tell you what’s left today, cheer you on, review your day with you, and remember small things. '
+          'Start a message with “remember” and I’ll keep it.',
+      '我可以告诉你今天还剩什么、给你打气、陪你复盘，还能记住小事。用“记住”开头说给我听，我就会记下来。',
+    );
   }
-  if (m.contains('left') ||
-      m.contains('list') ||
-      m.contains('todo') ||
-      m.contains('to-do') ||
-      m.contains('task')) {
+  if (has(['left', 'list', 'todo', 'to-do', 'task', '还剩', '清单', '任务', '待办', '要做'])) {
     if (left.isEmpty) {
       return done == 0
-          ? 'Your list is empty. Want to add one small thing?'
-          : 'All done! $done things finished today.';
+          ? tr('Your list is empty. Want to add one small thing?', '清单还是空的，要不要加一件小事？')
+          : tr('All done! $done things finished today.', '全部完成！今天做完了 $done 件事。');
     }
     final next = left.first;
-    final at = next.minutes == null
-        ? ''
-        : ' at ${DateFormat('HH:mm').format(DateTime(0, 1, 1, 0, next.minutes!))}';
-    return '${left.length} left. Next up: ${next.topStep?.title ?? next.title}$at. You’ve got this.';
+    final name = next.topStep?.title ?? next.title;
+    final at = next.minutes == null ? '' : clockText(next.minutes!);
+    return tr(
+      '${left.length} left. Next up: $name${at.isEmpty ? '' : ' at $at'}. You’ve got this.',
+      '还剩 ${left.length} 件。下一件：$name${at.isEmpty ? '' : '（$at）'}。你可以的！',
+    );
   }
-  if (m.contains('spend') || m.contains('spent') || m.contains('money')) {
+  if (has(['spend', 'spent', 'money', '花', '钱', '账'])) {
     final v = spentToday?.call();
     return v == null
-        ? 'Open Money on the Dashboard to see it.'
-        : 'Today you spent $v.';
+        ? tr('Open Money on the Dashboard to see it.', '在看板的「记账」里可以看到。')
+        : tr('Today you spent $v.', '今天花了 $v。');
   }
-  if (m.contains('review')) {
+  if (has(['review', '复盘', '回顾'])) {
     final mood = s.moodOf(today);
     final f = s.focusMinutesOn(today);
-    return 'Today: $done done, ${left.length} still open, $f min of focus'
-        '${mood == null ? '' : ', and you felt ${mood.label.toLowerCase()}'}. '
-        '${done > 0 ? 'That’s real progress.' : 'Tomorrow is a fresh page.'}';
+    return tr(
+      'Today: $done done, ${left.length} still open, $f min of focus'
+          '${mood == null ? '' : ', and you felt ${mood.label.toLowerCase()}'}. '
+          '${done > 0 ? 'That’s real progress.' : 'Tomorrow is a fresh page.'}',
+      '今天：完成 $done 件，还有 ${left.length} 件，专注 $f 分钟'
+          '${mood == null ? '' : '，心情${mood.zh}'}。'
+          '${done > 0 ? '这是实实在在的进步。' : '明天又是新的一页。'}',
+    );
   }
-  if (m.contains('tired') ||
-      m.contains('sad') ||
-      m.contains('anxious') ||
-      m.contains('stress') ||
-      m.contains('bad')) {
+  if (has(['tired', 'sad', 'anxious', 'stress', 'bad', '累', '难过', '焦虑', '压力', '烦', '不开心'])) {
     return pick([
-      'That sounds hard. Want to log it in your mood diary? Even a small rest counts as a task today.',
-      'I’m here. Maybe drink some water and pick just one tiny thing.',
+      tr(
+        'That sounds hard. Want to log it in your mood diary? Even a small rest counts as a task today.',
+        '听起来好辛苦。要不要记进心情日记？今天休息一下也算完成一件事。',
+      ),
+      tr('I’m here. Maybe drink some water and pick just one tiny thing.', '我在呢。先喝口水，只挑一件很小的事做就好。'),
     ]);
   }
-  if (m.contains('cheer') || m.contains('encourage')) {
+  if (has(['cheer', 'encourage', '鼓励', '加油', '打气'])) {
     return pick([
-      'You’re doing better than you think!',
-      'One step, then another. I’m right here.',
-      'Proud of you for showing up today.',
+      tr('You’re doing better than you think!', '你比自己想的还要棒！'),
+      tr('One step, then another. I’m right here.', '一步，再一步。我一直在这里。'),
+      tr('Proud of you for showing up today.', '今天你也来了，为你骄傲。'),
     ]);
   }
-  if (m.contains('happy') || m.contains('good') || m.contains('great')) {
+  if (has(['happy', 'good', 'great', '开心', '不错', '棒', '好耶'])) {
     return pick([
-      'Yay! That makes my tail swish.',
-      'Love that for you. Tell me more?',
+      tr('Yay! That makes my tail swish.', '耶！我的尾巴都摇起来了。'),
+      tr('Love that for you. Tell me more?', '真好呀，再多说一点？'),
     ]);
   }
   return pick([
-    'Mm-hm, I’m listening.',
-    'Tell me more?',
-    'Thanks for telling me. Anything you want to get done next?',
-    'I’ll sit right here with you.',
+    tr('Mm-hm, I’m listening.', '嗯嗯，我在听。'),
+    tr('Tell me more?', '再多说一点？'),
+    tr('Thanks for telling me. Anything you want to get done next?', '谢谢你告诉我。接下来想做点什么吗？'),
+    tr('I’ll sit right here with you.', '我就在这里陪着你。'),
   ]);
 }
+
+/// "09:30" from minutes after midnight.
+String clockText(int minutes) =>
+    '${(minutes ~/ 60).toString().padLeft(2, '0')}:${(minutes % 60).toString().padLeft(2, '0')}';
 
 /// Writes a short page for each past day she chatted, once.
 void writeNotebook(DayStore s) {
@@ -429,16 +440,20 @@ void writeNotebook(DayStore s) {
     final talked = s.chat
         .where((e) => sameDay(e.at, d) && e.kind == 'me')
         .length;
-    final done = s.doneOn(d).length;
+    final done = s.doneOn(d).where((t) => !t.private).length;
     final mood = s.moodOf(d);
     s.notebook.add(
       Entry(
         at: d,
-        text:
-            '${talked == 1 ? 'We chatted once' : 'We chatted $talked times'} that day. '
-            '${done > 0 ? 'You finished ${done == 1 ? 'one thing' : '$done things'}. ' : ''}'
-            '${mood != null ? 'You felt ${mood.label.toLowerCase()}. ' : ''}'
-            'I’m glad you came by.',
+        text: zh
+            ? '那天我们聊了 $talked 次。'
+                  '${done > 0 ? '你完成了 $done 件事。' : ''}'
+                  '${mood != null ? '你的心情是${mood.zh}。' : ''}'
+                  '你来找我，我很开心。'
+            : '${talked == 1 ? 'We chatted once' : 'We chatted $talked times'} that day. '
+                  '${done > 0 ? 'You finished ${done == 1 ? 'one thing' : '$done things'}. ' : ''}'
+                  '${mood != null ? 'You felt ${mood.label.toLowerCase()}. ' : ''}'
+                  'I’m glad you came by.',
       ),
     );
     wrote = true;
@@ -479,14 +494,14 @@ class ConsentSheet extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SheetHeader(title: 'Before you chat'),
+            SheetHeader(title: tr('Before you chat', '聊天前须知')),
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'The cat’s replies are made on this phone. To understand you, it looks at:',
+                    tr('The cat’s replies are made on this phone. To understand you, it looks at:', '小猫的回复在这台手机上生成。为了更懂你，它会参考：'),
                     style: t.bodyLarge?.copyWith(height: 1.45),
                   ),
                   const SizedBox(height: 12),
@@ -503,38 +518,39 @@ class ConsentSheet extends StatelessWidget {
                       children: [
                         row(
                           Icons.chat_bubble_outline,
-                          'Your messages and recent chat',
+                          tr('Your messages and recent chat', '你的消息和最近的聊天'),
                         ),
                         row(
                           Icons.favorite_border,
-                          'Things the cat remembers about you',
+                          tr('Things the cat remembers about you', '小猫记住的关于你的事'),
                         ),
                         row(
                           Icons.assignment_outlined,
-                          'Your tasks, moods and focus for today',
+                          tr('Your public tasks, moods and focus for today', '你今天公开的任务、心情和专注'),
                         ),
                       ],
                     ),
                   ),
                   const SizedBox(height: 12),
-                  check('Nothing leaves your phone'),
-                  check('Tasks, focus and records work fine without chat'),
-                  check('You can turn it off any time in Me → Privacy'),
+                  check(tr('Nothing leaves your phone', '数据不会离开你的手机')),
+                  check(tr('Private tasks are never read', '不公开的事不会被读取')),
+                  check(tr('Tasks, focus and records work fine without chat', '不聊天也能正常使用任务、专注和记录')),
+                  check(tr('You can turn it off any time in Me → Account & security', '随时可以在「我的 → 账号与安全」里关闭')),
                   const SizedBox(height: 20),
                   SizedBox(
                     width: double.infinity,
                     child: FilledButton(
                       key: const Key('consent-yes'),
                       onPressed: () => Navigator.of(context).pop(true),
-                      child: const Text('Agree and start chatting'),
+                      child: Text(tr('Agree and start chatting', '同意并开始聊天')),
                     ),
                   ),
                   Center(
                     child: TextButton(
                       onPressed: () => Navigator.of(context).pop(false),
-                      child: const Text(
-                        'Not now',
-                        style: TextStyle(color: Palette.muted),
+                      child: Text(
+                        tr('Not now', '暂不'),
+                        style: const TextStyle(color: Palette.muted),
                       ),
                     ),
                   ),
@@ -561,8 +577,8 @@ class CheckInsSheet extends StatelessWidget {
       builder: (context, _) => Column(
         children: [
           SheetHeader(
-            title: 'Check-ins',
-            action: 'New',
+            title: tr('Check-ins', '主动关心'),
+            action: tr('New', '新建'),
             onAction: () => _add(context, 0),
           ),
           Expanded(
@@ -580,7 +596,7 @@ class CheckInsSheet extends StatelessWidget {
                   ),
                   child: Row(
                     children: [
-                      const Text('Pause check-ins'),
+                      Text(tr('Pause check-ins', '暂停主动关心')),
                       const SizedBox(width: 8),
                       Switch.adaptive(
                         key: const Key('pause-checkins'),
@@ -593,23 +609,23 @@ class CheckInsSheet extends StatelessWidget {
                       ),
                       const Spacer(),
                       Text(
-                        'On this phone',
+                        tr('On this phone', '仅在本机'),
                         style: t.bodySmall?.copyWith(color: Palette.muted),
                       ),
                     ],
                   ),
                 ),
                 const SizedBox(height: 8),
-                for (final (k, label) in CheckIn.kinds.indexed) ...[
+                for (final (k, _) in CheckIn.kinds.indexed) ...[
                   ListTile(
                     contentPadding: EdgeInsets.zero,
-                    title: Text(label, style: t.titleMedium),
+                    title: Text(CheckIn.label(k), style: t.titleMedium),
                     trailing: TextButton.icon(
                       key: Key('checkin-new-$k'),
                       onPressed: () => _add(context, k),
                       iconAlignment: IconAlignment.end,
                       icon: const Icon(Icons.add),
-                      label: const Text('New'),
+                      label: Text(tr('New', '新建')),
                     ),
                   ),
                   for (final c in store.checkIns.where((c) => c.kind == k))
@@ -617,9 +633,9 @@ class CheckInsSheet extends StatelessWidget {
                       dense: true,
                       contentPadding: const EdgeInsets.only(left: 12),
                       leading: const Icon(Icons.notifications_none, size: 20),
-                      title: Text('Every day at ${clock(context, c.minutes)}'),
+                      title: Text(tr('Every day at ${clock(context, c.minutes)}', '每天 ${clock(context, c.minutes)}')),
                       trailing: IconButton(
-                        tooltip: 'Delete',
+                        tooltip: tr('Delete', '删除'),
                         icon: const Icon(Icons.close, size: 18),
                         onPressed: () async {
                           await store.remove(store.checkIns, c);
@@ -650,9 +666,12 @@ class CheckInsSheet extends StatelessWidget {
     await Remind.syncCheckIns(store);
     if (!allowed && context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text(
-            'Allow notifications for Tiny Habits Cat in iPhone Settings to get check-ins.',
+            tr(
+              'Allow notifications for Tiny Habits Cat in iPhone Settings to get check-ins.',
+              '在 iPhone 设置里允许 Tiny Habits Cat 发通知，才能收到主动关心。',
+            ),
           ),
           behavior: SnackBarBehavior.floating,
         ),
@@ -678,23 +697,23 @@ class _MemorySheetState extends State<MemorySheet> {
     final v = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Something to remember'),
+        title: Text(tr('Something to remember', '要记住的事')),
         content: TextField(
           key: const Key('memory-field'),
           controller: c,
           autofocus: true,
-          decoration: const InputDecoration(
-            hintText: 'I like oat milk, my exam is in June…',
+          decoration: InputDecoration(
+            hintText: tr('I like oat milk, my exam is in June…', '我喜欢燕麦奶，六月要考试……'),
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cancel'),
+            child: Text(tr('Cancel', '取消')),
           ),
           FilledButton(
             onPressed: () => Navigator.of(ctx).pop(c.text),
-            child: const Text('Save'),
+            child: Text(tr('Save', '保存')),
           ),
         ],
       ),
@@ -717,8 +736,8 @@ class _MemorySheetState extends State<MemorySheet> {
         return Column(
           children: [
             SheetHeader(
-              title: 'What I remember',
-              action: 'New',
+              title: tr('What I remember', '宠物记忆'),
+              action: tr('New', '新建'),
               onAction: _add,
             ),
             Expanded(
@@ -734,13 +753,13 @@ class _MemorySheetState extends State<MemorySheet> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'The important things, I’ll keep',
+                              tr('The important things, I’ll keep', '重要的事，我会记得'),
                               style: t.titleMedium?.copyWith(
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
                             Text(
-                              'You don’t need to repeat them. Ask me to forget any time.',
+                              tr('You don’t need to repeat them. Ask me to forget any time.', '不用重复告诉我。想让我忘掉，随时说。'),
                               style: t.bodySmall?.copyWith(
                                 color: Palette.muted,
                               ),
@@ -754,7 +773,7 @@ class _MemorySheetState extends State<MemorySheet> {
                   TextField(
                     onChanged: (v) => setState(() => _q = v),
                     decoration: InputDecoration(
-                      hintText: 'Search memories',
+                      hintText: tr('Search memories', '搜索记忆'),
                       filled: true,
                       fillColor: Palette.sand,
                       suffixText: '${s.memories.length}',
@@ -767,14 +786,14 @@ class _MemorySheetState extends State<MemorySheet> {
                   const SizedBox(height: 18),
                   if (s.memories.isEmpty) ...[
                     Text(
-                      'Start with one small thing?',
+                      tr('Start with one small thing?', '从一件小事开始？'),
                       style: t.titleMedium?.copyWith(
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Tell me what you like, or tap New in the top right.',
+                      tr('Tell me what you like, or tap New in the top right.', '告诉我你喜欢什么，或者点右上角的新建。'),
                       style: t.bodyMedium?.copyWith(color: Palette.muted),
                     ),
                   ],
@@ -788,7 +807,7 @@ class _MemorySheetState extends State<MemorySheet> {
                       ),
                       title: Text(m.text),
                       trailing: IconButton(
-                        tooltip: 'Forget',
+                        tooltip: tr('Forget', '忘掉'),
                         icon: const Icon(Icons.close, size: 18),
                         onPressed: () => s.remove(s.memories, m),
                       ),
@@ -815,7 +834,7 @@ class NotebookSheet extends StatelessWidget {
     final pages = store.notebook.reversed.toList();
     return Column(
       children: [
-        const SheetHeader(title: 'My notebook'),
+        SheetHeader(title: tr('My notebook', '小本本')),
         Expanded(
           child: ListView(
             padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -828,13 +847,13 @@ class NotebookSheet extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        '$name’s little notes',
+                        tr('$name’s little notes', '$name的小本本'),
                         style: t.titleMedium?.copyWith(
                           fontWeight: FontWeight.w700,
                         ),
                       ),
                       Text(
-                        'A bit at a time, as I think of things.',
+                        tr('A bit at a time, as I think of things.', '想到什么，就一点点记下来。'),
                         style: t.bodySmall?.copyWith(color: Palette.muted),
                       ),
                     ],
@@ -850,13 +869,13 @@ class NotebookSheet extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  'The first page is still brewing',
+                  tr('The first page is still brewing', '第一页还在酝酿中'),
                   textAlign: TextAlign.center,
                   style: t.titleMedium?.copyWith(fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Chat with me for a bit, and the next day I’ll write down the little things worth keeping.',
+                  tr('Chat with me for a bit, and the next day I’ll write down the little things worth keeping.', '和我聊一会儿，第二天我会把值得留下的小事写下来。'),
                   textAlign: TextAlign.center,
                   style: t.bodyMedium?.copyWith(
                     color: Palette.muted,
@@ -872,7 +891,7 @@ class NotebookSheet extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          DateFormat('EEEE, d MMM').format(p.at),
+                          longDay(p.at),
                           style: t.labelLarge?.copyWith(color: Palette.sage),
                         ),
                         const SizedBox(height: 6),

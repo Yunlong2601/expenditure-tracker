@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'companion.dart';
 import 'feel.dart';
 import 'prefs.dart';
+import 'l10n.dart';
 import 'theme.dart';
 
 /// Three welcome cards over Home (IMG_6793 to 6795). [onDone] gets true when
@@ -25,18 +26,18 @@ class _OnboardingState extends State<Onboarding> {
     final pages = [
       (
         const CatAvatar(size: 130),
-        'Hi, I’m $name',
-        'I’m here for the little things: a reminder when it’s time, company while you focus, and a chat about your day.',
+        tr('Hi, I’m $name', '嗨，我是 $name'),
+        tr('I’m here for the little things: a reminder when it’s time, company while you focus, and a chat about your day.', '我会陪你做好生活里的小事：到点提醒你，专注时陪着你，还能和你聊聊今天。'),
       ),
       (
         const _SwipeHint(),
-        'Swipe to find us',
-        'On Home, swipe in from the left edge to chat with me. Swipe in from the right for Focus, Timeline and Notes.',
+        tr('Swipe to find us', '滑一下就能找到我们'),
+        tr('On Home, swipe in from the left edge to chat with me. Swipe in from the right for Focus, Timeline and Notes.', '在首页从左边缘滑进来就能和我聊天；从右边缘滑进来是专注、时间轴和笔记。'),
       ),
       (
         const CatFigure(size: 120),
-        'Start with one small thing',
-        'Tap + beside your list and add one thing for today. The Getting started list on Home walks you through the rest, one short part at a time.',
+        tr('Start with one small thing', '从一件小事开始'),
+        tr('Tap + beside your list and add one thing for today. The Getting started list on Home walks you through the rest, one short part at a time.', '点清单旁的 +，给今天加一件事。首页的新手清单会一小段一小段地带你熟悉其他功能。'),
       ),
     ];
     final (art, title, body) = pages[_page];
@@ -102,15 +103,15 @@ class _OnboardingState extends State<Onboarding> {
                           if (last) return widget.onDone(true);
                           setState(() => _page++);
                         },
-                        child: Text(last ? 'Let’s go' : 'Next'),
+                        child: Text(last ? tr('Let’s go', '开始吧') : tr('Next', '下一步')),
                       ),
                     ),
                     if (!last)
                       TextButton(
                         key: const Key('onboard-skip'),
                         onPressed: () => widget.onDone(false),
-                        child: const Text(
-                          'Skip',
+                        child: Text(
+                          tr('Skip', '跳过'),
                           style: TextStyle(color: Palette.muted),
                         ),
                       )
@@ -140,7 +141,7 @@ class _SwipeHint extends StatelessWidget {
       borderRadius: BorderRadius.circular(24),
       border: Border.all(color: Palette.line, width: 2),
     ),
-    child: const Stack(
+    child: Stack(
       children: [
         Align(
           alignment: Alignment.centerLeft,
@@ -155,8 +156,8 @@ class _SwipeHint extends StatelessWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              Text('Chat', style: TextStyle(color: Palette.ink)),
-              Text('Records', style: TextStyle(color: Palette.ink)),
+              Text(tr('Chat', '聊天'), style: TextStyle(color: Palette.ink)),
+              Text(tr('Records', '记录'), style: TextStyle(color: Palette.ink)),
             ],
           ),
         ),

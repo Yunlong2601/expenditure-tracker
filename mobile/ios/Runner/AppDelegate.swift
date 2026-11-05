@@ -177,6 +177,7 @@ enum Remind {
           let minute = a["minute"] as? Int
         else { return result(FlutterError(code: "bad_args", message: nil, details: nil)) }
         let skipToday = a["skipToday"] as? Bool ?? false
+        let texts = (a["lines"] as? [String]).flatMap { $0.isEmpty ? nil : $0 } ?? lines
         center.removePendingNotificationRequests(withIdentifiers: ids)
         let cal = Calendar.current
         let now = Date()
@@ -187,7 +188,7 @@ enum Remind {
           else { continue }
           let content = UNMutableNotificationContent()
           content.title = "Tiny Habits Cat"
-          content.body = lines[day % lines.count]
+          content.body = texts[day % texts.count]
           content.sound = .default
           let when = cal.dateComponents([.year, .month, .day, .hour, .minute], from: at)
           let trigger = UNCalendarNotificationTrigger(dateMatching: when, repeats: false)

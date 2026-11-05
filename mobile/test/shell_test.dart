@@ -80,13 +80,65 @@ void main() {
     expect(find.text('My preferences'), findsOneWidget);
   });
 
+  testWidgets('Me → Language switches the app to Chinese and back', (
+    tester,
+  ) async {
+    await Prefs.current.setOnboarded();
+    await tester.pumpWidget(_app(store));
+    expect(find.text('Pet'), findsOneWidget);
+    await tester.tap(find.text('Me'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(const Key('row-language')));
+    await tester.tap(find.byKey(const Key('row-language')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('lang-zh')));
+    await tester.pumpAndSettle();
+    expect(Prefs.current.language, 'zh');
+    expect(find.text('宠物'), findsOneWidget);
+    expect(find.text('我的偏好'), findsOneWidget);
+    expect(find.text('账号与安全'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('row-language')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('lang-en')));
+    await tester.pumpAndSettle();
+    expect(find.text('Pet'), findsOneWidget);
+    expect(find.text('Account & security'), findsOneWidget);
+  });
+
+  testWidgets('the + on the picked calendar day plans that day', (
+    tester,
+  ) async {
+    await Prefs.current.setOnboarded();
+    await tester.pumpWidget(_app(store));
+    await tester.tap(find.text('Dashboard').last);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('week-today-dot')), findsOneWidget);
+    final tomorrow = DateTime.now().add(const Duration(days: 1));
+    final cell = find.byKey(Key('day-${tomorrow.month}-${tomorrow.day}'));
+    await tester.ensureVisible(cell.first);
+    await tester.tap(cell.first);
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(const Key('day-add')));
+    await tester.tap(find.byKey(const Key('day-add')));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('task-title')), 'Pack bag');
+    await tester.tap(find.byKey(const Key('task-private')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('sheet-Save')));
+    await tester.pumpAndSettle();
+    final t = store.tasks.single;
+    expect(t.title, 'Pack bag');
+    expect(t.day, dayOf(tomorrow));
+    expect(t.private, isTrue);
+  });
+
   testWidgets('the Records tab opens on Timeline', (tester) async {
     await Prefs.current.setOnboarded();
     await tester.pumpWidget(_app(store));
     await tester.tap(find.byKey(const Key('edge-records')));
     await tester.pumpAndSettle();
     expect(find.text('What are you doing now?'), findsOneWidget);
-    await tester.tap(find.byKey(const Key('timeline-Study')));
+    await tester.tap(find.byKey(const Key('timeline-0')));
     await tester.pumpAndSettle();
     expect(store.timeline.single.text, 'Study');
   });

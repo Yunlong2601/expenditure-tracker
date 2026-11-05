@@ -2,12 +2,12 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart' show DateFormat;
 
 import 'companion.dart';
 import 'day.dart';
 import 'feel.dart';
 import 'kitty.dart';
+import 'l10n.dart';
 import 'theme.dart';
 
 /// Records (IMG_6782), opened by swiping in from the right on Home:
@@ -53,7 +53,7 @@ class _RecordsScreenState extends State<RecordsScreen> {
                           children: [
                             const BackButton(),
                             Text(
-                              'Records',
+                              tr('Records', '记录'),
                               style: t.headlineMedium?.copyWith(
                                 fontWeight: FontWeight.w800,
                               ),
@@ -67,12 +67,12 @@ class _RecordsScreenState extends State<RecordsScreen> {
                             spacing: 8,
                             children: [
                               for (final (i, label) in [
-                                'Timeline',
-                                'Focus',
-                                'Notes',
+                                tr('Timeline', '时间轴'),
+                                tr('Focus', '专注'),
+                                tr('Notes', '笔记'),
                               ].indexed)
                                 ChoiceChip(
-                                  key: Key('records-$label'),
+                                  key: Key('records-$i'),
                                   label: Text(label),
                                   selected: _tab == i,
                                   showCheckmark: false,
@@ -138,7 +138,7 @@ class AddLineState extends State<AddLine> {
     child: Row(
       children: [
         IconButton(
-          tooltip: 'Add',
+          tooltip: tr('Add', '添加'),
           icon: Icon(Icons.add, color: Colors.orange.shade400),
           onPressed: add,
         ),
@@ -168,12 +168,12 @@ class _Timeline extends StatelessWidget {
     final today = store.timeline
         .where((e) => sameDay(e.at, DateTime.now()))
         .toList();
-    final chips = ['Study', 'Work', 'Commute', 'Eat', 'Exercise', 'Rest'];
+    final chips = zh ? ['学习', '工作', '通勤', '吃饭', '运动', '休息'] : ['Study', 'Work', 'Commute', 'Eat', 'Exercise', 'Rest'];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         AddLine(
-          hint: 'What are you doing now?',
+          hint: tr('What are you doing now?', '现在在做什么？'),
           onAdd: (v) => store.add(store.timeline, v),
         ),
         const SizedBox(height: 12),
@@ -184,27 +184,27 @@ class _Timeline extends StatelessWidget {
               if (today.isEmpty) ...[
                 // Faded sample lines, as in the wireframe.
                 for (final (time, what) in [
-                  ('08:30', 'Wake up'),
-                  ('09:10', 'Study'),
-                  ('12:00', 'Lunch'),
+                  ('08:30', tr('Wake up', '起床')),
+                  ('09:10', tr('Study', '学习')),
+                  ('12:00', tr('Lunch', '吃饭')),
                 ])
                   Opacity(
                     opacity: 0.45,
                     child: _TimelineRow(
                       time: time,
                       text: what,
-                      last: what == 'Lunch',
+                      last: time == '12:00',
                     ),
                   ),
                 const SizedBox(height: 18),
                 Text(
-                  'No records yet',
+                  tr('No records yet', '还没有记录'),
                   textAlign: TextAlign.center,
                   style: t.titleMedium?.copyWith(fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'Write what you’re doing and the time is noted for you.',
+                  tr('Write what you’re doing and the time is noted for you.', '写下正在做的事，开始时间会自动记下'),
                   textAlign: TextAlign.center,
                   style: t.bodyMedium?.copyWith(color: Palette.muted),
                 ),
@@ -212,7 +212,7 @@ class _Timeline extends StatelessWidget {
               ] else
                 for (final (i, e) in today.indexed)
                   _TimelineRow(
-                    time: DateFormat('HH:mm').format(e.at),
+                    time: hhmm(e.at),
                     text: e.text,
                     last: i == today.length - 1,
                     onDelete: () => store.remove(store.timeline, e),
@@ -225,7 +225,7 @@ class _Timeline extends StatelessWidget {
                 children: [
                   for (final c in chips)
                     ActionChip(
-                      key: Key('timeline-$c'),
+                      key: Key('timeline-${chips.indexOf(c)}'),
                       label: Text(c),
                       onPressed: () => store
                           .add(store.timeline, c)
@@ -443,10 +443,10 @@ class _FocusTimerState extends State<FocusTimer> {
         children: [
           SegmentedButton<int>(
             showSelectedIcon: false,
-            segments: const [
-              ButtonSegment(value: 15, label: Text('15 min')),
-              ButtonSegment(value: 25, label: Text('25 min')),
-              ButtonSegment(value: 45, label: Text('45 min')),
+            segments: [
+              ButtonSegment(value: 15, label: Text(tr('15 min', '15 分钟'))),
+              ButtonSegment(value: 25, label: Text(tr('25 min', '25 分钟'))),
+              ButtonSegment(value: 45, label: Text(tr('45 min', '45 分钟'))),
             ],
             selected: {_f.length},
             onSelectionChanged: _f.started
@@ -493,8 +493,8 @@ class _FocusTimerState extends State<FocusTimer> {
                   },
                   child: Text(
                     _f.running
-                        ? 'Pause'
-                        : (_f.started ? 'Keep going' : 'Start focus'),
+                        ? tr('Pause', '暂停')
+                        : (_f.started ? tr('Keep going', '继续') : tr('Start focus', '开始专注')),
                   ),
                 ),
               ),
@@ -506,14 +506,14 @@ class _FocusTimerState extends State<FocusTimer> {
                     minimumSize: const Size(64, 52),
                   ),
                   onPressed: () => _f.finish(early: true),
-                  child: const Text('Done'),
+                  child: Text(tr('Done', '完成')),
                 ),
               ],
             ],
           ),
           const SizedBox(height: 16),
           Text(
-            'Focused today: $today min',
+            tr('Focused today: $today min', '今天已专注 $today 分钟'),
             style: t.bodyMedium?.copyWith(color: Palette.muted),
           ),
         ],
@@ -560,7 +560,7 @@ class _Notes extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         AddLine(
-          hint: 'Jot something down…',
+          hint: tr('Jot something down…', '随手记点什么……'),
           onAdd: (v) => store.add(store.notes, v),
         ),
         const SizedBox(height: 12),
@@ -568,7 +568,7 @@ class _Notes extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.all(32),
             child: Text(
-              'No notes yet. Ideas, lists, little thoughts: they all fit here.',
+              tr('No notes yet. Ideas, lists, little thoughts: they all fit here.', '还没有笔记。想法、清单、小心思，都可以放在这里。'),
               textAlign: TextAlign.center,
               style: t.bodyMedium?.copyWith(color: Palette.muted),
             ),
@@ -587,7 +587,7 @@ class _Notes extends StatelessWidget {
                     Text(n.text, style: t.bodyLarge),
                     const SizedBox(height: 6),
                     Text(
-                      DateFormat('d MMM, HH:mm').format(n.at),
+                      '${dayMonth(n.at)} ${hhmm(n.at)}',
                       style: t.bodySmall?.copyWith(color: Palette.muted),
                     ),
                   ],

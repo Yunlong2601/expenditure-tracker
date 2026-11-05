@@ -1,9 +1,9 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart' show DateFormat;
 
 import 'kitty.dart';
+import 'l10n.dart';
 
 /// The cat's face in a soft round frame, as used in headers and chat.
 class CatAvatar extends StatelessWidget {
@@ -102,7 +102,7 @@ class RoomScene extends StatelessWidget {
         children: [
           CustomPaint(
             painter: _RoomPainter(
-              DateFormat('EEE').format(DateTime.now()),
+              weekdayShort(DateTime.now()),
               dark,
             ),
           ),
@@ -260,7 +260,7 @@ class EdgeTab extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     return Semantics(
       button: true,
-      label: 'Open $label',
+      label: tr('Open $label', '打开$label'),
       child: GestureDetector(
         onTap: onTap,
         child: Container(

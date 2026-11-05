@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'l10n.dart';
+
 /// Tiny Habits Cat colours: warm cream paper, sage green and soft ink.
 class Palette {
   Palette._();
@@ -113,7 +115,7 @@ class SheetHeader extends StatelessWidget {
       child: Row(
         children: [
           IconButton.filledTonal(
-            tooltip: 'Close',
+            tooltip: tr('Close', '关闭'),
             style: IconButton.styleFrom(backgroundColor: cs.onSurface.withValues(alpha: 0.05)),
             icon: const Icon(Icons.close),
             onPressed: () => Navigator.of(context).maybePop(),

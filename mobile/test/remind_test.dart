@@ -41,12 +41,28 @@ void main() {
 
     await Prefs.current.setReminder(on: true);
     await Remind.sync(ledger);
-    expect(calls.last.arguments, {'hour': 21, 'minute': 0, 'skipToday': false});
+    expect(calls.last.arguments, {
+      'hour': 21,
+      'minute': 0,
+      'skipToday': false,
+      'lines': Remind.eveningLines,
+    });
 
     await ledger.add(amount: 3.5, currency: 'SGD');
     await Prefs.current.setReminder(on: true, at: 20 * 60 + 30);
     await Remind.sync(ledger);
-    expect(calls.last.arguments, {'hour': 20, 'minute': 30, 'skipToday': true});
+    expect(calls.last.arguments, {
+      'hour': 20,
+      'minute': 30,
+      'skipToday': true,
+      'lines': Remind.eveningLines,
+    });
+    await Prefs.current.setLanguage('zh');
+    await Remind.sync(ledger);
+    expect(
+      ((calls.last.arguments as Map)['lines'] as List).first,
+      contains('喵'),
+    );
   });
 
   test('settings survive a restart', () async {

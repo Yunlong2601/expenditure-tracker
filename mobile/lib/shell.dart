@@ -9,6 +9,7 @@ import 'feel.dart';
 import 'home_screen.dart';
 import 'home_tab.dart';
 import 'kitty.dart';
+import 'l10n.dart';
 import 'ledger.dart';
 import 'me_tab.dart';
 import 'reader.dart';
@@ -66,7 +67,7 @@ class _AppShellState extends State<AppShell> {
   }
 
   String _spentToday() =>
-      spentOn(widget.ledger, DateTime.now()) ?? 'nothing so far';
+      spentOn(widget.ledger, DateTime.now()) ?? tr('nothing so far', '还没有');
 
   VoidCallback? get _money {
     final l = widget.ledger;
@@ -118,6 +119,10 @@ class _AppShellState extends State<AppShell> {
             MeTab(
               onSettings: _settings,
               onThemeChanged: widget.onThemeChanged ?? () {},
+              onLanguageChanged: () {
+                final l = widget.ledger;
+                if (l != null) Remind.sync(l);
+              },
             ),
           ],
         ),
@@ -128,22 +133,22 @@ class _AppShellState extends State<AppShell> {
           HapticFeedback.selectionClick();
           setState(() => _tab = i);
         },
-        destinations: const [
+        destinations: [
           NavigationDestination(
-            icon: SizedBox.square(
+            icon: const SizedBox.square(
               dimension: 28,
               child: CustomPaint(painter: CatPainter(paw: false)),
             ),
-            label: 'Pet',
+            label: tr('Pet', '宠物'),
           ),
           NavigationDestination(
-            icon: Icon(Icons.bar_chart_rounded),
-            label: 'Dashboard',
+            icon: const Icon(Icons.bar_chart_rounded),
+            label: tr('Dashboard', '看板'),
           ),
           NavigationDestination(
-            icon: Icon(Icons.person_outline),
-            selectedIcon: Icon(Icons.person),
-            label: 'Me',
+            icon: const Icon(Icons.person_outline),
+            selectedIcon: const Icon(Icons.person),
+            label: tr('Me', '我'),
           ),
         ],
       ),

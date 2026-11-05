@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'format.dart';
+import 'l10n.dart';
 
 /// Asks how many people (her included) share a bill, and optionally who.
 /// Returns null when cancelled.
@@ -35,12 +36,12 @@ class _SplitDialogState extends State<_SplitDialog> {
     final t = Theme.of(context).textTheme;
     final each = widget.total / _people;
     return AlertDialog(
-      title: const Text('Split the bill'),
+      title: Text(tr('Split the bill', '分摊账单')),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('How many people, you included?', style: t.bodyMedium),
+          Text(tr('How many people, you included?', '一共几个人（包括你）？'), style: t.bodyMedium),
           const SizedBox(height: 8),
           Wrap(
             spacing: 8,
@@ -59,18 +60,18 @@ class _SplitDialogState extends State<_SplitDialog> {
             ],
           ),
           const SizedBox(height: 12),
-          Text('Each pays ${money(each, widget.currency)}', style: t.titleMedium),
+          Text(tr('Each pays ${money(each, widget.currency)}', '每人 ${money(each, widget.currency)}'), style: t.titleMedium),
           const SizedBox(height: 12),
           TextField(
             key: const Key('split-names'),
             controller: _names,
             textCapitalization: TextCapitalization.words,
-            decoration: const InputDecoration(labelText: "Friends' names (optional)", hintText: 'Amy, Bella, Chloe'),
+            decoration: InputDecoration(labelText: tr("Friends' names (optional)", '朋友的名字（可不填）'), hintText: tr('Amy, Bella, Chloe', '小美、小雅、小青')),
           ),
         ],
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
+        TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(tr('Cancel', '取消'))),
         FilledButton(
           key: const Key('split-save'),
           onPressed: () => Navigator.of(context).pop((
@@ -80,7 +81,7 @@ class _SplitDialogState extends State<_SplitDialog> {
                 if (n.trim().isNotEmpty) n.trim(),
             ],
           )),
-          child: const Text('Split'),
+          child: Text(tr('Split', '分摊')),
         ),
       ],
     );
