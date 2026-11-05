@@ -34,18 +34,23 @@ class _RecordsScreenState extends State<RecordsScreen> {
           padding: EdgeInsets.zero,
           children: [
             SizedBox(
-              height: 200 + MediaQuery.paddingOf(context).top,
+              height: 196 + MediaQuery.paddingOf(context).top,
               child: Stack(
                 children: [
-                  const Positioned(
-                    right: 8,
-                    bottom: 0,
-                    child: CatFigure(size: 120),
+                  // The cat writing notes, at the top right as in IMG_6782.
+                  Positioned(
+                    right: 0,
+                    top: 0,
+                    child: SceneArt(
+                      kind: SceneKind.writing,
+                      width: 215,
+                      height: 184 + MediaQuery.paddingOf(context).top,
+                    ),
                   ),
                   Positioned(
                     left: 8,
-                    top: MediaQuery.paddingOf(context).top + 8,
-                    right: 116,
+                    top: MediaQuery.paddingOf(context).top + 40,
+                    right: 110,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -76,6 +81,27 @@ class _RecordsScreenState extends State<RecordsScreen> {
                                   label: Text(label),
                                   selected: _tab == i,
                                   showCheckmark: false,
+                                  labelPadding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                  ),
+                                  // White with a thin edge, soft green when
+                                  // open, as in the wireframe.
+                                  backgroundColor: Theme.of(context).cardTheme.color,
+                                  selectedColor: Theme.of(context).chipTheme.backgroundColor,
+                                  side: BorderSide(
+                                    color: _tab == i
+                                        ? Colors.transparent
+                                        : const Color(0xFFE6E0D6),
+                                  ),
+                                  labelStyle: TextStyle(
+                                    fontSize: 16,
+                                    color: _tab == i
+                                        ? Theme.of(context).colorScheme.primary
+                                        : Theme.of(context).colorScheme.onSurface,
+                                    fontWeight: _tab == i
+                                        ? FontWeight.w700
+                                        : FontWeight.w500,
+                                  ),
                                   onSelected: (_) {
                                     Feel.tap();
                                     setState(() => _tab = i);

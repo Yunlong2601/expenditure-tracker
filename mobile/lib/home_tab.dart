@@ -552,7 +552,7 @@ class _TaskSheetState extends State<TaskSheet> {
 
 /// Mood diary (IMG_6792): today's date, a 7-day dot row and six moods.
 Future<void> showMoodSheet(BuildContext context, DayStore s) =>
-    showTinySheet<void>(context, (_) => MoodSheet(store: s));
+    showTinySheet<void>(context, (_) => MoodSheet(store: s), tall: true);
 
 class MoodSheet extends StatefulWidget {
   const MoodSheet({super.key, required this.store});
@@ -615,17 +615,30 @@ class _MoodSheetState extends State<MoodSheet> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     for (final d in days)
-                      Column(
-                        children: [
-                          Text(
-                            sameDay(d, today) ? tr('Today', '今') : '${d.day}',
-                            style: t.labelMedium?.copyWith(
-                              color: Palette.muted,
+                      // Today sits in a soft green tile, as in IMG_6792.
+                      Container(
+                        padding: const EdgeInsets.fromLTRB(8, 8, 8, 10),
+                        decoration: BoxDecoration(
+                          color: sameDay(d, today) ? Palette.sageSoft : null,
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Column(
+                          children: [
+                            Text(
+                              sameDay(d, today) ? tr('Today', '今') : '${d.day}',
+                              style: t.labelMedium?.copyWith(
+                                color: sameDay(d, today)
+                                    ? Palette.sage
+                                    : Palette.muted,
+                                fontWeight: sameDay(d, today)
+                                    ? FontWeight.w700
+                                    : null,
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 6),
-                          MoodDot(mood: s.moodOf(d)),
-                        ],
+                            const SizedBox(height: 8),
+                            MoodDot(mood: s.moodOf(d)),
+                          ],
+                        ),
                       ),
                   ],
                 ),
@@ -663,11 +676,16 @@ class _MoodSheetState extends State<MoodSheet> {
                                   children: [
                                     MoodFace(
                                       mood: m,
-                                      size: 40,
+                                      size: 36,
                                       selected: _picked == m,
                                     ),
-                                    const SizedBox(height: 4),
-                                    Text(zh ? m.zh : m.label, style: t.labelSmall),
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      zh ? m.zh : m.label,
+                                      style: t.labelSmall?.copyWith(
+                                        color: Palette.muted,
+                                      ),
+                                    ),
                                   ],
                                 ),
                               ),
@@ -714,9 +732,10 @@ class MoodFace extends StatelessWidget {
     decoration: BoxDecoration(
       color: moodColors[mood],
       shape: BoxShape.circle,
+      // A faint ring, or a green one when picked.
       border: Border.all(
-        color: selected ? Palette.sage : Colors.transparent,
-        width: 2.5,
+        color: selected ? Palette.sage : Palette.ink.withValues(alpha: 0.08),
+        width: selected ? 2.5 : 1,
       ),
     ),
     child: CustomPaint(painter: _FacePainter(mood)),
@@ -797,16 +816,40 @@ class MoodDot extends StatelessWidget {
   Widget build(BuildContext context) {
     final m = mood;
     if (m != null) return MoodFace(mood: m, size: size);
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        border: Border.all(color: Palette.line, width: 1.5),
+    return SizedBox.square(
+      dimension: size,
+      child: CustomPaint(
+        painter: DashedRing(Palette.muted.withValues(alpha: 0.45), width: 1.2),
       ),
     );
   }
 }
+
+/// A dashed circle: an empty day, or the small + on a calendar day.
+class DashedRing extends CustomPainter {
+  const DashedRing(this.color, {this.width = 1.1});
+  final Color color;
+  final double width;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final p = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = width;
+    final r = Rect.fromLTWH(0.6, 0.6, size.width - 1.2, size.height - 1.2);
+    const n = 12;
+    const step = 2 * 3.141592653589793 / n;
+    for (var i = 0; i < n; i++) {
+      canvas.drawArc(r, i * step, step * 0.55, false, p);
+    }
+  }
+
+  @override
+  bool shouldRepaint(DashedRing old) =>
+      old.color != color || old.width != width;
+}
+
 
 /// Asks for a name and a date, then adds a countdown.
 Future<void> addCountdown(BuildContext context, DayStore s) async {

@@ -25,7 +25,7 @@ class _OnboardingState extends State<Onboarding> {
     final name = Prefs.current.catName;
     final pages = [
       (
-        const CatAvatar(size: 130),
+        const CatAvatar(size: 106),
         tr('Hi, I’m $name', '嗨，我是 $name'),
         tr('I’m here for the little things: a reminder when it’s time, company while you focus, and a chat about your day.', '我会陪你做好生活里的小事：到点提醒你，专注时陪着你，还能和你聊聊今天。'),
       ),
@@ -46,19 +46,19 @@ class _OnboardingState extends State<Onboarding> {
       color: Colors.black.withValues(alpha: 0.18),
       child: Center(
         child: Padding(
-          padding: const EdgeInsets.all(28),
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 28),
           child: Material(
             color: Theme.of(context).cardTheme.color,
             borderRadius: BorderRadius.circular(32),
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(24, 32, 24, 16),
+              padding: const EdgeInsets.fromLTRB(24, 36, 24, 16),
               child: AnimatedSwitcher(
                 duration: const Duration(milliseconds: 220),
                 child: Column(
                   key: ValueKey(_page),
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    SizedBox(height: 140, child: Center(child: art)),
+                    SizedBox(height: 124, child: Center(child: art)),
                     const SizedBox(height: 16),
                     Text(
                       title,
@@ -87,7 +87,9 @@ class _OnboardingState extends State<Onboarding> {
                             width: i == _page ? 18 : 6,
                             height: 6,
                             decoration: BoxDecoration(
-                              color: i == _page ? Palette.sage : Palette.line,
+                              color: i == _page
+                                  ? Palette.sage
+                                  : Palette.muted.withValues(alpha: 0.3),
                               borderRadius: BorderRadius.circular(3),
                             ),
                           ),

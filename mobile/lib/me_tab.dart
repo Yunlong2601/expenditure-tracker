@@ -103,9 +103,39 @@ class _MeTabState extends State<MeTab> {
   }
 
   Future<void> _editCat() async {
-    await showTinySheet<void>(context, (_) => const CompanionSheet());
+    await showCompanion(context);
     setState(() {});
   }
+
+  /// A short list of choices for one of the four quick tiles.
+  Future<int?> _pick(String title, List<String> options, int current) =>
+      showModalBottomSheet<int>(
+        context: context,
+        builder: (ctx) => SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+                child: Text(
+                  title,
+                  style: Theme.of(ctx).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+              for (final (i, label) in options.indexed)
+                ListTile(
+                  key: Key('pick-$i'),
+                  title: Text(label),
+                  trailing: i == current ? const Icon(Icons.check) : null,
+                  onTap: () => Navigator.of(ctx).pop(i),
+                ),
+            ],
+          ),
+        ),
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -118,12 +148,22 @@ class _MeTabState extends State<MeTab> {
         SizedBox(
           height: 150,
           child: Stack(
+            clipBehavior: Clip.none,
             children: [
-              const Positioned(right: 0, top: 0, child: CatFigure(size: 140)),
+              // The cat reading by the window, bleeding off the right edge.
+              Positioned(
+                right: -16,
+                top: -top - 8,
+                child: SceneArt(
+                  kind: SceneKind.reading,
+                  width: 210,
+                  height: top + 158,
+                ),
+              ),
               Positioned(
                 left: 0,
                 top: 10,
-                right: 140,
+                right: 150,
                 child: InkWell(
                   key: const Key('edit-cat'),
                   borderRadius: BorderRadius.circular(20),
@@ -188,7 +228,13 @@ class _MeTabState extends State<MeTab> {
                 label: tr('Chattiness', '主动程度'),
                 value: _chatty[_p.chatty],
                 onTap: () async {
-                  await _p.setChatty((_p.chatty + 1) % 3);
+                  final v = await _pick(
+                    tr('Chattiness', '主动程度'),
+                    _chatty,
+                    _p.chatty,
+                  );
+                  if (v == null) return;
+                  await _p.setChatty(v);
                   Feel.tap();
                   setState(() {});
                 },
@@ -201,7 +247,13 @@ class _MeTabState extends State<MeTab> {
                 label: tr('Quiet mode', '安静模式'),
                 value: _p.quiet ? _on : _off,
                 onTap: () async {
-                  await _p.setQuiet(!_p.quiet);
+                  final v = await _pick(
+                    tr('Quiet mode', '安静模式'),
+                    [_on, _off],
+                    _p.quiet ? 0 : 1,
+                  );
+                  if (v == null) return;
+                  await _p.setQuiet(v == 0);
                   Remind.syncCheckIns(DayStore.current);
                   setState(() {});
                 },
@@ -214,7 +266,13 @@ class _MeTabState extends State<MeTab> {
                 label: tr('Sounds', '通知声音'),
                 value: Feel.soundOn ? _on : _off,
                 onTap: () async {
-                  await Feel.setSoundOn(!Feel.soundOn);
+                  final v = await _pick(
+                    tr('Sounds', '通知声音'),
+                    [_on, _off],
+                    Feel.soundOn ? 0 : 1,
+                  );
+                  if (v == null) return;
+                  await Feel.setSoundOn(v == 0);
                   if (Feel.soundOn) Feel.play(Sound.tap);
                   setState(() {});
                 },
@@ -320,17 +378,18 @@ class _Tile extends StatelessWidget {
           child: Column(
             children: [
               Container(
-                width: 50,
-                height: 50,
+                width: 44,
+                height: 44,
                 decoration: BoxDecoration(
                   color: bg,
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(14),
                 ),
-                child: Icon(icon, color: fg),
+                child: Icon(icon, color: fg, size: 22),
               ),
-              const SizedBox(height: 6),
-              Text(label, style: t.labelMedium),
-              Text(value, style: t.labelSmall?.copyWith(color: Palette.muted)),
+              const SizedBox(height: 8),
+              // The state is read out and shown when tapped, as in the
+              // wireframe, which shows only the name.
+              Text(label, style: t.labelMedium?.copyWith(fontSize: 13)),
             ],
           ),
         ),
@@ -355,11 +414,11 @@ class _Section extends StatelessWidget {
           child: Text(
             title,
             style: Theme.of(context).textTheme.titleLarge
-                ?.copyWith(fontWeight: FontWeight.w700),
+                ?.copyWith(fontSize: 19, fontWeight: FontWeight.w700),
           ),
         ),
         for (final (i, r) in rows.indexed) ...[
-          if (i > 0) const Divider(height: 1, indent: 52),
+          if (i > 0) const Divider(height: 1, indent: 50, color: Palette.line),
           r,
         ],
       ],
@@ -386,13 +445,13 @@ class _Row extends StatelessWidget {
   Widget build(BuildContext context) => ListTile(
     contentPadding: const EdgeInsets.only(left: 0, right: 8),
     leading: Container(
-      width: 40,
-      height: 40,
+      width: 36,
+      height: 36,
       decoration: BoxDecoration(
         color: bg,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(10),
       ),
-      child: Icon(icon, size: 22, color: Palette.ink.withValues(alpha: 0.65)),
+      child: Icon(icon, size: 20, color: Palette.ink.withValues(alpha: 0.6)),
     ),
     title: Text(label, style: const TextStyle(fontSize: 17)),
     trailing: Row(
@@ -403,7 +462,12 @@ class _Row extends StatelessWidget {
             value!,
             style: const TextStyle(color: Palette.muted, fontSize: 15),
           ),
-        const Icon(Icons.chevron_right, color: Palette.muted, size: 20),
+        const SizedBox(width: 6),
+        Icon(
+          Icons.arrow_forward_ios_rounded,
+          color: Palette.muted.withValues(alpha: 0.7),
+          size: 12,
+        ),
       ],
     ),
     onTap: () {
@@ -412,6 +476,18 @@ class _Row extends StatelessWidget {
     },
   );
 }
+
+/// Opens Your companion as the floating card from IMG_6781.
+Future<void> showCompanion(BuildContext context) => showDialog<void>(
+  context: context,
+  builder: (_) => Dialog(
+    insetPadding: const EdgeInsets.symmetric(horizontal: 18),
+    backgroundColor: Theme.of(context).bottomSheetTheme.backgroundColor,
+    surfaceTintColor: Colors.transparent,
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+    child: const CompanionSheet(),
+  ),
+);
 
 /// Your companion (IMG_6781): the cat's picture and name.
 class CompanionSheet extends StatefulWidget {
@@ -435,6 +511,7 @@ class _CompanionSheetState extends State<CompanionSheet> {
     child: Column(
       mainAxisSize: MainAxisSize.min,
       children: [
+        const SizedBox(height: 16),
         SheetHeader(
           title: tr('Your companion', '你的伙伴'),
           action: tr('Save', '保存'),
@@ -445,19 +522,29 @@ class _CompanionSheetState extends State<CompanionSheet> {
             if (context.mounted) Navigator.of(context).pop();
           },
         ),
-        const SizedBox(height: 12),
-        const CatAvatar(size: 96),
+        const SizedBox(height: 18),
+        const CatAvatar(size: 84),
         Padding(
-          padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
           child: TextField(
             key: const Key('cat-name'),
             controller: _name,
-            textAlign: TextAlign.center,
             maxLength: 20,
+            style: const TextStyle(fontSize: 17),
             decoration: InputDecoration(
               counterText: '',
+              isDense: true,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 8,
+              ),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(18),
+                borderRadius: BorderRadius.circular(22),
+                borderSide: const BorderSide(color: Palette.line),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(22),
+                borderSide: const BorderSide(color: Color(0xFFE2DCD1)),
               ),
             ),
           ),

@@ -300,3 +300,378 @@ class EdgeTab extends StatelessWidget {
     );
   }
 }
+
+/// What the cat is doing in a header scene.
+enum SceneKind {
+  /// Reading a green book by the window (Me).
+  reading,
+
+  /// Studying at a desk with books and a big plant (Dashboard).
+  studying,
+
+  /// Writing notes, with a little sign and a mug (Records).
+  writing,
+}
+
+/// The soft illustrated corner at the top right of Me, Dashboard and
+/// Records, as in the wireframes: a bit of the cat's room that fades into
+/// the page on the left. Drawn for this app with our own cat.
+class SceneArt extends StatelessWidget {
+  const SceneArt({
+    super.key,
+    required this.kind,
+    this.width = 200,
+    this.height = 150,
+  });
+  final SceneKind kind;
+  final double width, height;
+
+  @override
+  Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    return ExcludeSemantics(
+      child: ShaderMask(
+        blendMode: BlendMode.dstIn,
+        shaderCallback: (r) => const LinearGradient(
+          colors: [Color(0x00000000), Color(0xFF000000)],
+          stops: [0, 0.28],
+        ).createShader(r),
+        child: SizedBox(
+          width: width,
+          height: height,
+          child: CustomPaint(painter: _ScenePainter(kind, dark, zh)),
+        ),
+      ),
+    );
+  }
+}
+
+class _ScenePainter extends CustomPainter {
+  _ScenePainter(this.kind, this.dark, this.zh);
+  final SceneKind kind;
+  final bool dark, zh;
+
+  static const _ink = Color(0xFF4A3B33);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width;
+    // The room is drawn in a box of fixed shape at the bottom; anything
+    // taller (the status bar on a phone) is more wall and window above it.
+    final h = math.min(size.height, w * 0.74);
+    final lift = size.height - h;
+    final clip = RRect.fromRectAndCorners(
+      Offset.zero & size,
+      bottomLeft: const Radius.circular(40),
+    );
+    canvas.save();
+    canvas.clipRRect(clip);
+    canvas.drawRect(
+      Offset.zero & size,
+      Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: dark
+              ? [const Color(0xFF2E2C27), const Color(0xFF26251F)]
+              : [const Color(0xFFF8F0E4), const Color(0xFFF3E7D6)],
+        ).createShader(Offset.zero & size),
+    );
+
+    // Window with a curtain, running up behind the status bar.
+    final win = RRect.fromRectAndRadius(
+      Rect.fromLTWH(w * 0.22, -8, w * 0.34, lift + h * 0.48 + 8),
+      const Radius.circular(8),
+    );
+    canvas.drawRRect(
+      win,
+      Paint()..color = dark ? const Color(0xFF3A4A5A) : const Color(0xFFDCEBF3),
+    );
+    canvas.drawRRect(
+      win,
+      Paint()
+        ..color = dark ? const Color(0xFF4A4740) : const Color(0xFFEADFCD)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 4,
+    );
+    final curtain = Path()
+      ..moveTo(w * 0.2, 0)
+      ..lineTo(w * 0.33, 0)
+      ..quadraticBezierTo(w * 0.27, lift + h * 0.25, w * 0.31, lift + h * 0.52)
+      ..lineTo(w * 0.2, lift + h * 0.52)
+      ..close();
+    canvas.drawPath(
+      curtain,
+      Paint()..color = dark ? const Color(0xFF4B463C) : const Color(0xFFFFF9EF),
+    );
+
+    canvas.translate(0, lift);
+    switch (kind) {
+      case SceneKind.reading:
+        _frame(canvas, Rect.fromLTWH(w * 0.76, h * 0.06, w * 0.16, h * 0.2));
+        _tulip(canvas, Offset(w * 0.84, h * 0.2), h * 0.05);
+      case SceneKind.studying:
+        _frame(canvas, Rect.fromLTWH(w * 0.78, h * 0.04, w * 0.15, h * 0.18));
+        _hills(canvas, Rect.fromLTWH(w * 0.79, h * 0.06, w * 0.13, h * 0.14));
+      case SceneKind.writing:
+        _sign(canvas, Rect.fromLTWH(w * 0.8, h * 0.08, w * 0.17, h * 0.34));
+        _plant(canvas, Offset(w * 0.12, h * 0.62), h * 0.2);
+    }
+
+    // Table top.
+    final table = Rect.fromLTWH(0, h * 0.8, w, h * 0.2);
+    canvas.drawRect(
+      table,
+      Paint()..color = dark ? const Color(0xFF4A3F33) : const Color(0xFFEFD8B8),
+    );
+    canvas.drawLine(
+      Offset(0, table.top),
+      Offset(w, table.top),
+      Paint()
+        ..color = dark ? const Color(0xFF5A4C3D) : const Color(0xFFE2C59C)
+        ..strokeWidth = 2,
+    );
+
+    if (kind == SceneKind.studying) {
+      _plant(canvas, Offset(w * 0.93, h * 0.82), h * 0.42);
+    }
+
+    // The cat.
+    final cat = h * 0.74;
+    final catLeft = w * 0.62 - cat / 2;
+    canvas.save();
+    canvas.translate(catLeft, h * 0.12);
+    const CatPainter(paw: false).paint(canvas, Size(cat, cat));
+    canvas.restore();
+    final u = cat / 100;
+    final cx = catLeft + 50 * u, base = h * 0.12 + 88 * u;
+
+    switch (kind) {
+      case SceneKind.reading:
+        _book(canvas, Offset(cx, base), 30 * u, const Color(0xFF8DB580));
+      case SceneKind.studying:
+        _book(canvas, Offset(cx, base), 30 * u, const Color(0xFF9CC293));
+        _openBook(canvas, Rect.fromLTWH(w * 0.08, h * 0.83, w * 0.26, h * 0.1));
+      case SceneKind.writing:
+        _paper(canvas, Offset(cx, base), 28 * u);
+        _mug(canvas, Offset(w * 0.93, h * 0.82), h * 0.1);
+    }
+    canvas.restore();
+  }
+
+  void _frame(Canvas canvas, Rect r) {
+    final rr = RRect.fromRectAndRadius(r, const Radius.circular(4));
+    canvas.drawRRect(rr, Paint()..color = const Color(0xFFFFFBF4));
+    canvas.drawRRect(
+      rr,
+      Paint()
+        ..color = const Color(0xFFDCC6A6)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.5,
+    );
+  }
+
+  void _tulip(Canvas canvas, Offset c, double s) {
+    canvas.drawLine(
+      c,
+      c + Offset(0, s * 1.6),
+      Paint()
+        ..color = const Color(0xFF7FA36F)
+        ..strokeWidth = 1.6,
+    );
+    canvas.drawOval(
+      Rect.fromCenter(center: c, width: s * 1.4, height: s * 1.6),
+      Paint()..color = const Color(0xFFF2A2A8),
+    );
+  }
+
+  void _hills(Canvas canvas, Rect r) {
+    canvas.drawPath(
+      Path()
+        ..moveTo(r.left, r.bottom)
+        ..quadraticBezierTo(r.left + r.width * 0.3, r.top, r.center.dx, r.center.dy + 2)
+        ..quadraticBezierTo(r.right - r.width * 0.2, r.top + 2, r.right, r.bottom)
+        ..close(),
+      Paint()..color = const Color(0xFFA8CBA0),
+    );
+  }
+
+  void _sign(Canvas canvas, Rect r) {
+    canvas.drawLine(
+      Offset(r.center.dx, 0),
+      Offset(r.center.dx, r.top),
+      Paint()
+        ..color = const Color(0xFFBFA888)
+        ..strokeWidth = 1.4,
+    );
+    final rr = RRect.fromRectAndRadius(r, const Radius.circular(4));
+    canvas.drawRRect(rr, Paint()..color = const Color(0xFFFFFBF4));
+    canvas.drawRRect(
+      rr,
+      Paint()
+        ..color = const Color(0xFFDCC6A6)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2,
+    );
+    final tp = TextPainter(
+      text: TextSpan(
+        text: zh ? '记录\n让生活\n更清晰' : 'Write\nit\ndown',
+        style: const TextStyle(
+          color: _ink,
+          fontSize: 7.5,
+          height: 1.25,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+      textAlign: TextAlign.center,
+      textDirection: TextDirection.ltr,
+    )..layout(maxWidth: r.width - 4);
+    tp.paint(canvas, Offset(r.center.dx - tp.width / 2, r.top + 4));
+    _heart(canvas, Offset(r.center.dx, r.bottom - 5), 2.4);
+  }
+
+  void _heart(Canvas canvas, Offset c, double s) {
+    canvas.drawPath(
+      Path()
+        ..moveTo(c.dx, c.dy + s)
+        ..cubicTo(c.dx - s * 2, c.dy - s * 0.4, c.dx - s * 0.8, c.dy - s * 1.8, c.dx, c.dy - s * 0.6)
+        ..cubicTo(c.dx + s * 0.8, c.dy - s * 1.8, c.dx + s * 2, c.dy - s * 0.4, c.dx, c.dy + s),
+      Paint()
+        ..color = _ink
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 0.9,
+    );
+  }
+
+  void _plant(Canvas canvas, Offset base, double s) {
+    final leaf = Paint()..color = const Color(0xFF8DB580);
+    final darkLeaf = Paint()..color = const Color(0xFF6E9A63);
+    for (final (a, len, p) in [
+      (-1.95, 1.0, leaf),
+      (-1.45, 1.1, darkLeaf),
+      (-1.0, 0.9, leaf),
+      (-2.45, 0.8, darkLeaf),
+      (-0.6, 0.7, darkLeaf),
+    ]) {
+      final tip = base + Offset(math.cos(a), math.sin(a)) * s * len;
+      final mid = Offset.lerp(base, tip, 0.5)!;
+      final n = Offset(-(tip - base).dy, (tip - base).dx) * 0.25;
+      canvas.drawPath(
+        Path()
+          ..moveTo(base.dx, base.dy)
+          ..quadraticBezierTo(mid.dx + n.dx, mid.dy + n.dy, tip.dx, tip.dy)
+          ..quadraticBezierTo(mid.dx - n.dx, mid.dy - n.dy, base.dx, base.dy),
+        p,
+      );
+    }
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromCenter(center: base, width: s * 0.42, height: s * 0.3),
+        const Radius.circular(3),
+      ),
+      Paint()..color = const Color(0xFFF1E6D6),
+    );
+  }
+
+  /// An open book held up in front of the cat's chin.
+  void _book(Canvas canvas, Offset c, double s, Color cover) {
+    final line = Paint()
+      ..color = _ink
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.6
+      ..strokeJoin = StrokeJoin.round;
+    for (final dir in [-1.0, 1.0]) {
+      final page = Path()
+        ..moveTo(c.dx, c.dy - s * 0.38)
+        ..lineTo(c.dx + dir * s, c.dy - s * 0.48)
+        ..lineTo(c.dx + dir * s * 0.98, c.dy + s * 0.3)
+        ..lineTo(c.dx, c.dy + s * 0.36)
+        ..close();
+      canvas.drawPath(page, Paint()..color = cover);
+      canvas.drawPath(page, line);
+    }
+    canvas.drawLine(
+      Offset(c.dx, c.dy - s * 0.38),
+      Offset(c.dx, c.dy + s * 0.36),
+      line,
+    );
+  }
+
+  void _openBook(Canvas canvas, Rect r) {
+    final pages = Paint()..color = const Color(0xFFFFFBF2);
+    final line = Paint()
+      ..color = const Color(0xFFB9A27F)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.2;
+    final p = Path()
+      ..moveTo(r.left, r.top + r.height * 0.3)
+      ..quadraticBezierTo(r.left + r.width * 0.25, r.top, r.center.dx, r.top + r.height * 0.25)
+      ..quadraticBezierTo(r.right - r.width * 0.25, r.top, r.right, r.top + r.height * 0.3)
+      ..lineTo(r.right, r.bottom)
+      ..quadraticBezierTo(r.right - r.width * 0.25, r.bottom - r.height * 0.3, r.center.dx, r.bottom - r.height * 0.05)
+      ..quadraticBezierTo(r.left + r.width * 0.25, r.bottom - r.height * 0.3, r.left, r.bottom)
+      ..close();
+    canvas.drawPath(p, pages);
+    canvas.drawPath(p, line);
+    canvas.drawLine(
+      Offset(r.center.dx, r.top + r.height * 0.25),
+      Offset(r.center.dx, r.bottom - r.height * 0.05),
+      line,
+    );
+  }
+
+  /// A sheet of paper and a pencil on the table.
+  void _paper(Canvas canvas, Offset c, double s) {
+    final sheet = Path()
+      ..moveTo(c.dx - s, c.dy - s * 0.1)
+      ..lineTo(c.dx + s * 0.8, c.dy - s * 0.25)
+      ..lineTo(c.dx + s, c.dy + s * 0.45)
+      ..lineTo(c.dx - s * 0.85, c.dy + s * 0.6)
+      ..close();
+    canvas.drawPath(sheet, Paint()..color = Colors.white);
+    canvas.drawPath(
+      sheet,
+      Paint()
+        ..color = _ink
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.4,
+    );
+    canvas.drawLine(
+      Offset(c.dx - s * 0.1, c.dy - s * 0.9),
+      Offset(c.dx + s * 0.35, c.dy + s * 0.15),
+      Paint()
+        ..color = const Color(0xFFF2C36B)
+        ..strokeWidth = 3.4
+        ..strokeCap = StrokeCap.round,
+    );
+  }
+
+  void _mug(Canvas canvas, Offset base, double s) {
+    final body = RRect.fromRectAndCorners(
+      Rect.fromLTWH(base.dx - s * 0.6, base.dy - s * 1.1, s * 1.2, s * 1.1),
+      bottomLeft: Radius.circular(s * 0.35),
+      bottomRight: Radius.circular(s * 0.35),
+    );
+    canvas.drawRRect(body, Paint()..color = Colors.white);
+    final line = Paint()
+      ..color = const Color(0xFFCDB89A)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.4;
+    canvas.drawRRect(body, line);
+    canvas.drawArc(
+      Rect.fromCenter(
+        center: Offset(base.dx + s * 0.62, base.dy - s * 0.6),
+        width: s * 0.55,
+        height: s * 0.5,
+      ),
+      -math.pi / 2,
+      math.pi,
+      false,
+      line,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_ScenePainter old) =>
+      old.kind != kind || old.dark != dark || old.zh != zh;
+}

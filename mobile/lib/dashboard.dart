@@ -77,8 +77,18 @@ class _DashboardTabState extends State<DashboardTab> {
         SizedBox(
           height: 200,
           child: Stack(
+            clipBehavior: Clip.none,
             children: [
-              const Positioned(right: 0, top: 0, child: CatFigure(size: 150)),
+              // The cat studying among books and plants, off the right edge.
+              Positioned(
+                right: -16,
+                top: -top - 12,
+                child: SceneArt(
+                  kind: SceneKind.studying,
+                  width: 220,
+                  height: top + 182,
+                ),
+              ),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -94,7 +104,7 @@ class _DashboardTabState extends State<DashboardTab> {
                   ),
                   const SizedBox(height: 14),
                   SizedBox(
-                    width: 290,
+                    width: 232,
                     child: Panel(
                       padding: const EdgeInsets.fromLTRB(6, 6, 6, 10),
                       child: Column(
@@ -104,15 +114,14 @@ class _DashboardTabState extends State<DashboardTab> {
                               Expanded(
                                 child: Row(
                                   children: [
-                                    IconButton(
+                                    _Chevron(
                                       tooltip: tr('Last week', '上一周'),
-                                      visualDensity: VisualDensity.compact,
-                                      onPressed: () => _pick(
+                                      icon: Icons.chevron_left,
+                                      onTap: () => _pick(
                                         _picked.subtract(
                                           const Duration(days: 7),
                                         ),
                                       ),
-                                      icon: const Icon(Icons.chevron_left),
                                     ),
                                     Flexible(
                                       child: Text(
@@ -124,13 +133,12 @@ class _DashboardTabState extends State<DashboardTab> {
                                         ),
                                       ),
                                     ),
-                                    IconButton(
+                                    _Chevron(
                                       tooltip: tr('Next week', '下一周'),
-                                      visualDensity: VisualDensity.compact,
-                                      onPressed: () => _pick(
+                                      icon: Icons.chevron_right,
+                                      onTap: () => _pick(
                                         _picked.add(const Duration(days: 7)),
                                       ),
-                                      icon: const Icon(Icons.chevron_right),
                                     ),
                                   ],
                                 ),
@@ -138,6 +146,7 @@ class _DashboardTabState extends State<DashboardTab> {
                               PillButton(
                                 key: const Key('dash-today'),
                                 label: tr('Today', '今天'),
+                                dense: true,
                                 onPressed: () => _pick(DateTime.now()),
                               ),
                             ],
@@ -167,17 +176,18 @@ class _DashboardTabState extends State<DashboardTab> {
                 style: t.titleLarge?.copyWith(fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: 10),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: Palette.sageSoft,
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Container(
+                    margin: const EdgeInsets.only(right: 64),
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Palette.sageSoft,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Text(
                         done.isEmpty && mood == null && focus == 0
                             ? tr('No review for this day yet.\nWhen you’re done, we’ll look back together.', '还没有这一天的复盘。\n忙完后，我们一起回顾。')
                             : '${tr('${done.length} done · $focus min focus', '完成 ${done.length} 件 · 专注 $focus 分钟')}'
@@ -188,14 +198,20 @@ class _DashboardTabState extends State<DashboardTab> {
                           height: 1.45,
                         ),
                       ),
+                  ),
+                  // The cat peeking over the box, as in the wireframe.
+                  const Positioned(
+                    right: -8,
+                    bottom: -10,
+                    child: ExcludeSemantics(
+                      child: SizedBox(
+                        width: 92,
+                        height: 92,
+                        child: CustomPaint(painter: CatPainter()),
+                      ),
                     ),
-                    const SizedBox(
-                      width: 50,
-                      height: 50,
-                      child: CustomPaint(painter: CatPainter(paw: false)),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -491,8 +507,8 @@ class _WeekStrip extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Container(
-                        width: 30,
-                        height: 34,
+                        width: 26,
+                        height: 32,
                         alignment: Alignment.center,
                         decoration: BoxDecoration(
                           color: on ? cs.primary : null,
@@ -503,9 +519,9 @@ class _WeekStrip extends StatelessWidget {
                           children: [
                             Text(
                               '${d.day}',
-                              style: t.titleSmall?.copyWith(
-                                color: on ? cs.onPrimary : null,
-                                fontWeight: FontWeight.w600,
+                              style: t.titleMedium?.copyWith(
+                                color: on ? cs.onPrimary : cs.onSurface.withValues(alpha: 0.75),
+                                fontWeight: on ? FontWeight.w700 : FontWeight.w400,
                                 height: 1.1,
                               ),
                             ),
@@ -634,8 +650,8 @@ class _MonthGrid extends StatelessWidget {
                               color: on
                                   ? cs.primary.withValues(alpha: 0.1)
                                   : inMonth
-                                  ? Palette.sand
-                                  : Palette.sand.withValues(alpha: 0.4),
+                                  ? _cell(context)
+                                  : _cell(context).withValues(alpha: 0.4),
                               borderRadius: BorderRadius.circular(10),
                               border: Border.all(
                                 color: on ? cs.primary : Colors.transparent,
@@ -1001,7 +1017,7 @@ class _AddDay extends StatelessWidget {
           alignment: Alignment.centerLeft,
           child: FittedBox(
             child: CustomPaint(
-              painter: _DashedCircle(c.withValues(alpha: 0.7)),
+              painter: DashedRing(c.withValues(alpha: 0.7)),
               child: SizedBox.square(
                 dimension: 17,
                 child: Icon(Icons.add, size: 12, color: c),
@@ -1014,24 +1030,31 @@ class _AddDay extends StatelessWidget {
   }
 }
 
-class _DashedCircle extends CustomPainter {
-  const _DashedCircle(this.color);
-  final Color color;
+
+/// A small chevron for the week card, with a full-size tap area.
+class _Chevron extends StatelessWidget {
+  const _Chevron({
+    required this.tooltip,
+    required this.icon,
+    required this.onTap,
+  });
+  final String tooltip;
+  final IconData icon;
+  final VoidCallback onTap;
 
   @override
-  void paint(Canvas canvas, Size size) {
-    final p = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.1;
-    final r = Rect.fromLTWH(0.6, 0.6, size.width - 1.2, size.height - 1.2);
-    const n = 12;
-    const step = 2 * 3.141592653589793 / n;
-    for (var i = 0; i < n; i++) {
-      canvas.drawArc(r, i * step, step * 0.55, false, p);
-    }
-  }
-
-  @override
-  bool shouldRepaint(_DashedCircle old) => old.color != color;
+  Widget build(BuildContext context) => Tooltip(
+    message: tooltip,
+    child: InkResponse(
+      onTap: onTap,
+      radius: 20,
+      child: SizedBox(width: 26, height: 44, child: Icon(icon, size: 20)),
+    ),
+  );
 }
+
+/// The soft fill of a calendar day, darker at night.
+Color _cell(BuildContext context) =>
+    Theme.of(context).brightness == Brightness.dark
+    ? const Color(0xFF30312C)
+    : Palette.sand;

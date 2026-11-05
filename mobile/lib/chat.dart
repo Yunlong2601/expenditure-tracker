@@ -6,6 +6,7 @@ import 'companion.dart';
 import 'day.dart';
 import 'feel.dart';
 import 'home_tab.dart' show clock;
+import 'kitty.dart';
 import 'l10n.dart';
 import 'prefs.dart';
 import 'remind.dart';
@@ -91,7 +92,7 @@ class _ChatScreenState extends State<ChatScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(tr('Clear this chat?', '清空聊天记录？')),
-        content: Text(tr('Memories and the notebook stay.', '宠物记忆和小本本会保留。')),
+        content: Text(tr('Memories and the notebook stay.', '宠物记忆和内心本会保留。')),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
@@ -115,9 +116,16 @@ class _ChatScreenState extends State<ChatScreen> {
     final t = Theme.of(context).textTheme;
     final cs = Theme.of(context).colorScheme;
     final name = Prefs.current.catName;
+    final round = IconButton.styleFrom(
+      backgroundColor: Theme.of(context).cardTheme.color,
+      fixedSize: const Size(42, 42),
+      side: const BorderSide(color: Palette.line),
+    );
     return Scaffold(
       appBar: AppBar(
+        toolbarHeight: 68,
         titleSpacing: 0,
+        shape: const Border(bottom: BorderSide(color: Palette.line)),
         title: Row(
           children: [
             const CatAvatar(size: 44),
@@ -151,20 +159,23 @@ class _ChatScreenState extends State<ChatScreen> {
           ],
         ),
         actions: [
-          IconButton.filledTonal(
+          IconButton(
             key: const Key('chat-clear'),
             tooltip: tr('Clear chat', '清空聊天'),
+            style: round,
             onPressed: _clear,
             icon: const Icon(Icons.delete_outline),
           ),
+          const SizedBox(width: 8),
           PopupMenuButton<String>(
             key: const Key('chat-menu'),
+            style: round,
             icon: const Icon(Icons.more_horiz),
             onSelected: _menu,
             itemBuilder: (_) => [
-              PopupMenuItem(value: 'checkins', child: Text(tr('Check-ins', '主动关心'))),
+              PopupMenuItem(value: 'checkins', child: Text(tr('Check-ins', '定时约定'))),
               PopupMenuItem(value: 'memory', child: Text(tr('What I remember', '宠物记忆'))),
-              PopupMenuItem(value: 'notebook', child: Text(tr('My notebook', '小本本'))),
+              PopupMenuItem(value: 'notebook', child: Text(tr('My notebook', '内心本'))),
             ],
           ),
           const SizedBox(width: 8),
@@ -202,17 +213,16 @@ class _ChatScreenState extends State<ChatScreen> {
                       color: Theme.of(context).cardTheme.color,
                       borderRadius: BorderRadius.circular(28),
                     ),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 4,
-                      vertical: 4,
-                    ),
+                    padding: const EdgeInsets.all(6),
                     child: Row(
                       children: [
                         IconButton(
                           tooltip: tr('Share today’s list', '分享今天的清单'),
+                          style: round,
                           icon: const Icon(Icons.add),
                           onPressed: () => _send(tr('Here’s my list for today', '这是我今天的清单')),
                         ),
+                        const SizedBox(width: 6),
                         Expanded(
                           child: TextField(
                             key: const Key('chat-field'),
@@ -220,13 +230,28 @@ class _ChatScreenState extends State<ChatScreen> {
                             textCapitalization: TextCapitalization.sentences,
                             decoration: InputDecoration(
                               hintText: tr('Chat with me…', '和我聊聊吧…'),
-                              border: InputBorder.none,
+                              filled: true,
+                              fillColor: cs.onSurface.withValues(alpha: 0.04),
+                              isDense: true,
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 12,
+                              ),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(22),
+                                borderSide: BorderSide.none,
+                              ),
                             ),
                             onSubmitted: _send,
                           ),
                         ),
+                        const SizedBox(width: 4),
                         PopupMenuButton<String>(
                           tooltip: tr('Quick asks', '快捷提问'),
+                          style: IconButton.styleFrom(
+                            backgroundColor: cs.onSurface.withValues(alpha: 0.04),
+                            fixedSize: const Size(42, 42),
+                          ),
                           icon: const Icon(Icons.bolt_outlined),
                           onSelected: _send,
                           itemBuilder: (_) => [
@@ -238,14 +263,21 @@ class _ChatScreenState extends State<ChatScreen> {
                               PopupMenuItem(value: q, child: Text(q)),
                           ],
                         ),
-                        IconButton.filled(
-                          key: const Key('chat-send'),
-                          tooltip: tr('Send', '发送'),
-                          style: IconButton.styleFrom(
-                            backgroundColor: cs.primary.withValues(alpha: 0.75),
+                        // Soft green until there's something to send.
+                        ValueListenableBuilder(
+                          valueListenable: _c,
+                          builder: (context, v, _) => IconButton.filled(
+                            key: const Key('chat-send'),
+                            tooltip: tr('Send', '发送'),
+                            style: IconButton.styleFrom(
+                              fixedSize: const Size(46, 46),
+                              backgroundColor: cs.primary.withValues(
+                                alpha: v.text.trim().isEmpty ? 0.45 : 1,
+                              ),
+                            ),
+                            onPressed: _send,
+                            icon: const Icon(Icons.send_rounded, size: 20),
                           ),
-                          onPressed: _send,
-                          icon: const Icon(Icons.send_rounded, size: 20),
                         ),
                       ],
                     ),
@@ -472,7 +504,15 @@ class ConsentSheet extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
         children: [
-          Icon(i, size: 20, color: Palette.sage),
+          Container(
+            width: 30,
+            height: 30,
+            decoration: BoxDecoration(
+              color: Theme.of(context).cardTheme.color,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(i, size: 17, color: Palette.sage),
+          ),
           const SizedBox(width: 12),
           Expanded(child: Text(s, style: t.bodyLarge)),
         ],
@@ -482,7 +522,7 @@ class ConsentSheet extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         children: [
-          const Icon(Icons.check, size: 16, color: Palette.muted),
+          const Icon(Icons.check, size: 16, color: Palette.sage),
           const SizedBox(width: 8),
           Expanded(child: Text(s, style: t.bodyMedium)),
         ],
@@ -494,7 +534,7 @@ class ConsentSheet extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SheetHeader(title: tr('Before you chat', '聊天前须知')),
+            SheetHeader(title: tr('Before you chat with the cat', '和小猫聊天之前')),
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
               child: Column(
@@ -536,7 +576,7 @@ class ConsentSheet extends StatelessWidget {
                   check(tr('Private tasks are never read', '不公开的事不会被读取')),
                   check(tr('Tasks, focus and records work fine without chat', '不聊天也能正常使用任务、专注和记录')),
                   check(tr('You can turn it off any time in Me → Account & security', '随时可以在「我的 → 账号与安全」里关闭')),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 24),
                   SizedBox(
                     width: double.infinity,
                     child: FilledButton(
@@ -545,11 +585,12 @@ class ConsentSheet extends StatelessWidget {
                       child: Text(tr('Agree and start chatting', '同意并开始聊天')),
                     ),
                   ),
+                  const SizedBox(height: 6),
                   Center(
                     child: TextButton(
                       onPressed: () => Navigator.of(context).pop(false),
                       child: Text(
-                        tr('Not now', '暂不'),
+                        tr('Not now', '暂不开启'),
                         style: const TextStyle(color: Palette.muted),
                       ),
                     ),
@@ -577,8 +618,8 @@ class CheckInsSheet extends StatelessWidget {
       builder: (context, _) => Column(
         children: [
           SheetHeader(
-            title: tr('Check-ins', '主动关心'),
-            action: tr('New', '新建'),
+            title: tr('Check-ins', '定时约定'),
+            action: tr('Add', '新增'),
             onAction: () => _add(context, 0),
           ),
           Expanded(
@@ -588,7 +629,7 @@ class CheckInsSheet extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 14,
-                    vertical: 4,
+                    vertical: 6,
                   ),
                   decoration: BoxDecoration(
                     color: Palette.sand,
@@ -596,7 +637,7 @@ class CheckInsSheet extends StatelessWidget {
                   ),
                   child: Row(
                     children: [
-                      Text(tr('Pause check-ins', '暂停主动关心')),
+                      Text(tr('Pause check-ins', '暂停约定')),
                       const SizedBox(width: 8),
                       Switch.adaptive(
                         key: const Key('pause-checkins'),
@@ -608,6 +649,15 @@ class CheckInsSheet extends StatelessWidget {
                         },
                       ),
                       const Spacer(),
+                      Container(
+                        width: 5,
+                        height: 5,
+                        decoration: const BoxDecoration(
+                          color: Palette.sage,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 5),
                       Text(
                         tr('On this phone', '仅在本机'),
                         style: t.bodySmall?.copyWith(color: Palette.muted),
@@ -619,12 +669,16 @@ class CheckInsSheet extends StatelessWidget {
                 for (final (k, _) in CheckIn.kinds.indexed) ...[
                   ListTile(
                     contentPadding: EdgeInsets.zero,
+                    minTileHeight: 64,
                     title: Text(CheckIn.label(k), style: t.titleMedium),
                     trailing: TextButton.icon(
                       key: Key('checkin-new-$k'),
                       onPressed: () => _add(context, k),
+                      style: TextButton.styleFrom(
+                        foregroundColor: Palette.muted,
+                      ),
                       iconAlignment: IconAlignment.end,
-                      icon: const Icon(Icons.add),
+                      icon: const Icon(Icons.add, size: 18),
                       label: Text(tr('New', '新建')),
                     ),
                   ),
@@ -643,7 +697,7 @@ class CheckInsSheet extends StatelessWidget {
                         },
                       ),
                     ),
-                  const Divider(height: 1),
+                  const Divider(height: 1, color: Palette.line),
                 ],
               ],
             ),
@@ -670,7 +724,7 @@ class CheckInsSheet extends StatelessWidget {
           content: Text(
             tr(
               'Allow notifications for Tiny Habits Cat in iPhone Settings to get check-ins.',
-              '在 iPhone 设置里允许 Tiny Habits Cat 发通知，才能收到主动关心。',
+              '在 iPhone 设置里允许 Tiny Habits Cat 发通知，才能收到定时约定。',
             ),
           ),
           behavior: SnackBarBehavior.floating,
@@ -737,13 +791,14 @@ class _MemorySheetState extends State<MemorySheet> {
           children: [
             SheetHeader(
               title: tr('What I remember', '宠物记忆'),
-              action: tr('New', '新建'),
+              action: tr('Add', '新增'),
               onAction: _add,
             ),
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 children: [
+                  const SizedBox(height: 18),
                   Row(
                     children: [
                       const CatAvatar(size: 44),
@@ -753,13 +808,13 @@ class _MemorySheetState extends State<MemorySheet> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              tr('The important things, I’ll keep', '重要的事，我会记得'),
+                              tr('The important things, I’ll keep', '重要的事，我会记着'),
                               style: t.titleMedium?.copyWith(
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
                             Text(
-                              tr('You don’t need to repeat them. Ask me to forget any time.', '不用重复告诉我。想让我忘掉，随时说。'),
+                              tr('No need to say them again, and you can ask me to forget any time.', '不必每次重说，也可以随时让我忘记。'),
                               style: t.bodySmall?.copyWith(
                                 color: Palette.muted,
                               ),
@@ -776,27 +831,47 @@ class _MemorySheetState extends State<MemorySheet> {
                       hintText: tr('Search memories', '搜索记忆'),
                       filled: true,
                       fillColor: Palette.sand,
-                      suffixText: '${s.memories.length}',
+                      isDense: true,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 12,
+                      ),
+                      // How many memories, always shown, as in IMG_6787.
+                      suffixIcon: Padding(
+                        padding: const EdgeInsets.only(right: 14),
+                        child: Text(
+                          '${s.memories.length}',
+                          style: t.bodySmall?.copyWith(color: Palette.muted),
+                        ),
+                      ),
+                      suffixIconConstraints: const BoxConstraints(),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(14),
                         borderSide: BorderSide.none,
                       ),
                     ),
                   ),
-                  const SizedBox(height: 18),
-                  if (s.memories.isEmpty) ...[
-                    Text(
-                      tr('Start with one small thing?', '从一件小事开始？'),
-                      style: t.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
+                  const SizedBox(height: 30),
+                  if (s.memories.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            tr('Remember one small thing first?', '先记住一件小事?'),
+                            style: t.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            tr('Tell me what you like, or tap “Add” in the top right.', '告诉我你的偏好，或者点右上角“新增”。'),
+                            style: t.bodyMedium?.copyWith(color: Palette.muted),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      tr('Tell me what you like, or tap New in the top right.', '告诉我你喜欢什么，或者点右上角的新建。'),
-                      style: t.bodyMedium?.copyWith(color: Palette.muted),
-                    ),
-                  ],
                   for (final m in list)
                     ListTile(
                       contentPadding: EdgeInsets.zero,
@@ -834,33 +909,41 @@ class NotebookSheet extends StatelessWidget {
     final pages = store.notebook.reversed.toList();
     return Column(
       children: [
-        SheetHeader(title: tr('My notebook', '小本本')),
+        SheetHeader(title: tr('My notebook', '内心本')),
         Expanded(
           child: ListView(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             children: [
+              const SizedBox(height: 18),
               Row(
                 children: [
-                  const CatAvatar(size: 52),
+                  // The whole cat, no frame, as in IMG_6788.
+                  const SizedBox(
+                    width: 58,
+                    height: 58,
+                    child: ExcludeSemantics(
+                      child: CustomPaint(painter: CatPainter()),
+                    ),
+                  ),
                   const SizedBox(width: 12),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        tr('$name’s little notes', '$name的小本本'),
+                        tr('What’s on $name’s mind', '$name 的心里话'),
                         style: t.titleMedium?.copyWith(
                           fontWeight: FontWeight.w700,
                         ),
                       ),
                       Text(
-                        tr('A bit at a time, as I think of things.', '想到什么，就一点点记下来。'),
+                        tr('A little at a time, as I think of it.', '想到一点，就写下一点。'),
                         style: t.bodySmall?.copyWith(color: Palette.muted),
                       ),
                     ],
                   ),
                 ],
               ),
-              const SizedBox(height: 40),
+              const SizedBox(height: 64),
               if (pages.isEmpty) ...[
                 const Icon(
                   Icons.favorite_border,
@@ -869,13 +952,13 @@ class NotebookSheet extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  tr('The first page is still brewing', '第一页还在酝酿中'),
+                  tr('The first page is still brewing', '第一段心里话，还在酝酿'),
                   textAlign: TextAlign.center,
                   style: t.titleMedium?.copyWith(fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  tr('Chat with me for a bit, and the next day I’ll write down the little things worth keeping.', '和我聊一会儿，第二天我会把值得留下的小事写下来。'),
+                  tr('Chat with me for a bit, and the next day I’ll write down the little things worth keeping.', '我们聊上几句，第二天我会把想留住的小事写在这里。'),
                   textAlign: TextAlign.center,
                   style: t.bodyMedium?.copyWith(
                     color: Palette.muted,

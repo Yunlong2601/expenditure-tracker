@@ -169,7 +169,7 @@ class CheckIn {
     'Cheer me on',
     'Review the day together',
   ];
-  static const kindsZh = ['看看进度', '给我打气', '一起复盘今天'];
+  static const kindsZh = ['看看进展', '给我鼓励', '一起复盘'];
 
   /// The kind's name in the app's language.
   static String label(int kind) => (zh ? kindsZh : kinds)[kind];

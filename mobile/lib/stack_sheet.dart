@@ -31,7 +31,7 @@ class _StackSheetState extends State<StackSheet> {
   void initState() {
     super.initState();
     if (_steps.isEmpty) _steps.add(StackStep(''));
-    _help = DayStore.isGettingStarted(widget.task);
+    // The note stays folded until "?" is tapped, as in IMG_6797.
   }
 
   @override

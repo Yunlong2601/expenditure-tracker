@@ -49,12 +49,44 @@ ThemeData tinyTheme(Brightness b) {
     bottomSheetTheme: BottomSheetThemeData(
       backgroundColor: dark ? const Color(0xFF242521) : Palette.paper,
       showDragHandle: true,
+      dragHandleColor: dark ? const Color(0xFF4A4A44) : const Color(0xFFE6E1D8),
+      dragHandleSize: const Size(36, 4),
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
     ),
+    // The tab bar from the wireframes: thin grey icons, a soft green pill and
+    // a green label on the open tab.
     navigationBarTheme: NavigationBarThemeData(
-      backgroundColor: dark ? const Color(0xFF242521) : Palette.paper,
-      indicatorColor: cs.primary.withValues(alpha: 0.14),
+      backgroundColor: Colors.transparent,
+      indicatorColor: dark ? const Color(0xFF2F3A2C) : Palette.sageSoft,
       surfaceTintColor: Colors.transparent,
+      elevation: 0,
+      height: 70,
+      labelTextStyle: WidgetStateProperty.resolveWith(
+        (s) => TextStyle(
+          fontSize: 13,
+          fontWeight: s.contains(WidgetState.selected) ? FontWeight.w700 : FontWeight.w500,
+          color: s.contains(WidgetState.selected) ? cs.primary : Palette.muted,
+        ),
+      ),
+      iconTheme: WidgetStateProperty.resolveWith(
+        (s) => IconThemeData(size: 24, color: s.contains(WidgetState.selected) ? cs.primary : Palette.muted),
+      ),
+    ),
+    // iOS-style switches: a white knob on a soft grey or green track.
+    switchTheme: SwitchThemeData(
+      thumbColor: const WidgetStatePropertyAll(Colors.white),
+      trackColor: WidgetStateProperty.resolveWith(
+        (s) => s.contains(WidgetState.selected)
+            ? cs.primary
+            : (dark ? const Color(0xFF3A3B36) : const Color(0xFFE9E5DE)),
+      ),
+      trackOutlineColor: const WidgetStatePropertyAll(Colors.transparent),
+      // An empty icon keeps the knob full size when off, as on iPhone.
+      thumbIcon: const WidgetStatePropertyAll(Icon(null)),
+    ),
+    // Back buttons are the thin chevron from the wireframes.
+    actionIconTheme: ActionIconThemeData(
+      backButtonIconBuilder: (_) => const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
     ),
     chipTheme: ChipThemeData(
       backgroundColor: dark ? const Color(0xFF2F3A2C) : Palette.sageSoft,
@@ -79,9 +111,12 @@ ThemeData tinyTheme(Brightness b) {
 
 /// The soft green pill used for Save, New and Record in sheet headers.
 class PillButton extends StatelessWidget {
-  const PillButton({super.key, required this.label, required this.onPressed});
+  const PillButton({super.key, required this.label, required this.onPressed, this.dense = false});
   final String label;
   final VoidCallback? onPressed;
+
+  /// A smaller pill, like Today on the Dashboard's week card.
+  final bool dense;
 
   @override
   Widget build(BuildContext context) {
@@ -91,9 +126,15 @@ class PillButton extends StatelessWidget {
       style: TextButton.styleFrom(
         backgroundColor: cs.primary.withValues(alpha: 0.12),
         foregroundColor: cs.primary,
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+        // Still the soft green pill when there's nothing to save yet.
+        disabledBackgroundColor: cs.primary.withValues(alpha: 0.08),
+        disabledForegroundColor: cs.primary.withValues(alpha: 0.5),
+        padding: dense
+            ? const EdgeInsets.symmetric(horizontal: 10, vertical: 4)
+            : const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+        minimumSize: dense ? const Size(0, 30) : null,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(dense ? 12 : 16)),
+        textStyle: TextStyle(fontSize: dense ? 14 : 16, fontWeight: FontWeight.w700),
       ),
       child: Text(label),
     );
@@ -122,7 +163,7 @@ class SheetHeader extends StatelessWidget {
           ),
           const SizedBox(width: 10),
           Expanded(
-            child: Text(title, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
+            child: Text(title, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontSize: 20, fontWeight: FontWeight.w700)),
           ),
           if (action != null) PillButton(key: Key('sheet-$action'), label: action!, onPressed: onAction),
         ],
