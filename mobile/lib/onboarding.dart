@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'companion.dart';
 import 'feel.dart';
+import 'kitty.dart';
 import 'prefs.dart';
 import 'l10n.dart';
 import 'theme.dart';
@@ -35,7 +36,7 @@ class _OnboardingState extends State<Onboarding> {
         tr('On Home, swipe in from the left edge to chat with me. Swipe in from the right for Focus, Timeline and Notes.', '在首页从左边缘滑进来就能和我聊天；从右边缘滑进来是专注、时间轴和笔记。'),
       ),
       (
-        const CatFigure(size: 120),
+        const _PeekCat(),
         tr('Start with one small thing', '从一件小事开始'),
         tr('Tap + beside your list and add one thing for today. The Getting started list on Home walks you through the rest, one short part at a time.', '点清单旁的 +，给今天加一件事。首页的新手清单会一小段一小段地带你熟悉其他功能。'),
       ),
@@ -166,4 +167,78 @@ class _SwipeHint extends StatelessWidget {
       ],
     ),
   );
+}
+
+/// The cat peeking over the edge of a desk, with a heart and a few sparkles
+/// (IMG_6795). Drawn for this app.
+class _PeekCat extends StatelessWidget {
+  const _PeekCat();
+
+  @override
+  Widget build(BuildContext context) => const ExcludeSemantics(
+    child: SizedBox(
+      width: 170,
+      height: 124,
+      child: CustomPaint(painter: _PeekPainter()),
+    ),
+  );
+}
+
+class _PeekPainter extends CustomPainter {
+  const _PeekPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width, h = size.height;
+    final desk = h * 0.78;
+    // The cat, cut off by the desk so only its head shows.
+    canvas.save();
+    canvas.clipRect(Rect.fromLTWH(0, 0, w, desk + 2));
+    final cat = h * 0.98;
+    canvas.translate((w - cat) / 2, desk - cat * 0.86);
+    const CatPainter(paw: false).paint(canvas, Size(cat, cat));
+    canvas.restore();
+    // Desk edge.
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(w * 0.06, desk, w * 0.88, h * 0.12),
+        const Radius.circular(4),
+      ),
+      Paint()..color = const Color(0xFFF2D2B0),
+    );
+    // Two paws resting on the edge.
+    final line = Paint()
+      ..color = const Color(0xFF4A1F33)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.2;
+    for (final dx in [-0.13, 0.13]) {
+      final r = Rect.fromCenter(
+        center: Offset(w * (0.5 + dx), desk + 2),
+        width: w * 0.15,
+        height: h * 0.14,
+      );
+      canvas.drawOval(r, Paint()..color = const Color(0xFFFFF5F8));
+      canvas.drawOval(r, line);
+    }
+    // Sparkles on both sides and a heart at the top right.
+    final ray = Paint()
+      ..color = const Color(0xFFF6C46B)
+      ..strokeWidth = 3
+      ..strokeCap = StrokeCap.round;
+    canvas.drawLine(Offset(w * 0.12, h * 0.3), Offset(w * 0.18, h * 0.34), ray);
+    canvas.drawLine(Offset(w * 0.17, h * 0.16), Offset(w * 0.2, h * 0.23), ray);
+    canvas.drawLine(Offset(w * 0.84, h * 0.4), Offset(w * 0.9, h * 0.36), ray);
+    final c = Offset(w * 0.84, h * 0.12);
+    const s = 7.0;
+    canvas.drawPath(
+      Path()
+        ..moveTo(c.dx, c.dy + s)
+        ..cubicTo(c.dx - s * 1.9, c.dy - s * 0.2, c.dx - s * 0.9, c.dy - s * 1.6, c.dx, c.dy - s * 0.5)
+        ..cubicTo(c.dx + s * 0.9, c.dy - s * 1.6, c.dx + s * 1.9, c.dy - s * 0.2, c.dx, c.dy + s),
+      Paint()..color = const Color(0xFFF58C7B),
+    );
+  }
+
+  @override
+  bool shouldRepaint(_PeekPainter old) => false;
 }

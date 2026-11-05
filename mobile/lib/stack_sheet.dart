@@ -57,6 +57,7 @@ class _StackSheetState extends State<StackSheet> {
         ..addAll(steps);
       t.done = t.topStep == null;
       t.doneAt = t.done ? (t.doneAt ?? DateTime.now()) : null;
+      widget.store.unlockNextPart(t);
       await widget.store.save();
     }
     Feel.logged();

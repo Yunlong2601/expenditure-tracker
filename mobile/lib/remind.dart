@@ -75,8 +75,43 @@ class Remind {
     ),
   };
 
-  /// Lines up a daily notification for every check-in, or none while
-  /// check-ins are paused or quiet mode is on.
+  /// The cat's own hellos for each level of Chattiness (Me → 主动程度):
+  /// none when Quiet, one in the evening Sometimes, three a day Often.
+  static List<({String id, int minutes, String body})> nudges(
+    int chatty,
+    String name,
+  ) => [
+    if (chatty >= 2)
+      (
+        id: 'nudge-morning',
+        minutes: 9 * 60,
+        body: tr(
+          'Good morning from $name! Pick one small thing for today.',
+          '早上好，我是$name！挑一件小事，今天就从它开始。',
+        ),
+      ),
+    if (chatty >= 2)
+      (
+        id: 'nudge-afternoon',
+        minutes: 15 * 60,
+        body: tr(
+          '$name says: a sip of water and a little stretch?',
+          '$name提醒你：喝口水，伸个懒腰吧？',
+        ),
+      ),
+    if (chatty >= 1)
+      (
+        id: 'nudge-evening',
+        minutes: 20 * 60 + 30,
+        body: tr(
+          'How did today go? $name would love to hear about it.',
+          '今天过得怎么样？$name想听你说说。',
+        ),
+      ),
+  ];
+
+  /// Lines up a daily notification for every check-in and the cat's own
+  /// hellos, or none while check-ins are paused or quiet mode is on.
   static Future<void> syncCheckIns(DayStore store) async {
     final p = Prefs.current;
     final on = !store.checkInsPaused && !p.quiet;
@@ -89,6 +124,14 @@ class Remind {
               'hour': c.minutes ~/ 60,
               'minute': c.minutes % 60,
               'body': checkInText(c.kind, p.catName),
+            },
+        if (on)
+          for (final n in nudges(p.chatty, p.catName))
+            {
+              'id': n.id,
+              'hour': n.minutes ~/ 60,
+              'minute': n.minutes % 60,
+              'body': n.body,
             },
       ]);
     } on Object catch (_) {

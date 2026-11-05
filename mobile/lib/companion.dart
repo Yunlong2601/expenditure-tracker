@@ -7,9 +7,17 @@ import 'l10n.dart';
 
 /// The cat's face in a soft round frame, as used in headers and chat.
 class CatAvatar extends StatelessWidget {
-  const CatAvatar({super.key, this.size = 56, this.mood = CatMood.happy});
+  const CatAvatar({
+    super.key,
+    this.size = 56,
+    this.mood = CatMood.happy,
+    this.star = true,
+  });
   final double size;
   final CatMood mood;
+
+  /// The cat hugs its little star, as in every wireframe avatar.
+  final bool star;
 
   @override
   Widget build(BuildContext context) => Container(
@@ -20,7 +28,7 @@ class CatAvatar extends StatelessWidget {
       gradient: RadialGradient(colors: [Color(0xFFFFF6DA), Color(0xFFFCE6B8)]),
     ),
     padding: EdgeInsets.all(size * 0.08),
-    child: CustomPaint(painter: CatPainter(mood: mood, paw: false)),
+    child: CustomPaint(painter: CatPainter(mood: mood, paw: false, star: star)),
   );
 }
 

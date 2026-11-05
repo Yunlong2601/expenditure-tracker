@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:spendsnap/day.dart';
 import 'package:spendsnap/feel.dart';
 import 'package:spendsnap/ledger.dart';
 import 'package:spendsnap/prefs.dart';
@@ -25,6 +26,30 @@ void main() {
     );
   });
   tearDown(() async => dir.delete(recursive: true));
+
+  test('Chattiness sets how often the cat says hello by itself', () async {
+    final store = DayStore.memory();
+    Future<List<String>> ids() async {
+      calls.clear();
+      await Remind.syncCheckIns(store);
+      final items = calls.single.arguments as List<Object?>;
+      return [for (final i in items) (i! as Map<Object?, Object?>)['id']! as String];
+    }
+
+    // Sometimes, the default: one evening hello.
+    expect(await ids(), ['nudge-evening']);
+    await Prefs.current.setChatty(2);
+    expect(await ids(), ['nudge-morning', 'nudge-afternoon', 'nudge-evening']);
+    await Prefs.current.setChatty(0);
+    expect(await ids(), isEmpty);
+
+    // Quiet mode silences the hellos and the check-ins alike.
+    await Prefs.current.setChatty(2);
+    store.checkIns.add(CheckIn(kind: 1, minutes: 18 * 60));
+    expect(await ids(), hasLength(4));
+    await Prefs.current.setQuiet(true);
+    expect(await ids(), isEmpty);
+  });
 
   test('school hours are weekday mornings to 2:30 pm', () {
     expect(Feel.inSchoolHours(DateTime(2026, 11, 2, 10)), isTrue); // Monday

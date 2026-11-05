@@ -207,7 +207,7 @@ class _DashboardTabState extends State<DashboardTab> {
                       child: SizedBox(
                         width: 92,
                         height: 92,
-                        child: CustomPaint(painter: CatPainter()),
+                        child: CustomPaint(painter: CatPainter(star: true)),
                       ),
                     ),
                   ),
@@ -848,10 +848,20 @@ class CompletedSheet extends StatelessWidget {
             ),
             Expanded(
               child: done.isEmpty
-                  ? Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                  ? SizedBox(
+                      width: double.infinity,
+                      child: Column(
                       children: [
-                        const CatFigure(size: 110, mood: CatMood.worried),
+                        const SizedBox(height: 40),
+                        // The cat hugging its star, as in IMG_6790.
+                        const ExcludeSemantics(
+                          child: SizedBox.square(
+                            dimension: 120,
+                            child: CustomPaint(
+                              painter: CatPainter(star: true),
+                            ),
+                          ),
+                        ),
                         const SizedBox(height: 12),
                         Text(
                           tr('Nothing finished this day yet', '这一天还没有完成的任务'),
@@ -865,6 +875,7 @@ class CompletedSheet extends StatelessWidget {
                           style: t.bodyMedium?.copyWith(color: Palette.muted),
                         ),
                       ],
+                    ),
                     )
                   : ListView(
                       padding: const EdgeInsets.all(20),

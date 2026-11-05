@@ -67,6 +67,36 @@ void main() {
       );
     });
 
+    test('finishing a Getting started part puts the next one on the list, '
+        'once, up to the last part', () async {
+      final s = DayStore.memory();
+      await s.addGettingStarted();
+      Future<void> finish(Task t) async {
+        while (!t.done) {
+          await s.tick(t);
+        }
+      }
+
+      await finish(s.tasks.single);
+      expect(s.tasks, hasLength(2));
+      final part2 = s.tasks.last;
+      expect(DayStore.gettingStartedPart(part2), 1);
+      expect(part2.title, DayStore.partTitle(1));
+      expect(part2.steps.map((x) => x.title), DayStore.partSteps(1));
+      expect(part2.day, dayOf(DateTime.now()));
+
+      // Unticking and ticking the finished part again adds nothing new.
+      expect(s.unlockNextPart(s.tasks.first), isFalse);
+
+      await finish(part2);
+      expect(s.tasks, hasLength(3));
+      expect(DayStore.gettingStartedPart(s.tasks.last), 2);
+
+      await finish(s.tasks.last);
+      expect(s.tasks, hasLength(3));
+      expect(DayStore.gettingStartedParts, 3);
+    });
+
     test('everything survives a reload from the file', () async {
       final s = await DayStore.load(dir);
       await s.addTask(

@@ -227,13 +227,24 @@ enum CatMood { happy, worried, sad, delighted }
 /// A round, original cat face. [blink] closes the eyes (0 open, 1 shut),
 /// [wave] tilts the raised paw, and [asleep] draws shut eyes with no paw.
 class CatPainter extends CustomPainter {
-  const CatPainter({this.blink = 0, this.wave = 0, this.asleep = false, this.mood = CatMood.happy, this.paw = true});
+  const CatPainter({
+    this.blink = 0,
+    this.wave = 0,
+    this.asleep = false,
+    this.mood = CatMood.happy,
+    this.paw = true,
+    this.star = false,
+  });
   final double blink, wave;
   final bool asleep;
   final CatMood mood;
 
   /// Draw the raised paw.
   final bool paw;
+
+  /// Hug a little yellow star instead of waving, as the cat does in the
+  /// avatar and the empty pages.
+  final bool star;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -344,7 +355,30 @@ class CatPainter extends CustomPainter {
       }
     }
 
-    if (!asleep && paw) {
+    if (!asleep && star) {
+      // A soft yellow star held against the cheek, with a paw over it.
+      canvas.save();
+      canvas.translate(78, 81);
+      canvas.rotate(-0.18);
+      final s = Path();
+      for (var i = 0; i < 10; i++) {
+        final r = i.isEven ? 17.0 : 8.0;
+        final a = -math.pi / 2 + i * math.pi / 5;
+        final pt = Offset(math.cos(a) * r, math.sin(a) * r);
+        i == 0 ? s.moveTo(pt.dx, pt.dy) : s.lineTo(pt.dx, pt.dy);
+      }
+      s.close();
+      canvas.drawPath(s, Paint()..color = const Color(0xFFFCDD8A));
+      canvas.drawPath(s, line..strokeWidth = 2.2);
+      canvas.drawOval(
+        Rect.fromCenter(center: const Offset(-1, 1.5), width: 4.5, height: 3),
+        Paint()..color = _blush.withValues(alpha: 0.6),
+      );
+      canvas.restore();
+      final hold = Rect.fromCenter(center: const Offset(66, 91), width: 15, height: 13);
+      canvas.drawOval(hold, fur);
+      canvas.drawOval(hold, line..strokeWidth = 2.2);
+    } else if (!asleep && paw) {
       // The waving paw, raised at the lower right.
       canvas.save();
       canvas.translate(84, 82);
@@ -370,5 +404,10 @@ class CatPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(CatPainter old) =>
-      old.blink != blink || old.wave != wave || old.asleep != asleep || old.mood != mood || old.paw != paw;
+      old.blink != blink ||
+      old.wave != wave ||
+      old.asleep != asleep ||
+      old.mood != mood ||
+      old.paw != paw ||
+      old.star != star;
 }

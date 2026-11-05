@@ -236,6 +236,9 @@ class _MeTabState extends State<MeTab> {
                   if (v == null) return;
                   await _p.setChatty(v);
                   Feel.tap();
+                  // More hellos from the cat need permission to notify.
+                  if (v > 0) await Remind.ask();
+                  Remind.syncCheckIns(DayStore.current);
                   setState(() {});
                 },
               ),

@@ -340,6 +340,7 @@ class DayStore extends ChangeNotifier {
       t.done = !t.done;
       t.doneAt = t.done ? at : null;
     }
+    unlockNextPart(t, now: at);
     await save();
   }
 
@@ -357,30 +358,98 @@ class DayStore extends ChangeNotifier {
     );
   }
 
-  static const _gettingStartedTitles = [
-    'Part 1 · Plan your day',
-    '第一部分 · 安排你的一天',
+  /// When a Getting started part is finished, puts the next part on today's
+  /// list, so the guide goes "one short part at a time" (IMG_6795, 6797).
+  /// Returns whether a part was added. Doesn't save.
+  bool unlockNextPart(Task t, {DateTime? now}) {
+    final part = gettingStartedPart(t);
+    if (!t.done || part == null || part + 1 >= _parts.length) return false;
+    if (tasks.any((x) => gettingStartedPart(x) == part + 1)) return false;
+    tasks.add(
+      Task(
+        title: partTitle(part + 1),
+        day: dayOf(now ?? DateTime.now()),
+        steps: [for (final s in partSteps(part + 1)) StackStep(s)],
+      ),
+    );
+    return true;
+  }
+
+  static const _parts = [
+    (
+      en: 'Part 1 · Plan your day',
+      zh: '第一部分 · 安排你的一天',
+      stepsEn: [
+        'Tap + to add something for today',
+        'Tap the time on the right to set when',
+        'Tap the circle on the left when it’s done',
+        'Hold + and drag down to make a stack',
+        'Tap this task to see how stacks work',
+        'Swipe in from the right edge to start a focus',
+      ],
+      stepsZh: [
+        '点 + 添加今天要做的事',
+        '点右边的时间，设定什么时候做',
+        '做完了就点左边的圆圈',
+        '按住 + 往下拖，做成一叠',
+        '点这件事，看看一叠是怎么用的',
+        '从屏幕右边缘往里滑，开始专注',
+      ],
+    ),
+    (
+      en: 'Part 2 · Look back on your day',
+      zh: '第二部分 · 回顾你的一天',
+      stepsEn: [
+        'Tap Log mood under your list and pick how you feel',
+        'Open Dashboard to see today’s review',
+        'Tap Completed › to see what you finished',
+        'Tap a day on the calendar, then its + to plan ahead',
+        'Swipe in from the right edge and write what you’re doing now',
+      ],
+      stepsZh: [
+        '点清单下面的「记心情」，选一下现在的心情',
+        '打开「看板」，看看今日复盘',
+        '点「完成记录 ›」，看看做完了什么',
+        '在日历上点一天，再点它的 +，提前安排',
+        '从右边缘滑进来，写下现在在做什么',
+      ],
+    ),
+    (
+      en: 'Part 3 · Get to know your cat',
+      zh: '第三部分 · 认识你的小猫',
+      stepsEn: [
+        'Swipe in from the left edge to chat with me',
+        'Tap ⋯ in the chat and set a check-in time',
+        'Tell me one thing to remember in What I remember',
+        'In Me, tap my name to give me a new one',
+        'Pick a theme and a language in Me',
+      ],
+      stepsZh: [
+        '从左边缘滑进来，和我聊聊天',
+        '在聊天里点 ⋯，设一个定时约定',
+        '在「宠物记忆」里告诉我一件要记住的事',
+        '在「我」里点我的名字，给我起个新名字',
+        '在「我」里选一下主题和语言',
+      ],
+    ),
   ];
-  static bool isGettingStarted(Task? t) =>
-      t != null && _gettingStartedTitles.contains(t.title);
-  static String get gettingStartedTitle => _gettingStartedTitles[zh ? 1 : 0];
-  static List<String> get gettingStartedSteps => zh
-      ? const [
-          '点 + 添加今天要做的事',
-          '点右边的时间，设定什么时候做',
-          '做完了就点左边的圆圈',
-          '按住 + 往下拖，做成一叠',
-          '点这件事，看看一叠是怎么用的',
-          '从屏幕右边缘往里滑，开始专注',
-        ]
-      : const [
-          'Tap + to add something for today',
-          'Tap the time on the right to set when',
-          'Tap the circle on the left when it’s done',
-          'Hold + and drag down to make a stack',
-          'Tap this task to see how stacks work',
-          'Swipe in from the right edge to start a focus',
-        ];
+
+  /// Which Getting started part [t] is (0 for Part 1), or null.
+  static int? gettingStartedPart(Task? t) {
+    if (t == null) return null;
+    for (final (i, p) in _parts.indexed) {
+      if (t.title == p.en || t.title == p.zh) return i;
+    }
+    return null;
+  }
+
+  static bool isGettingStarted(Task? t) => gettingStartedPart(t) != null;
+  static int get gettingStartedParts => _parts.length;
+  static String partTitle(int i) => zh ? _parts[i].zh : _parts[i].en;
+  static List<String> partSteps(int i) =>
+      zh ? _parts[i].stepsZh : _parts[i].stepsEn;
+  static String get gettingStartedTitle => partTitle(0);
+  static List<String> get gettingStartedSteps => partSteps(0);
 
   // Moods and the rest.
 

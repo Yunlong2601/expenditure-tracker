@@ -922,7 +922,7 @@ class NotebookSheet extends StatelessWidget {
                     width: 58,
                     height: 58,
                     child: ExcludeSemantics(
-                      child: CustomPaint(painter: CatPainter()),
+                      child: CustomPaint(painter: CatPainter(star: true)),
                     ),
                   ),
                   const SizedBox(width: 12),
