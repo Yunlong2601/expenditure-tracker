@@ -206,19 +206,25 @@ class Ledger {
       ..addAll([for (final d in raw['debts'] as List? ?? const []) Debt.fromJson(d as Map<String, dynamic>)]);
   }
 
-  Future<void> _save() async {
-    await dir.create(recursive: true);
-    // Write to a temp file and rename, so a crash mid-write can't corrupt the ledger.
-    final tmp = File('${_file.path}.tmp');
-    await tmp.writeAsString(
-      jsonEncode({
-        'version': 1,
-        'expenses': [for (final e in _items) e.toJson()],
-        if (_debts.isNotEmpty) 'debts': [for (final d in _debts) d.toJson()],
-      }),
-      flush: true,
-    );
-    await tmp.rename(_file.path);
+  /// Done once every change made so far is on disk.
+  Future<void> get idle => _writing.catchError((Object _) {});
+  Future<void> _writing = Future.value();
+
+  Future<void> _save() {
+    final text = jsonEncode({
+      'version': 1,
+      'expenses': [for (final e in _items) e.toJson()],
+      if (_debts.isNotEmpty) 'debts': [for (final d in _debts) d.toJson()],
+    });
+    // One write at a time, so two saves never race on the temp file. A failed
+    // write doesn't block the next one.
+    return _writing = _writing.catchError((Object _) {}).then((_) async {
+      await dir.create(recursive: true);
+      // Write to a temp file and rename, so a crash mid-write can't corrupt the ledger.
+      final tmp = File('${_file.path}.tmp');
+      await tmp.writeAsString(text, flush: true);
+      await tmp.rename(_file.path);
+    });
   }
 
   static String _newId() =>

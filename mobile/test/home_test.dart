@@ -56,7 +56,11 @@ void main() {
     picker = FakePicker();
     Prefs.current = Prefs.memory();
   });
-  tearDown(() async => dir.delete(recursive: true));
+  tearDown(() async {
+    // A save can still be writing on a slow machine; let it finish first.
+    await ledger.idle;
+    await dir.delete(recursive: true);
+  });
 
   Widget wrap(ReceiptReader reader) => MaterialApp(
     home: HomeScreen(ledger: ledger, reader: reader, picker: picker),
