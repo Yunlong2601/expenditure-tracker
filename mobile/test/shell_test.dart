@@ -115,7 +115,17 @@ void main() {
     expect(find.byKey(const Key('week-today-dot')), findsOneWidget);
     final tomorrow = DateTime.now().add(const Duration(days: 1));
     final cell = find.byKey(Key('day-${tomorrow.month}-${tomorrow.day}'));
-    await tester.ensureVisible(cell.first);
+    // The calendar sits below the fold, so scroll the Dashboard to it.
+    await tester.scrollUntilVisible(
+      cell,
+      300,
+      scrollable: find
+          .descendant(
+            of: find.byKey(const Key('dashboard-list')),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
     await tester.tap(cell.first);
     await tester.pumpAndSettle();
     await tester.ensureVisible(find.byKey(const Key('day-add')));
