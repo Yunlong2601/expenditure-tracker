@@ -262,13 +262,23 @@ class DayStore extends ChangeNotifier {
   }
 
   /// Writes the file and tells every screen to redraw.
-  Future<void> save() async {
+  Future<void> save() {
     notifyListeners();
     final f = _file;
-    if (f == null) return;
-    await f.parent.create(recursive: true);
-    await f.writeAsString(jsonEncode(toJson()), flush: true);
+    if (f == null) return Future.value();
+    final text = jsonEncode(toJson());
+    // One write at a time, each to a temp file then renamed over day.json,
+    // so a crash mid-write can't leave a half-written file behind.
+    // A failed write doesn't block the next one.
+    return _writing = _writing.catchError((Object _) {}).then((_) async {
+      await f.parent.create(recursive: true);
+      final tmp = File('${f.path}.tmp');
+      await tmp.writeAsString(text, flush: true);
+      await tmp.rename(f.path);
+    });
   }
+
+  Future<void> _writing = Future.value();
 
   // Tasks.
 

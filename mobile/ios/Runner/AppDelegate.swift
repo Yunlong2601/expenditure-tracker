@@ -197,6 +197,28 @@ enum Remind {
       case "cancel":
         center.removePendingNotificationRequests(withIdentifiers: ids)
         result(nil)
+      case "checkins":
+        // The cat's daily check-ins: replace every one with the new list.
+        let items = call.arguments as? [[String: Any]] ?? []
+        center.getPendingNotificationRequests { pending in
+          let old = pending.map { $0.identifier }.filter { $0.hasPrefix("checkin-") }
+          center.removePendingNotificationRequests(withIdentifiers: old)
+          for item in items {
+            guard let id = item["id"] as? String, let hour = item["hour"] as? Int,
+              let minute = item["minute"] as? Int, let body = item["body"] as? String
+            else { continue }
+            let content = UNMutableNotificationContent()
+            content.title = "Tiny Habits Cat"
+            content.body = body
+            content.sound = .default
+            var when = DateComponents()
+            when.hour = hour
+            when.minute = minute
+            let trigger = UNCalendarNotificationTrigger(dateMatching: when, repeats: true)
+            center.add(UNNotificationRequest(identifier: "checkin-\(id)", content: content, trigger: trigger))
+          }
+          DispatchQueue.main.async { result(nil) }
+        }
       default:
         result(FlutterMethodNotImplemented)
       }

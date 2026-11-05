@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 
 import 'companion.dart';
 import 'feel.dart';
+import 'day.dart';
 import 'prefs.dart';
+import 'remind.dart';
 import 'theme.dart';
 
 /// The Me tab (IMG_6780): the cat's name, four quick switches,
@@ -168,6 +170,7 @@ class _MeTabState extends State<MeTab> {
                 value: _p.quiet ? 'On' : 'Off',
                 onTap: () async {
                   await _p.setQuiet(!_p.quiet);
+                  Remind.syncCheckIns(DayStore.current);
                   setState(() {});
                 },
               ),
@@ -398,6 +401,7 @@ class _CompanionSheetState extends State<CompanionSheet> {
           action: 'Save',
           onAction: () async {
             await Prefs.current.setCatName(_name.text);
+            Remind.syncCheckIns(DayStore.current);
             Feel.logged();
             if (context.mounted) Navigator.of(context).pop();
           },

@@ -92,6 +92,7 @@ class _RootState extends State<_Root> {
       await Prefs.load(dir);
       final day = await DayStore.load(dir);
       Remind.sync(ledger);
+      Remind.syncCheckIns(day);
       widget.onThemeChanged();
       if (mounted) {
         setState(() {

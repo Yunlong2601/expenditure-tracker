@@ -1,8 +1,13 @@
 import 'dart:io';
 
+import 'package:flutter/services.dart';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:spendsnap/chat.dart';
 import 'package:spendsnap/day.dart';
+import 'package:spendsnap/prefs.dart';
+import 'package:spendsnap/records.dart';
+import 'package:spendsnap/remind.dart';
 
 void main() {
   group('DayStore', () {
@@ -115,5 +120,54 @@ void main() {
       expect(s.notebook, hasLength(1));
       expect(s.notebook.single.text, contains('chatted once'));
     });
+  });
+
+  test('saving leaves only day.json, written whole', () async {
+    final dir = await Directory.systemTemp.createTemp('day');
+    addTearDown(() => dir.delete(recursive: true));
+    final s = await DayStore.load(dir);
+    await Future.wait([s.addTask('One'), s.addTask('Two'), s.addTask('Three')]);
+    expect(File('${dir.path}/day.json.tmp').existsSync(), isFalse);
+    expect((await DayStore.load(dir)).tasks, hasLength(3));
+  });
+
+  test('a focus session keeps going without its view, and counts when done', () async {
+    final s = DayStore.memory();
+    final f = FocusSession.current;
+    f.setLength(15);
+    f.start(s);
+    expect(f.running, isTrue);
+    f.pause();
+    expect(f.started, isTrue);
+    await f.finish();
+    expect(s.focusMinutesOn(DateTime.now()), 15);
+    expect(f.started, isFalse);
+  });
+
+  test('check-ins are scheduled, and cleared while paused or quiet', () async {
+    TestWidgetsFlutterBinding.ensureInitialized();
+    final calls = <Object?>[];
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(
+      const MethodChannel('spendsnap/remind'),
+      (c) async {
+        if (c.method == 'checkins') calls.add(c.arguments);
+        return null;
+      },
+    );
+    Prefs.current = Prefs.memory();
+    final s = DayStore.memory();
+    s.checkIns.add(CheckIn(kind: 1, minutes: 20 * 60 + 30));
+    await Remind.syncCheckIns(s);
+    final sent = (calls.last! as List).single as Map;
+    expect(sent['hour'], 20);
+    expect(sent['minute'], 30);
+    expect(sent['body'], contains('Mochi'));
+    s.checkInsPaused = true;
+    await Remind.syncCheckIns(s);
+    expect(calls.last, isEmpty);
+    s.checkInsPaused = false;
+    await Prefs.current.setQuiet(true);
+    await Remind.syncCheckIns(s);
+    expect(calls.last, isEmpty);
   });
 }

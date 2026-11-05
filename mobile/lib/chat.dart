@@ -8,6 +8,7 @@ import 'day.dart';
 import 'feel.dart';
 import 'home_tab.dart' show clock;
 import 'prefs.dart';
+import 'remind.dart';
 import 'theme.dart';
 
 /// Chat with the cat (IMG_6783 to 6788), opened by swiping in from the left
@@ -587,6 +588,7 @@ class CheckInsSheet extends StatelessWidget {
                         onChanged: (v) {
                           store.checkInsPaused = v;
                           store.save();
+                          Remind.syncCheckIns(store);
                         },
                       ),
                       const Spacer(),
@@ -619,7 +621,10 @@ class CheckInsSheet extends StatelessWidget {
                       trailing: IconButton(
                         tooltip: 'Delete',
                         icon: const Icon(Icons.close, size: 18),
-                        onPressed: () => store.remove(store.checkIns, c),
+                        onPressed: () async {
+                          await store.remove(store.checkIns, c);
+                          Remind.syncCheckIns(store);
+                        },
                       ),
                     ),
                   const Divider(height: 1),
@@ -641,6 +646,18 @@ class CheckInsSheet extends StatelessWidget {
     store.checkIns.add(CheckIn(kind: kind, minutes: p.hour * 60 + p.minute));
     await store.save();
     Feel.logged();
+    final allowed = await Remind.ask();
+    await Remind.syncCheckIns(store);
+    if (!allowed && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Allow notifications for Tiny Habits Cat in iPhone Settings to get check-ins.',
+          ),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 }
 

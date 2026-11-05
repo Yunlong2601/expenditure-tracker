@@ -322,6 +322,69 @@ class _TimelineRow extends StatelessWidget {
   }
 }
 
+/// The focus session in progress. It lives outside the Focus view, so
+/// switching to Timeline, Notes or Home doesn't lose it, and it records the
+/// session when time is up even if the view is gone.
+class FocusSession extends ChangeNotifier {
+  FocusSession._();
+  static final current = FocusSession._();
+
+  int length = 25;
+  Duration _left = const Duration(minutes: 25);
+  DateTime? _endsAt;
+  Timer? _end;
+  DayStore? _store;
+
+  bool get running => _endsAt != null;
+
+  /// Started and not yet finished, running or paused.
+  bool get started => running || _left != Duration(minutes: length);
+
+  Duration get left {
+    final e = _endsAt;
+    if (e == null) return _left;
+    final l = e.difference(DateTime.now());
+    return l.isNegative ? Duration.zero : l;
+  }
+
+  void setLength(int minutes) {
+    if (started) return;
+    length = minutes;
+    _left = Duration(minutes: minutes);
+    notifyListeners();
+  }
+
+  void start(DayStore store) {
+    _store = store;
+    _endsAt = DateTime.now().add(_left);
+    _end = Timer(_left, () => finish());
+    notifyListeners();
+  }
+
+  void pause() {
+    _left = left;
+    _endsAt = null;
+    _end?.cancel();
+    notifyListeners();
+  }
+
+  /// Records the minutes focused (all of them when time ran out) and resets.
+  Future<void> finish({bool early = false}) async {
+    final spent = (Duration(minutes: length) - left).inMinutes;
+    final minutes = early ? spent : length;
+    _end?.cancel();
+    _endsAt = null;
+    _left = Duration(minutes: length);
+    notifyListeners();
+    final s = _store;
+    if (minutes > 0 && s != null) {
+      await s.add(s.focus, '$minutes');
+      Feel.logged();
+      KittyLayer.cheer();
+    }
+  }
+}
+
 /// A focus timer: pick 15, 25 or 45 minutes, the cat keeps you company,
 /// and finished sessions count towards today's focus.
 class FocusTimer extends StatefulWidget {
@@ -333,51 +396,34 @@ class FocusTimer extends StatefulWidget {
 }
 
 class _FocusTimerState extends State<FocusTimer> {
-  var _length = 25;
-  Duration _left = const Duration(minutes: 25);
-  Timer? _timer;
-  DateTime? _endsAt;
+  FocusSession get _f => FocusSession.current;
 
-  bool get _running => _timer != null;
+  /// Redraws the clock; the session itself keeps time.
+  Timer? _redraw;
 
-  void _start() {
-    Feel.tap();
-    _endsAt = DateTime.now().add(_left);
-    _timer = Timer.periodic(const Duration(milliseconds: 250), (_) => _tick());
-    setState(() {});
+  @override
+  void initState() {
+    super.initState();
+    _f.addListener(_changed);
+    _changed();
   }
 
-  void _pause() {
-    _timer?.cancel();
-    _timer = null;
-    setState(() {});
-  }
-
-  Future<void> _finish({bool early = false}) async {
-    final spent = _length - _left.inMinutes;
-    _pause();
-    final minutes = early ? spent : _length;
-    if (minutes > 0) {
-      await widget.store.add(widget.store.focus, '$minutes');
-      Feel.logged();
-      KittyLayer.cheer();
+  void _changed() {
+    if (_f.running && _redraw == null) {
+      _redraw = Timer.periodic(const Duration(milliseconds: 250), (_) {
+        if (mounted) setState(() {});
+      });
+    } else if (!_f.running) {
+      _redraw?.cancel();
+      _redraw = null;
     }
-    setState(() => _left = Duration(minutes: _length));
-  }
-
-  void _tick() {
-    final left = _endsAt!.difference(DateTime.now());
-    if (left <= Duration.zero) {
-      _left = Duration.zero;
-      _finish();
-    } else {
-      setState(() => _left = left);
-    }
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
-    _timer?.cancel();
+    _f.removeListener(_changed);
+    _redraw?.cancel();
     super.dispose();
   }
 
@@ -385,10 +431,11 @@ class _FocusTimerState extends State<FocusTimer> {
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
     final cs = Theme.of(context).colorScheme;
-    final total = Duration(minutes: _length).inSeconds;
-    final progress = 1 - _left.inSeconds / total;
-    final mm = _left.inMinutes.toString().padLeft(2, '0');
-    final ss = (_left.inSeconds % 60).toString().padLeft(2, '0');
+    final left = _f.left;
+    final total = Duration(minutes: _f.length).inSeconds;
+    final progress = 1 - left.inSeconds / total;
+    final mm = left.inMinutes.toString().padLeft(2, '0');
+    final ss = (left.inSeconds % 60).toString().padLeft(2, '0');
     final today = widget.store.focusMinutesOn(DateTime.now());
     return Panel(
       padding: const EdgeInsets.all(24),
@@ -401,13 +448,10 @@ class _FocusTimerState extends State<FocusTimer> {
               ButtonSegment(value: 25, label: Text('25 min')),
               ButtonSegment(value: 45, label: Text('45 min')),
             ],
-            selected: {_length},
-            onSelectionChanged: _running || _left.inMinutes != _length
+            selected: {_f.length},
+            onSelectionChanged: _f.started
                 ? null
-                : (s) => setState(() {
-                    _length = s.first;
-                    _left = Duration(minutes: _length);
-                  }),
+                : (s) => _f.setLength(s.first),
           ),
           const SizedBox(height: 24),
           SizedBox.square(
@@ -443,24 +487,25 @@ class _FocusTimerState extends State<FocusTimer> {
               Expanded(
                 child: FilledButton(
                   key: const Key('focus-start'),
-                  onPressed: _running ? _pause : _start,
+                  onPressed: () {
+                    Feel.tap();
+                    _f.running ? _f.pause() : _f.start(widget.store);
+                  },
                   child: Text(
-                    _running
+                    _f.running
                         ? 'Pause'
-                        : (_left.inMinutes == _length
-                              ? 'Start focus'
-                              : 'Keep going'),
+                        : (_f.started ? 'Keep going' : 'Start focus'),
                   ),
                 ),
               ),
-              if (_running || _left.inMinutes != _length) ...[
+              if (_f.started) ...[
                 const SizedBox(width: 12),
                 OutlinedButton(
                   key: const Key('focus-stop'),
                   style: OutlinedButton.styleFrom(
                     minimumSize: const Size(64, 52),
                   ),
-                  onPressed: () => _finish(early: true),
+                  onPressed: () => _f.finish(early: true),
                   child: const Text('Done'),
                 ),
               ],

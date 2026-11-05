@@ -45,7 +45,7 @@ class AppShell extends StatefulWidget {
 class _AppShellState extends State<AppShell> {
   late var _tab = widget.initialTab;
 
-  void _push(Widget w) =>
+  Future<void> _push(Widget w) =>
       Navigator.of(context).push<void>(MaterialPageRoute(builder: (_) => w));
 
   void _chat() {
@@ -72,15 +72,17 @@ class _AppShellState extends State<AppShell> {
     final l = widget.ledger;
     final r = widget.reader;
     if (l == null || r == null) return null;
-    return () {
+    return () async {
       Feel.tap();
-      _push(HomeScreen(ledger: l, reader: r, picker: widget.picker));
+      await _push(HomeScreen(ledger: l, reader: r, picker: widget.picker));
+      // Expenses may have changed: redraw the Dashboard's money and calendar.
+      if (mounted) setState(() {});
     };
   }
 
-  void _settings() {
+  Future<void> _settings() async {
     final l = widget.ledger;
-    _push(
+    await _push(
       SettingsScreen(
         ledger: l,
         onReminderChanged: l == null ? null : () => Remind.sync(l),
@@ -89,6 +91,9 @@ class _AppShellState extends State<AppShell> {
             : () => Clipboard.setData(ClipboardData(text: l.toCsv())),
       ),
     );
+    // A restore can bring back other expenses and check-ins.
+    Remind.syncCheckIns(widget.store);
+    if (mounted) setState(() {});
   }
 
   @override

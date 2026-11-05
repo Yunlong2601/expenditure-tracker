@@ -1,5 +1,6 @@
 import 'package:flutter/services.dart';
 
+import 'day.dart';
 import 'ledger.dart';
 import 'prefs.dart';
 
@@ -36,6 +37,34 @@ class Remind {
         'minute': p.reminderAt % 60,
         'skipToday': loggedToday,
       });
+    } on Object catch (_) {
+      // No notifications here (tests, other platforms): nothing to do.
+    }
+  }
+
+  /// The cat's check-in message for each kind of check-in.
+  static String checkInText(int kind, String name) => switch (kind) {
+    0 => '$name here: how’s your list going? Tap to see what’s next.',
+    1 => '$name is cheering for you! One small thing at a time.',
+    _ => 'Time to look back on today with $name.',
+  };
+
+  /// Lines up a daily notification for every check-in, or none while
+  /// check-ins are paused or quiet mode is on.
+  static Future<void> syncCheckIns(DayStore store) async {
+    final p = Prefs.current;
+    final on = !store.checkInsPaused && !p.quiet;
+    try {
+      await _channel.invokeMethod<void>('checkins', [
+        if (on)
+          for (final c in store.checkIns)
+            {
+              'id': c.id,
+              'hour': c.minutes ~/ 60,
+              'minute': c.minutes % 60,
+              'body': checkInText(c.kind, p.catName),
+            },
+      ]);
     } on Object catch (_) {
       // No notifications here (tests, other platforms): nothing to do.
     }
