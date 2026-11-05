@@ -186,7 +186,7 @@ enum Remind {
             at > now, !(day == 0 && skipToday)
           else { continue }
           let content = UNMutableNotificationContent()
-          content.title = "Purrse"
+          content.title = "Tiny Habits Cat"
           content.body = lines[day % lines.count]
           content.sound = .default
           let when = cal.dateComponents([.year, .month, .day, .hour, .minute], from: at)

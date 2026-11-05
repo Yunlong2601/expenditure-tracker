@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 
 import 'allowance.dart';
+import 'day.dart';
 import 'feel.dart';
 import 'format.dart';
 import 'prefs.dart';
@@ -34,8 +35,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     Feel.tap();
     final data = await widget.ledger!.backup();
     data['prefs'] = Prefs.current.toJson();
+    data['day'] = DayStore.current.toJson();
     final day = DateTime.now().toIso8601String().substring(0, 10);
-    final ok = await Share.bytes(utf8.encode(jsonEncode(data)), 'SpendSnap-backup-$day.json');
+    final ok = await Share.bytes(utf8.encode(jsonEncode(data)), 'TinyHabitsCat-backup-$day.json');
     if (ok && mounted) _say('Backed up. Keep that file somewhere safe.');
   }
 
@@ -46,7 +48,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final n = Ledger.backupSize(data);
     if (n == null) {
       Feel.oops();
-      return _say("That file isn't a Purrse backup.");
+      return _say("That file isn't a Tiny Habits Cat backup.");
     }
     final yes = await showDialog<bool>(
       context: context,
@@ -67,6 +69,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await widget.ledger!.restore(data);
     final prefs = data['prefs'];
     if (prefs is Map) await Prefs.current.restore(prefs.cast<String, Object?>());
+    final day = data['day'];
+    if (day is Map) await DayStore.current.restore(day.cast<String, dynamic>());
     widget.onReminderChanged?.call();
     Feel.logged();
     if (!mounted) return;
@@ -140,7 +144,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 if (v && !await Remind.ask()) {
                   if (!context.mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Allow notifications for Purrse in iPhone Settings first.')),
+                    const SnackBar(content: Text('Allow notifications for Tiny Habits Cat in iPhone Settings first.')),
                   );
                   return;
                 }

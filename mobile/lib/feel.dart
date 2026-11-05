@@ -43,7 +43,7 @@ class Feel {
   }
 
   static void play(Sound s) {
-    if (!soundOn || (Prefs.current.schoolQuiet && inSchoolHours())) return;
+    if (!soundOn || Prefs.current.quiet || (Prefs.current.schoolQuiet && inSchoolHours())) return;
     _call('play', 'assets/sounds/${s.name}.wav');
   }
 

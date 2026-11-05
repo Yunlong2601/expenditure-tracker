@@ -80,4 +80,28 @@ class Prefs {
   /// The home screen shows the whole month, else the allowance period.
   bool get showMonth => _values['show_month'] == true || allowance == null;
   Future<void> setShowMonth(bool v) => _set('show_month', v ? true : null);
+
+  /// Saw the three welcome cards.
+  bool get onboarded => _values['onboarded'] == true;
+  Future<void> setOnboarded() => _set('onboarded', true);
+
+  /// What she calls the cat.
+  String get catName => (_values['cat_name'] as String?) ?? 'Mochi';
+  Future<void> setCatName(String v) => _set('cat_name', v.trim().isEmpty ? null : v.trim());
+
+  /// Agreed to chat with the cat.
+  bool get chatOn => _values['chat_on'] == true;
+  Future<void> setChatOn(bool v) => _set('chat_on', v ? true : null);
+
+  /// How often the cat speaks up: 0 quiet, 1 sometimes, 2 often.
+  int get chatty => (_values['chatty'] as num?)?.toInt() ?? 1;
+  Future<void> setChatty(int v) => _set('chatty', v == 1 ? null : v);
+
+  /// Quiet mode: no sounds or check-ins at all.
+  bool get quiet => _values['quiet'] == true;
+  Future<void> setQuiet(bool v) => _set('quiet', v ? true : null);
+
+  /// 'light', 'dark' or null to follow the phone.
+  String? get themeMode => _values['theme'] as String?;
+  Future<void> setThemeMode(String? v) => _set('theme', v);
 }

@@ -4,13 +4,16 @@ import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 
 import 'feel.dart';
-import 'home_screen.dart';
+import 'day.dart';
+import 'shell.dart';
+import 'theme.dart';
 import 'kitty.dart';
 import 'prefs.dart';
 import 'remind.dart';
 import 'ledger.dart';
 import 'reader.dart';
 
+/// The old pink, still used by a few money screens.
 const pink = Color(0xFFFF69B4);
 
 /// Lets tests replace the camera and photo library.
@@ -25,7 +28,9 @@ class PickedImage {
   final String name;
 }
 
-class SpendSnapApp extends StatelessWidget {
+/// Tiny Habits Cat. [SpendSnapApp] keeps its old name so tests and the
+/// iOS project don't need to change.
+class SpendSnapApp extends StatefulWidget {
   const SpendSnapApp({super.key, this.ledgerDir, this.reader, this.picker});
 
   final Directory? ledgerDir;
@@ -33,42 +38,39 @@ class SpendSnapApp extends StatelessWidget {
   final ReceiptPicker? picker;
 
   @override
-  Widget build(BuildContext context) {
-    ThemeData theme(Brightness b) {
-      final cs = ColorScheme.fromSeed(seedColor: pink, brightness: b);
-      // A clear flash under the finger: light on the filled pink buttons,
-      // pink everywhere else.
-      ButtonStyle flash(Color c) =>
-          ButtonStyle(overlayColor: WidgetStateProperty.resolveWith((s) => s.contains(WidgetState.pressed) ? c : null));
-      final pinkFlash = cs.primary.withValues(alpha: 0.24);
-      return ThemeData(
-        colorScheme: cs,
-        useMaterial3: true,
-        splashColor: pinkFlash,
-        highlightColor: cs.primary.withValues(alpha: 0.12),
-        filledButtonTheme: FilledButtonThemeData(style: flash(Colors.white.withValues(alpha: 0.32))),
-        outlinedButtonTheme: OutlinedButtonThemeData(style: flash(pinkFlash)),
-        textButtonTheme: TextButtonThemeData(style: flash(pinkFlash)),
-        iconButtonTheme: IconButtonThemeData(style: flash(pinkFlash)),
-      );
-    }
+  State<SpendSnapApp> createState() => _SpendSnapAppState();
+}
 
+class _SpendSnapAppState extends State<SpendSnapApp> {
+  @override
+  Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Purrse',
+      title: 'Tiny Habits Cat',
       debugShowCheckedModeBanner: false,
-      theme: theme(Brightness.light),
-      darkTheme: theme(Brightness.dark),
+      theme: tinyTheme(Brightness.light),
+      darkTheme: tinyTheme(Brightness.dark),
+      themeMode: switch (Prefs.current.themeMode) {
+        'light' => ThemeMode.light,
+        'dark' => ThemeMode.dark,
+        _ => ThemeMode.system,
+      },
       builder: (_, child) => KittyLayer(child: child!),
-      home: _Root(ledgerDir: ledgerDir, reader: reader ?? OfflineReader(), picker: picker),
+      home: _Root(
+        ledgerDir: widget.ledgerDir,
+        reader: widget.reader ?? OfflineReader(),
+        picker: widget.picker,
+        onThemeChanged: () => setState(() {}),
+      ),
     );
   }
 }
 
 class _Root extends StatefulWidget {
-  const _Root({this.ledgerDir, required this.reader, this.picker});
+  const _Root({this.ledgerDir, required this.reader, this.picker, required this.onThemeChanged});
   final Directory? ledgerDir;
   final ReceiptReader reader;
   final ReceiptPicker? picker;
+  final VoidCallback onThemeChanged;
 
   @override
   State<_Root> createState() => _RootState();
@@ -76,25 +78,41 @@ class _Root extends StatefulWidget {
 
 class _RootState extends State<_Root> {
   Ledger? _ledger;
+  DayStore? _day;
 
   @override
   void initState() {
     super.initState();
     () async {
+      // The folder keeps its old name so existing expenses carry over.
       final dir = widget.ledgerDir ?? Directory('${(await getApplicationDocumentsDirectory()).path}/spendsnap');
       final ledger = Ledger(dir);
       await ledger.load();
       await Feel.load(dir);
       await Prefs.load(dir);
+      final day = await DayStore.load(dir);
       Remind.sync(ledger);
-      if (mounted) setState(() => _ledger = ledger);
+      widget.onThemeChanged();
+      if (mounted) {
+        setState(() {
+          _ledger = ledger;
+          _day = day;
+        });
+      }
     }();
   }
 
   @override
   Widget build(BuildContext context) {
     final ledger = _ledger;
-    if (ledger == null) return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    return HomeScreen(ledger: ledger, reader: widget.reader, picker: widget.picker);
+    final day = _day;
+    if (ledger == null || day == null) return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    return AppShell(
+      store: day,
+      ledger: ledger,
+      reader: widget.reader,
+      picker: widget.picker,
+      onThemeChanged: widget.onThemeChanged,
+    );
   }
 }
