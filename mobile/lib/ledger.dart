@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
@@ -206,8 +207,26 @@ class Ledger {
       ..addAll([for (final d in raw['debts'] as List? ?? const []) Debt.fromJson(d as Map<String, dynamic>)]);
   }
 
-  /// Done once every change made so far is on disk.
-  Future<void> get idle => _writing.catchError((Object _) {});
+  /// Done once every change started so far has finished and is on disk.
+  Future<void> get idle async {
+    // Another change can start while this waits, so wait until none is left.
+    while (_busy > 0) {
+      await _quiet.future;
+    }
+  }
+
+  var _busy = 0;
+  var _quiet = Completer<void>()..complete();
+
+  Future<T> _track<T>(Future<T> Function() change) async {
+    if (_busy++ == 0) _quiet = Completer<void>();
+    try {
+      return await change();
+    } finally {
+      if (--_busy == 0) _quiet.complete();
+    }
+  }
+
   Future<void> _writing = Future.value();
 
   Future<void> _save() {
@@ -240,7 +259,7 @@ class Ledger {
     String? summary,
     Uint8List? receipt,
     bool moneyIn = false,
-  }) async {
+  }) => _track(() async {
     await load();
     final id = _newId();
     String? fileName;
@@ -267,7 +286,7 @@ class Ledger {
     _items.add(e);
     await _save();
     return e;
-  }
+  });
 
   /// Changes an expense's details. Its receipt photo stays attached.
   Future<Expense?> update(
@@ -277,7 +296,7 @@ class Ledger {
     required DateTime date,
     String? merchant,
     String? category,
-  }) async {
+  }) => _track(() async {
     await load();
     final i = _items.indexWhere((e) => e.id == id);
     if (i < 0) return null;
@@ -299,9 +318,9 @@ class Ledger {
     _items[i] = e;
     await _save();
     return e;
-  }
+  });
 
-  Future<void> delete(String id) async {
+  Future<void> delete(String id) => _track(() async {
     await load();
     final i = _items.indexWhere((e) => e.id == id);
     if (i < 0) return;
@@ -313,7 +332,7 @@ class Ledger {
       final f = File('${dir.path}/${e.receiptFile}');
       if (await f.exists()) await f.delete();
     }
-  }
+  });
 
   /// Was this already logged? True for the very same picture sent again, or
   /// the same amount at the same shop logged in the last 10 minutes. Buying
@@ -390,7 +409,7 @@ class Ledger {
 
   /// Splits an expense between her and [people] - 1 friends: the expense
   /// becomes her share and each friend owes theirs. [names] are optional.
-  Future<Expense?> split(String id, int people, {List<String> names = const []}) async {
+  Future<Expense?> split(String id, int people, {List<String> names = const []}) => _track(() async {
     await load();
     final i = _items.indexWhere((e) => e.id == id);
     if (i < 0 || people < 2) return null;
@@ -428,10 +447,10 @@ class Ledger {
     }
     await _save();
     return e;
-  }
+  });
 
   /// A friend paid her back.
-  Future<void> markPaid(String debtId) async {
+  Future<void> markPaid(String debtId) => _track(() async {
     await load();
     final i = _debts.indexWhere((d) => d.id == debtId);
     if (i < 0) return;
@@ -447,7 +466,7 @@ class Ledger {
       paid: true,
     );
     await _save();
-  }
+  });
 
   /// Everything in one map: expenses, friends' shares and every receipt
   /// photo, for a backup file she can keep in Files or send to herself.
@@ -473,7 +492,7 @@ class Ledger {
       data is Map && data['kind'] == 'spendsnap-backup' ? (data['expenses'] as List?)?.length : null;
 
   /// Replaces everything on the phone with a backup's contents.
-  Future<void> restore(Map<String, Object?> data) async {
+  Future<void> restore(Map<String, Object?> data) => _track(() async {
     final expenses = [for (final e in data['expenses'] as List) Expense.fromJson(e as Map<String, dynamic>)];
     final debts = [for (final d in data['debts'] as List? ?? const []) Debt.fromJson(d as Map<String, dynamic>)];
     if (await _receipts.exists()) await _receipts.delete(recursive: true);
@@ -491,7 +510,7 @@ class Ledger {
       ..addAll(debts);
     _loaded = true;
     await _save();
-  }
+  });
 
   /// Her most repeated buys (the same shop or category at the same price,
   /// at least twice), most frequent first, for one-tap logging.

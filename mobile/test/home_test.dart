@@ -74,6 +74,9 @@ void main() {
     await t.runAsync(() async {
       await t.tap(f);
       await Future<void>.delayed(const Duration(milliseconds: 200));
+      // A slow disk can take longer: wait for every save to finish too.
+      await ledger.idle.timeout(const Duration(seconds: 5), onTimeout: () {});
+      await Future<void>.delayed(Duration.zero);
     });
     await t.pumpAndSettle();
   }
