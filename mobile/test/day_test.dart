@@ -208,6 +208,8 @@ void main() {
       },
     );
     Prefs.current = Prefs.memory();
+    // Only her own check-ins here; the cat's own hellos are in remind_test.
+    await Prefs.current.setChatty(0);
     final s = DayStore.memory();
     s.checkIns.add(CheckIn(kind: 1, minutes: 20 * 60 + 30));
     await Remind.syncCheckIns(s);
