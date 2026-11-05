@@ -101,28 +101,40 @@ class _DashboardTabState extends State<DashboardTab> {
                         children: [
                           Row(
                             children: [
-                              IconButton(
-                                tooltip: 'Last week',
-                                visualDensity: VisualDensity.compact,
-                                onPressed: () => _pick(
-                                  _picked.subtract(const Duration(days: 7)),
+                              Expanded(
+                                child: Row(
+                                  children: [
+                                    IconButton(
+                                      tooltip: 'Last week',
+                                      visualDensity: VisualDensity.compact,
+                                      onPressed: () => _pick(
+                                        _picked.subtract(
+                                          const Duration(days: 7),
+                                        ),
+                                      ),
+                                      icon: const Icon(Icons.chevron_left),
+                                    ),
+                                    Flexible(
+                                      child: Text(
+                                        DateFormat('MMM yyyy').format(_picked),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: t.titleSmall?.copyWith(
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ),
+                                    IconButton(
+                                      tooltip: 'Next week',
+                                      visualDensity: VisualDensity.compact,
+                                      onPressed: () => _pick(
+                                        _picked.add(const Duration(days: 7)),
+                                      ),
+                                      icon: const Icon(Icons.chevron_right),
+                                    ),
+                                  ],
                                 ),
-                                icon: const Icon(Icons.chevron_left),
                               ),
-                              Text(
-                                DateFormat('MMM yyyy').format(_picked),
-                                style: t.titleSmall?.copyWith(
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                              IconButton(
-                                tooltip: 'Next week',
-                                visualDensity: VisualDensity.compact,
-                                onPressed: () =>
-                                    _pick(_picked.add(const Duration(days: 7))),
-                                icon: const Icon(Icons.chevron_right),
-                              ),
-                              const Spacer(),
                               PillButton(
                                 key: const Key('dash-today'),
                                 label: 'Today',
