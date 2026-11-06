@@ -11,6 +11,7 @@ import 'kitty.dart';
 import 'l10n.dart';
 import 'prefs.dart';
 import 'remind.dart';
+import 'task_talk.dart';
 import 'theme.dart';
 
 /// Chat with the cat (IMG_6783 to 6788), opened by swiping in from the left
@@ -79,6 +80,8 @@ class _ChatScreenState extends State<ChatScreen> {
     }
     await _s.add(_s.chat, reply, kind: 'cat');
     Feel.play(Sound.mew);
+    // A task asked for with a time needs leave to ring.
+    if (parseTaskAsk(v)?.remind ?? false) await Remind.ask();
     if (!mounted) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scroll.hasClients) {
@@ -495,6 +498,17 @@ String catReply(
   final done = s.doneOn(today).where((t) => !t.private).length;
   String pick(List<String> o) => o[r.nextInt(o.length)];
 
+  final ask = parseTaskAsk(said, now: today);
+  if (ask != null) {
+    s.newTask(
+      ask.title,
+      day: ask.day,
+      minutes: ask.minutes,
+      repeat: ask.repeat,
+      remind: ask.remind,
+    );
+    return taskAskReply(ask, now: today);
+  }
   for (final start in rememberStarts) {
     if (m.startsWith(start)) {
       final what = said.substring(start.length).replaceFirst(RegExp(r'^[:：，,\s]+'), '').trim();
@@ -508,8 +522,10 @@ String catReply(
   if (has(['help', '帮', '能做什么'])) {
     return tr(
       'I can tell you what’s left today, cheer you on, review your day with you, and remember small things. '
+          'Say “remind me at 8 to read” or “add buy milk” and I’ll put it on your list. '
           'Start a message with “remember” and I’ll keep it.',
-      '我可以告诉你今天还剩什么、给你打气、陪你复盘，还能记住小事。用“记住”开头说给我听，我就会记下来。',
+      '我可以告诉你今天还剩什么、给你打气、陪你复盘，还能记住小事。'
+          '说“提醒我8点读书”或“添加买牛奶”，我就加进清单。用“记住”开头说给我听，我就会记下来。',
     );
   }
   if (has(['left', 'list', 'todo', 'to-do', 'task', '还剩', '清单', '任务', '待办', '要做'])) {

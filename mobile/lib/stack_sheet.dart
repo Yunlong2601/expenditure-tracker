@@ -8,8 +8,11 @@ import 'theme.dart';
 /// Edit stack (IMG_6797, 6798): the stack's name, a help note, numbered step
 /// cards with a note each, hold to reorder, swipe left to delete, add step.
 class StackSheet extends StatefulWidget {
-  const StackSheet({super.key, required this.store, this.task});
+  const StackSheet({super.key, required this.store, this.task, this.day});
   final DayStore store;
+
+  /// The day a new stack goes on; today when null.
+  final DateTime? day;
 
   /// The stack to edit, or null to make a new one.
   final Task? task;
@@ -49,7 +52,7 @@ class _StackSheetState extends State<StackSheet> {
     if (steps.isEmpty) {
       if (t != null) await widget.store.removeTask(t);
     } else if (t == null) {
-      await widget.store.addTask(title, steps: steps);
+      await widget.store.addTask(title, steps: steps, day: widget.day);
     } else {
       t.title = title;
       t.steps

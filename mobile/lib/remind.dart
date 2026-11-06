@@ -5,7 +5,8 @@ import 'l10n.dart';
 import 'ledger.dart';
 import 'prefs.dart';
 
-/// The cat's evening "did you spend anything today?" notification.
+/// The cat's notifications: the evening "did you spend anything today?",
+/// daily check-ins, and reminders for tasks and countdowns.
 class Remind {
   Remind._();
 
@@ -134,6 +135,76 @@ class Remind {
               'body': n.body,
             },
       ]);
+    } on Object catch (_) {
+      // No notifications here (tests, other platforms): nothing to do.
+    }
+  }
+
+  /// Reminders for tasks with a time and their reminder on, over the next
+  /// two weeks, and for countdowns, the morning before and the morning of the
+  /// day. Nearest first, and at most [max]: an iPhone keeps 64 waiting in all.
+  /// Quiet mode keeps them, without a sound.
+  static List<Map<String, Object>> alerts(
+    DayStore s, {
+    DateTime? now,
+    int max = 40,
+  }) {
+    final t0 = now ?? DateTime.now();
+    final out = <({DateTime at, String id, String body})>[];
+    for (var i = 0; i < 14; i++) {
+      final day = DateTime(t0.year, t0.month, t0.day + i);
+      for (final t in s.tasksOn(day)) {
+        final m = t.minutes;
+        if (!t.remind || m == null || t.done) continue;
+        final at = DateTime(day.year, day.month, day.day, m ~/ 60, m % 60);
+        if (!at.isAfter(t0)) continue;
+        out.add((
+          at: at,
+          id: 'task-${t.id}',
+          // A private task's name stays off the lock screen.
+          body: t.private
+              ? tr('Time for your private task.', '该做那件不公开的事啦。')
+              : tr('Time for “${t.title}”. You’ve got this!', '该做「${t.title}」啦，你可以的！'),
+        ));
+      }
+    }
+    for (final c in s.countdowns) {
+      if (!c.remind || c.isPast(t0)) continue;
+      final d = c.next(t0);
+      final before = DateTime(d.year, d.month, d.day - 1, 9);
+      final on = DateTime(d.year, d.month, d.day, 9);
+      if (before.isAfter(t0)) {
+        out.add((
+          at: before,
+          id: 'countdown-${c.id}-before',
+          body: tr('${c.title} is tomorrow!', '明天就是${c.title}啦！'),
+        ));
+      }
+      if (on.isAfter(t0)) {
+        out.add((
+          at: on,
+          id: 'countdown-${c.id}',
+          body: tr('${c.title} is today!', '今天就是${c.title}！'),
+        ));
+      }
+    }
+    out.sort((a, b) => a.at.compareTo(b.at));
+    final sound = !Prefs.current.quiet;
+    return [
+      for (final a in out.take(max))
+        {
+          'id': a.id,
+          'at': a.at.millisecondsSinceEpoch,
+          'body': a.body,
+          'sound': sound,
+        },
+    ];
+  }
+
+  /// Replaces every task and countdown reminder on the phone with [alerts].
+  static Future<void> syncAlerts(DayStore s) async {
+    try {
+      await _channel.invokeMethod<void>('alerts', alerts(s));
     } on Object catch (_) {
       // No notifications here (tests, other platforms): nothing to do.
     }

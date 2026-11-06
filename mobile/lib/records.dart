@@ -8,6 +8,7 @@ import 'day.dart';
 import 'feel.dart';
 import 'kitty.dart';
 import 'l10n.dart';
+import 'prefs.dart';
 import 'theme.dart';
 
 /// Records (IMG_6782), opened by swiping in from the right on Home:
@@ -348,23 +349,43 @@ class _TimelineRow extends StatelessWidget {
   }
 }
 
+/// The calm sounds for focus, made for this app, in assets/sounds.
+const focusSounds = ['rain', 'waves', 'fire'];
+
+String focusSoundLabel(String? name) => switch (name) {
+  'rain' => tr('Rain', '雨声'),
+  'waves' => tr('Waves', '海浪'),
+  'fire' => tr('Fire', '炉火'),
+  _ => tr('Off', '关'),
+};
+
 /// The focus session in progress. It lives outside the Focus view, so
 /// switching to Timeline, Notes or Home doesn't lose it, and it records the
-/// session when time is up even if the view is gone.
+/// session when time is up even if the view is gone. A timer counts down
+/// from [length] minutes; a stopwatch counts up until she taps Done.
 class FocusSession extends ChangeNotifier {
   FocusSession._();
   static final current = FocusSession._();
 
   int length = 25;
+  bool stopwatch = false;
+
+  /// The task this session is for, if it was started from one.
+  String? task;
+
   Duration _left = const Duration(minutes: 25);
+  Duration _counted = Duration.zero;
   DateTime? _endsAt;
+  DateTime? _since;
   Timer? _end;
   DayStore? _store;
 
-  bool get running => _endsAt != null;
+  bool get running => _endsAt != null || _since != null;
 
   /// Started and not yet finished, running or paused.
-  bool get started => running || _left != Duration(minutes: length);
+  bool get started =>
+      running ||
+      (stopwatch ? _counted > Duration.zero : _left != Duration(minutes: length));
 
   Duration get left {
     final e = _endsAt;
@@ -373,46 +394,100 @@ class FocusSession extends ChangeNotifier {
     return l.isNegative ? Duration.zero : l;
   }
 
+  /// Time counted so far.
+  Duration get elapsed {
+    if (stopwatch) {
+      final s = _since;
+      return s == null ? _counted : _counted + DateTime.now().difference(s);
+    }
+    return Duration(minutes: length) - left;
+  }
+
+  /// Any length from 1 minute to 4 hours.
   void setLength(int minutes) {
     if (started) return;
-    length = minutes;
-    _left = Duration(minutes: minutes);
+    length = minutes.clamp(1, 240);
+    _left = Duration(minutes: length);
+    notifyListeners();
+  }
+
+  void setStopwatch(bool on) {
+    if (started) return;
+    stopwatch = on;
+    notifyListeners();
+  }
+
+  /// Gets ready to focus on [title]; a session already going keeps its own.
+  void forTask(String title) {
+    if (started) return;
+    task = title;
+    notifyListeners();
+  }
+
+  void clearTask() {
+    task = null;
+    notifyListeners();
+  }
+
+  /// The calm sound, from Prefs. Changing it while running switches at once.
+  String? get sound => Prefs.current.focusSound;
+  Future<void> setSound(String? name) async {
+    await Prefs.current.setFocusSound(name);
+    if (running) Feel.loop(name);
     notifyListeners();
   }
 
   void start(DayStore store) {
     _store = store;
-    _endsAt = DateTime.now().add(_left);
-    _end = Timer(_left, () => finish());
+    if (stopwatch) {
+      _since = DateTime.now();
+    } else {
+      _endsAt = DateTime.now().add(_left);
+      _end = Timer(_left, () => finish());
+    }
+    if (sound != null) Feel.loop(sound);
     notifyListeners();
   }
 
   void pause() {
-    _left = left;
-    _endsAt = null;
-    _end?.cancel();
+    if (stopwatch) {
+      _counted = elapsed;
+      _since = null;
+    } else {
+      _left = left;
+      _endsAt = null;
+      _end?.cancel();
+    }
+    Feel.loop(null);
     notifyListeners();
   }
 
   /// Records the minutes focused (all of them when time ran out) and resets.
   Future<void> finish({bool early = false}) async {
-    final spent = (Duration(minutes: length) - left).inMinutes;
-    final minutes = early ? spent : length;
+    final minutes = stopwatch
+        ? elapsed.inMinutes
+        : (early ? elapsed.inMinutes : length);
+    final label = task;
     _end?.cancel();
     _endsAt = null;
+    _since = null;
+    _counted = Duration.zero;
     _left = Duration(minutes: length);
+    task = null;
+    Feel.loop(null);
     notifyListeners();
     final s = _store;
     if (minutes > 0 && s != null) {
-      await s.add(s.focus, '$minutes');
+      await s.add(s.focus, '$minutes', kind: label);
       Feel.logged();
       KittyLayer.cheer();
     }
   }
 }
 
-/// A focus timer: pick 15, 25 or 45 minutes, the cat keeps you company,
-/// and finished sessions count towards today's focus.
+/// A focus timer: 15, 25, 45 or any minutes, or a stopwatch that counts
+/// up; a calm sound if she likes; the cat keeps her company, and finished
+/// sessions count towards today's focus.
 class FocusTimer extends StatefulWidget {
   const FocusTimer({super.key, required this.store});
   final DayStore store;
@@ -453,49 +528,123 @@ class _FocusTimerState extends State<FocusTimer> {
     super.dispose();
   }
 
+  Future<void> _custom() async {
+    final c = TextEditingController(text: '${_f.length}');
+    final v = await showDialog<int>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(tr('How many minutes?', '专注多少分钟？')),
+        content: TextField(
+          key: const Key('focus-length-field'),
+          controller: c,
+          autofocus: true,
+          keyboardType: TextInputType.number,
+          decoration: InputDecoration(
+            suffixText: tr('min', '分钟'),
+            helperText: tr('1 to 240', '1 到 240'),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text(tr('Cancel', '取消')),
+          ),
+          FilledButton(
+            key: const Key('focus-length-save'),
+            onPressed: () => Navigator.of(ctx).pop(int.tryParse(c.text.trim())),
+            child: Text(tr('OK', '好')),
+          ),
+        ],
+      ),
+    );
+    if (v != null && v > 0) _f.setLength(v);
+  }
+
+  String _two(int n) => n.toString().padLeft(2, '0');
+
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
     final cs = Theme.of(context).colorScheme;
-    final left = _f.left;
-    final total = Duration(minutes: _f.length).inSeconds;
-    final progress = 1 - left.inSeconds / total;
-    final mm = left.inMinutes.toString().padLeft(2, '0');
-    final ss = (left.inSeconds % 60).toString().padLeft(2, '0');
+    final shown = _f.stopwatch ? _f.elapsed : _f.left;
+    final hours = shown.inHours;
+    final clockText = hours > 0
+        ? '$hours:${_two(shown.inMinutes % 60)}:${_two(shown.inSeconds % 60)}'
+        : '${_two(shown.inMinutes)}:${_two(shown.inSeconds % 60)}';
+    final progress = _f.stopwatch
+        ? (shown.inSeconds % 60) / 60
+        : 1 - _f.left.inSeconds / Duration(minutes: _f.length).inSeconds;
     final today = widget.store.focusMinutesOn(DateTime.now());
+    final locked = _f.started;
+    final preset = const [15, 25, 45].contains(_f.length);
     return Panel(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(20),
       child: Column(
         children: [
-          SegmentedButton<int>(
+          SegmentedButton<bool>(
             showSelectedIcon: false,
             segments: [
-              ButtonSegment(value: 15, label: Text(tr('15 min', '15 分钟'))),
-              ButtonSegment(value: 25, label: Text(tr('25 min', '25 分钟'))),
-              ButtonSegment(value: 45, label: Text(tr('45 min', '45 分钟'))),
+              ButtonSegment(
+                value: false,
+                label: Text(tr('Timer', '倒计时'), key: const Key('focus-mode-timer')),
+              ),
+              ButtonSegment(
+                value: true,
+                label: Text(tr('Stopwatch', '正计时'), key: const Key('focus-mode-stopwatch')),
+              ),
             ],
-            selected: {_f.length},
-            onSelectionChanged: _f.started
-                ? null
-                : (s) => _f.setLength(s.first),
+            selected: {_f.stopwatch},
+            onSelectionChanged: locked ? null : (v) => _f.setStopwatch(v.first),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 12),
+          if (!_f.stopwatch)
+            Wrap(
+              spacing: 8,
+              alignment: WrapAlignment.center,
+              children: [
+                for (final m in const [15, 25, 45])
+                  ChoiceChip(
+                    key: Key('focus-$m'),
+                    label: Text(tr('$m min', '$m 分钟')),
+                    selected: _f.length == m,
+                    onSelected: locked ? null : (_) => _f.setLength(m),
+                  ),
+                ChoiceChip(
+                  key: const Key('focus-custom'),
+                  avatar: const Icon(Icons.tune, size: 16),
+                  label: Text(preset ? tr('Other', '自定') : tr('${_f.length} min', '${_f.length} 分钟')),
+                  selected: !preset,
+                  onSelected: locked ? null : (_) => _custom(),
+                ),
+              ],
+            ),
+          if (_f.task != null) ...[
+            const SizedBox(height: 10),
+            InputChip(
+              key: const Key('focus-task'),
+              avatar: const Icon(Icons.task_alt, size: 18),
+              label: Text(tr('For: ${_f.task}', '专注：${_f.task}')),
+              onDeleted: locked ? null : _f.clearTask,
+              deleteButtonTooltipMessage: tr('Not for a task', '不关联任务'),
+            ),
+          ],
+          const SizedBox(height: 16),
           SizedBox.square(
-            dimension: 220,
+            dimension: 210,
             child: Stack(
               alignment: Alignment.center,
               children: [
                 CustomPaint(
-                  size: const Size.square(220),
+                  size: const Size.square(210),
                   painter: _Ring(progress, cs.primary),
                 ),
                 Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const CatAvatar(size: 64),
+                    const CatAvatar(size: 60),
                     const SizedBox(height: 8),
                     Text(
-                      '$mm:$ss',
+                      clockText,
                       key: const Key('focus-clock'),
                       style: t.displaySmall?.copyWith(
                         fontWeight: FontWeight.w700,
@@ -507,7 +656,32 @@ class _FocusTimerState extends State<FocusTimer> {
               ],
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              const Icon(Icons.music_note_outlined, size: 18, color: Palette.muted),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Wrap(
+                  spacing: 6,
+                  runSpacing: 4,
+                  children: [
+                    for (final name in [null, ...focusSounds])
+                      ChoiceChip(
+                        key: Key('sound-${name ?? 'off'}'),
+                        label: Text(focusSoundLabel(name)),
+                        selected: _f.sound == name,
+                        onSelected: (_) {
+                          Feel.tap();
+                          _f.setSound(name);
+                        },
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
           Row(
             children: [
               Expanded(

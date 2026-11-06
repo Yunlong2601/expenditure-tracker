@@ -7,6 +7,8 @@ import 'feel.dart';
 import 'kitty.dart';
 import 'onboarding.dart';
 import 'prefs.dart';
+import 'records.dart';
+import 'remind.dart';
 import 'stack_sheet.dart';
 import 'l10n.dart';
 import 'theme.dart';
@@ -16,6 +18,8 @@ String clock(BuildContext context, int minutes) =>
 
 /// The Pet tab (IMG_6793 to 6798): the cat's room, today's list with a +
 /// beside it, and edge tabs that open Chat (left) and Records (right).
+/// Schedule (IMG_6789) shows a week strip to plan any day; the magnifier
+/// searches every task.
 class HomeTab extends StatefulWidget {
   const HomeTab({
     super.key,
@@ -37,6 +41,35 @@ class _HomeTabState extends State<HomeTab> {
   double _dragX = 0;
   bool? _fromLeft;
 
+  /// Schedule shows the week strip and the picked day's list.
+  bool _schedule = false;
+  DateTime _day = dayOf(DateTime.now());
+
+  /// The day the list shows and + adds to.
+  DateTime get _shown => _schedule ? _day : dayOf(DateTime.now());
+
+  void _show(bool schedule) {
+    Feel.tap();
+    setState(() {
+      _schedule = schedule;
+      if (!schedule) _day = dayOf(DateTime.now());
+    });
+  }
+
+  void _pickDay(DateTime d) {
+    Feel.tap();
+    setState(() => _day = dayOf(d));
+  }
+
+  Future<void> _search() async {
+    Feel.tap();
+    await showTinySheet<void>(
+      context,
+      (_) => TaskSearchSheet(store: _s),
+      tall: true,
+    );
+  }
+
   String _greeting() {
     final h = DateTime.now().hour;
     final name = Prefs.current.catName;
@@ -48,14 +81,17 @@ class _HomeTabState extends State<HomeTab> {
 
   Future<void> _addTask() async {
     Feel.tap();
-    await showTinySheet<void>(context, (_) => TaskSheet(store: _s));
+    await showTinySheet<void>(
+      context,
+      (_) => TaskSheet(store: _s, day: _schedule ? _day : null),
+    );
   }
 
   Future<void> _newStack() async {
     HapticFeedback.mediumImpact();
     await showTinySheet<void>(
       context,
-      (_) => StackSheet(store: _s),
+      (_) => StackSheet(store: _s, day: _schedule ? _day : null),
       tall: true,
     );
   }
@@ -93,8 +129,11 @@ class _HomeTabState extends State<HomeTab> {
           : TimeOfDay(hour: t.minutes! ~/ 60, minute: t.minutes! % 60),
     );
     if (picked == null) return;
+    // A first time on a task turns its reminder on.
+    if (t.minutes == null && !t.isStack) t.remind = true;
     t.minutes = picked.hour * 60 + picked.minute;
     await _s.save();
+    if (t.remind) await Remind.ask();
   }
 
   @override
@@ -102,7 +141,9 @@ class _HomeTabState extends State<HomeTab> {
     final t = Theme.of(context).textTheme;
     final cs = Theme.of(context).colorScheme;
     final today = DateTime.now();
-    final list = _s.tasksOn(today);
+    final shown = _shown;
+    final list = _s.tasksOn(shown);
+    final isToday = sameDay(shown, today);
     final countdowns = _s.upcoming().take(3).toList();
     final w = MediaQuery.sizeOf(context).width;
 
@@ -177,24 +218,25 @@ class _HomeTabState extends State<HomeTab> {
                       ],
                       Row(
                         children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  tr('Today', '今天'),
-                                  style: t.headlineSmall?.copyWith(
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                                ),
-                                Text(
-                                  longDay(today),
-                                  style: t.bodyMedium?.copyWith(
-                                    color: Palette.muted,
-                                  ),
-                                ),
-                              ],
-                            ),
+                          HeadTab(
+                            key: const Key('tab-today'),
+                            label: tr('Today', '今天'),
+                            on: !_schedule,
+                            onTap: () => _show(false),
+                          ),
+                          const SizedBox(width: 18),
+                          HeadTab(
+                            key: const Key('tab-schedule'),
+                            label: tr('Schedule', '日程'),
+                            on: _schedule,
+                            onTap: () => _show(true),
+                          ),
+                          const Spacer(),
+                          IconButton(
+                            key: const Key('search-tasks'),
+                            tooltip: tr('Search tasks', '搜索任务'),
+                            onPressed: _search,
+                            icon: const Icon(Icons.search),
                           ),
                           // Tap + for a task; hold it to make a stack.
                           GestureDetector(
@@ -204,7 +246,9 @@ class _HomeTabState extends State<HomeTab> {
                             },
                             child: IconButton.filled(
                               key: const Key('add-task'),
-                              tooltip: tr('Add for today (hold to make a stack)', '添加今天的事（长按做成一叠）'),
+                              tooltip: isToday
+                                  ? tr('Add for today (hold to make a stack)', '添加今天的事（长按做成一叠）')
+                                  : tr('Add for ${dayMonth(shown)} (hold to make a stack)', '添加到${dayMonth(shown)}（长按做成一叠）'),
                               iconSize: 28,
                               onPressed: _addTask,
                               icon: const Icon(Icons.add),
@@ -212,6 +256,59 @@ class _HomeTabState extends State<HomeTab> {
                           ),
                         ],
                       ),
+                      Text(
+                        longDay(shown),
+                        style: t.bodyMedium?.copyWith(color: Palette.muted),
+                      ),
+                      if (_schedule) ...[
+                        const SizedBox(height: 10),
+                        Panel(
+                          key: const Key('schedule-week'),
+                          padding: const EdgeInsets.fromLTRB(6, 4, 6, 8),
+                          child: Column(
+                            children: [
+                              Row(
+                                children: [
+                                  IconButton(
+                                    tooltip: tr('Last week', '上一周'),
+                                    onPressed: () => _pickDay(_day.subtract(const Duration(days: 7))),
+                                    icon: const Icon(Icons.chevron_left),
+                                  ),
+                                  Expanded(
+                                    child: Text(
+                                      monthYear(_day),
+                                      textAlign: TextAlign.center,
+                                      style: t.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                                    ),
+                                  ),
+                                  IconButton(
+                                    tooltip: tr('Next week', '下一周'),
+                                    onPressed: () => _pickDay(_day.add(const Duration(days: 7))),
+                                    icon: const Icon(Icons.chevron_right),
+                                  ),
+                                  PillButton(
+                                    key: const Key('schedule-today'),
+                                    label: tr('Today', '今天'),
+                                    dense: true,
+                                    onPressed: () => _pickDay(DateTime.now()),
+                                  ),
+                                  const SizedBox(width: 6),
+                                ],
+                              ),
+                              WeekStrip(
+                                id: 'schedule',
+                                start: weekStart(_day),
+                                picked: _day,
+                                onPick: _pickDay,
+                                marks: {
+                                  for (var i = 0; i < 7; i++)
+                                    if (_s.tasksOn(weekStart(_day).add(Duration(days: i))).isNotEmpty) i,
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: 12),
                       if (list.isEmpty)
                         Panel(
@@ -221,7 +318,9 @@ class _HomeTabState extends State<HomeTab> {
                               const SizedBox(width: 14),
                               Expanded(
                                 child: Text(
-                                  tr('Nothing here yet. Tap + and add one small thing for today.', '这里还空着。点 +，给今天加一件小事。'),
+                                  isToday
+                                      ? tr('Nothing here yet. Tap + and add one small thing for today.', '这里还空着。点 +，给今天加一件小事。')
+                                      : tr('Nothing planned for this day. Tap + to plan one.', '这天还没有安排。点 + 安排一件。'),
                                   style: t.bodyMedium?.copyWith(
                                     color: Palette.muted,
                                   ),
@@ -382,6 +481,20 @@ class TaskRow extends StatelessWidget {
             ),
           if (task.isStack)
             const Icon(Icons.layers_outlined, size: 18, color: Palette.muted),
+          if (task.repeat != Repeat.none)
+            Icon(
+              Icons.repeat,
+              size: 16,
+              color: Palette.muted,
+              semanticLabel: task.repeat.label,
+            ),
+          if (task.remind && task.minutes != null)
+            Icon(
+              Icons.notifications_none,
+              size: 16,
+              color: Palette.muted,
+              semanticLabel: tr('Reminder on', '会提醒'),
+            ),
           TextButton(
             onPressed: onTime,
             child: Text(
@@ -394,7 +507,8 @@ class TaskRow extends StatelessWidget {
   }
 }
 
-/// Add or edit a simple task: a title, a time and a note.
+/// Add or edit a simple task: a title, a time with its reminder, a note,
+/// how it repeats, and whether the cat may read it.
 class TaskSheet extends StatefulWidget {
   const TaskSheet({super.key, required this.store, this.task, this.day});
   final DayStore store;
@@ -410,6 +524,16 @@ class _TaskSheetState extends State<TaskSheet> {
   late final _note = TextEditingController(text: widget.task?.note);
   late int? _minutes = widget.task?.minutes;
   late bool _private = widget.task?.private ?? false;
+  late bool _remind = widget.task?.remind ?? false;
+  late Repeat _repeat = _startRepeat();
+
+  /// A repeating task stopped on this very day shows as Once.
+  Repeat _startRepeat() {
+    final t = widget.task;
+    if (t == null) return Repeat.none;
+    final end = t is Occurrence ? t.series.endDay : null;
+    return end != null && sameDay(end, t.day) ? Repeat.none : t.repeat;
+  }
 
   @override
   void dispose() {
@@ -421,134 +545,485 @@ class _TaskSheetState extends State<TaskSheet> {
   Future<void> _save() async {
     final title = _title.text.trim();
     if (title.isEmpty) return Navigator.of(context).pop();
+    final note = _note.text.trim().isEmpty ? null : _note.text.trim();
+    final remind = _remind && _minutes != null;
     final t = widget.task;
     if (t == null) {
-      final n = await widget.store.addTask(
+      widget.store.newTask(
         title,
         day: widget.day,
         minutes: _minutes,
         private: _private,
-      );
-      n.note = _note.text.trim().isEmpty ? null : _note.text.trim();
-      await widget.store.save();
+        repeat: _repeat,
+        remind: remind,
+      ).note = note;
     } else {
       t
         ..title = title
         ..minutes = _minutes
         ..private = _private
-        ..note = _note.text.trim().isEmpty ? null : _note.text.trim();
-      await widget.store.save();
+        ..remind = remind
+        ..note = note;
+      widget.store.setRepeat(t, _repeat);
     }
+    await widget.store.save();
     Feel.logged();
+    if (remind) await Remind.ask();
     if (mounted) Navigator.of(context).pop();
+  }
+
+  Future<void> _delete(Task t) async {
+    var onlyThisDay = false;
+    if (t is Occurrence) {
+      final pick = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text(tr('Delete a repeating task', '删除重复的任务')),
+          content: Text(tr('Take it off just this day, or every day?', '只删这一天，还是每一天都删？')),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: Text(tr('Cancel', '取消')),
+            ),
+            TextButton(
+              key: const Key('delete-this-day'),
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: Text(tr('Just this day', '只删这一天')),
+            ),
+            TextButton(
+              key: const Key('delete-every-day'),
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: Text(tr('Every day', '每一天')),
+            ),
+          ],
+        ),
+      );
+      if (pick == null) return;
+      onlyThisDay = pick;
+    }
+    await widget.store.removeTask(t, onlyThisDay: onlyThisDay);
+    Feel.removed();
+    if (mounted) Navigator.of(context).pop();
+  }
+
+  /// Opens the focus timer for this task.
+  void _focus(Task t) {
+    Feel.tap();
+    FocusSession.current.forTask(t.title);
+    final nav = Navigator.of(context);
+    nav.pop();
+    nav.push<void>(
+      MaterialPageRoute(builder: (_) => RecordsScreen(store: widget.store, tab: 1)),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final t = widget.task;
+    final tt = Theme.of(context).textTheme;
     return SafeArea(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          SheetHeader(
-            title: t != null
-                ? tr('Edit', '编辑')
-                : widget.day == null || sameDay(widget.day!, DateTime.now())
-                ? tr('Add for today', '添加今天的事')
-                : tr('Add for ${dayMonth(widget.day!)}', '添加到${dayMonth(widget.day!)}'),
-            action: tr('Save', '保存'),
-            onAction: _save,
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-            child: Column(
-              children: [
-                TextField(
-                  key: const Key('task-title'),
-                  controller: _title,
-                  autofocus: t == null,
-                  textCapitalization: TextCapitalization.sentences,
-                  decoration: InputDecoration(
-                    hintText: tr('What’s one small thing?', '想做的一件小事是？'),
-                  ),
-                  onSubmitted: (_) => _save(),
-                ),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: _note,
-                  decoration: InputDecoration(
-                    hintText: tr('Note (optional)', '备注（可不填）'),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    const Icon(Icons.schedule, color: Palette.muted),
-                    const SizedBox(width: 8),
-                    TextButton(
-                      key: const Key('task-time'),
-                      onPressed: () async {
-                        final p = await showTimePicker(
-                          context: context,
-                          initialTime: TimeOfDay.now(),
-                        );
-                        if (p != null) {
-                          setState(() => _minutes = p.hour * 60 + p.minute);
-                        }
-                      },
-                      child: Text(
-                        _minutes == null
-                            ? tr('Set a time', '设个时间')
-                            : clock(context, _minutes!),
-                      ),
-                    ),
-                    if (_minutes != null)
-                      IconButton(
-                        tooltip: tr('No time', '不定时间'),
-                        onPressed: () => setState(() => _minutes = null),
-                        icon: const Icon(Icons.close, size: 18),
-                      ),
-                    const Spacer(),
-                    FilterChip(
-                      key: const Key('task-private'),
-                      avatar: Icon(
-                        _private ? Icons.lock_outline : Icons.public,
-                        size: 18,
-                      ),
-                      showCheckmark: false,
-                      selected: _private,
-                      label: Text(
-                        _private ? tr('Private', '不公开') : tr('Public', '公开'),
-                      ),
-                      tooltip: tr(
-                        'Private tasks aren’t shared with the cat',
-                        '不公开的事不会发给小猫',
-                      ),
-                      onSelected: (v) => setState(() => _private = v),
-                    ),
-                  ],
-                ),
-                if (t != null)
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: TextButton.icon(
-                        onPressed: () async {
-                          await widget.store.removeTask(t);
-                          Feel.removed();
-                          if (context.mounted) Navigator.of(context).pop();
-                        },
-                        icon: const Icon(Icons.delete_outline),
-                        label: Text(tr('Delete', '删除')),
-                      ),
-                  ),
-              ],
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SheetHeader(
+              title: t != null
+                  ? tr('Edit', '编辑')
+                  : widget.day == null || sameDay(widget.day!, DateTime.now())
+                  ? tr('Add for today', '添加今天的事')
+                  : tr('Add for ${dayMonth(widget.day!)}', '添加到${dayMonth(widget.day!)}'),
+              action: tr('Save', '保存'),
+              onAction: _save,
             ),
-          ),
-        ],
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  TextField(
+                    key: const Key('task-title'),
+                    controller: _title,
+                    autofocus: t == null,
+                    textCapitalization: TextCapitalization.sentences,
+                    decoration: InputDecoration(
+                      hintText: tr('What’s one small thing?', '想做的一件小事是？'),
+                    ),
+                    onSubmitted: (_) => _save(),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: _note,
+                    decoration: InputDecoration(
+                      hintText: tr('Note (optional)', '备注（可不填）'),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      const Icon(Icons.schedule, color: Palette.muted),
+                      const SizedBox(width: 8),
+                      TextButton(
+                        key: const Key('task-time'),
+                        onPressed: () async {
+                          final p = await showTimePicker(
+                            context: context,
+                            initialTime: TimeOfDay.now(),
+                          );
+                          if (p != null) {
+                            setState(() {
+                              // A first time turns the reminder on.
+                              if (_minutes == null) _remind = true;
+                              _minutes = p.hour * 60 + p.minute;
+                            });
+                          }
+                        },
+                        child: Text(
+                          _minutes == null
+                              ? tr('Set a time', '设个时间')
+                              : clock(context, _minutes!),
+                        ),
+                      ),
+                      if (_minutes != null)
+                        IconButton(
+                          tooltip: tr('No time', '不定时间'),
+                          onPressed: () => setState(() => _minutes = null),
+                          icon: const Icon(Icons.close, size: 18),
+                        ),
+                      const Spacer(),
+                      FilterChip(
+                        key: const Key('task-private'),
+                        avatar: Icon(
+                          _private ? Icons.lock_outline : Icons.public,
+                          size: 18,
+                        ),
+                        showCheckmark: false,
+                        selected: _private,
+                        label: Text(
+                          _private ? tr('Private', '不公开') : tr('Public', '公开'),
+                        ),
+                        tooltip: tr(
+                          'Private tasks aren’t shared with the cat',
+                          '不公开的事不会发给小猫',
+                        ),
+                        onSelected: (v) => setState(() => _private = v),
+                      ),
+                    ],
+                  ),
+                  if (_minutes != null)
+                    SwitchListTile(
+                      key: const Key('task-remind'),
+                      contentPadding: EdgeInsets.zero,
+                      secondary: const Icon(Icons.notifications_none),
+                      title: Text(tr('Remind me at ${clock(context, _minutes!)}', '${clock(context, _minutes!)} 提醒我')),
+                      value: _remind,
+                      onChanged: (v) => setState(() => _remind = v),
+                    ),
+                  const SizedBox(height: 4),
+                  Text(
+                    tr('Repeat', '重复'),
+                    style: tt.labelLarge?.copyWith(color: Palette.muted),
+                  ),
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 4,
+                    children: [
+                      for (final r in Repeat.values)
+                        ChoiceChip(
+                          key: Key('repeat-${r.name}'),
+                          label: Text(r.label),
+                          selected: _repeat == r,
+                          onSelected: (_) => setState(() => _repeat = r),
+                        ),
+                    ],
+                  ),
+                  if (t != null)
+                    Row(
+                      children: [
+                        TextButton.icon(
+                          key: const Key('task-focus'),
+                          onPressed: () => _focus(t),
+                          icon: const Icon(Icons.timer_outlined),
+                          label: Text(tr('Focus on this', '专注做这件')),
+                        ),
+                        const Spacer(),
+                        TextButton.icon(
+                          key: const Key('task-delete'),
+                          onPressed: () => _delete(t),
+                          icon: const Icon(Icons.delete_outline),
+                          label: Text(tr('Delete', '删除')),
+                        ),
+                      ],
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 }
+
+/// The big Today / Schedule words over the list, with a short green line
+/// under the one showing.
+class HeadTab extends StatelessWidget {
+  const HeadTab({
+    super.key,
+    required this.label,
+    required this.on,
+    required this.onTap,
+  });
+  final String label;
+  final bool on;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    final cs = Theme.of(context).colorScheme;
+    return Semantics(
+      button: true,
+      selected: on,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(10),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: t.headlineSmall?.copyWith(
+                  fontWeight: on ? FontWeight.w800 : FontWeight.w600,
+                  color: on ? null : Palette.muted,
+                ),
+              ),
+              const SizedBox(height: 4),
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                width: on ? 24 : 0,
+                height: 3,
+                decoration: BoxDecoration(
+                  color: cs.primary,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Search every task, past and planned, by its name, note or steps.
+class TaskSearchSheet extends StatefulWidget {
+  const TaskSearchSheet({super.key, required this.store});
+  final DayStore store;
+
+  @override
+  State<TaskSearchSheet> createState() => _TaskSearchSheetState();
+}
+
+class _TaskSearchSheetState extends State<TaskSearchSheet> {
+  final _q = TextEditingController();
+
+  @override
+  void dispose() {
+    _q.dispose();
+    super.dispose();
+  }
+
+  Future<void> _open(Task t) async {
+    Feel.tap();
+    await showTinySheet<void>(
+      context,
+      (_) => t.isStack
+          ? StackSheet(store: widget.store, task: t)
+          : TaskSheet(store: widget.store, task: t),
+      tall: t.isStack,
+    );
+    if (mounted) setState(() {});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    final found = widget.store.search(_q.text);
+    return Column(
+      children: [
+        SheetHeader(title: tr('Search tasks', '搜索任务')),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: TextField(
+            key: const Key('search-field'),
+            controller: _q,
+            autofocus: true,
+            textInputAction: TextInputAction.search,
+            decoration: InputDecoration(
+              prefixIcon: const Icon(Icons.search),
+              hintText: tr('Search names, notes and steps', '搜索名称、备注和步骤'),
+            ),
+            onChanged: (_) => setState(() {}),
+          ),
+        ),
+        Expanded(
+          child: _q.text.trim().isEmpty
+              ? Padding(
+                  padding: const EdgeInsets.all(32),
+                  child: Text(
+                    tr('Every task is here, done or planned.', '做完的、计划好的，每件事都能搜到。'),
+                    textAlign: TextAlign.center,
+                    style: t.bodyMedium?.copyWith(color: Palette.muted),
+                  ),
+                )
+              : found.isEmpty
+              ? Padding(
+                  padding: const EdgeInsets.all(32),
+                  child: Text(
+                    tr('Nothing found for “${_q.text.trim()}”', '没有找到「${_q.text.trim()}」'),
+                    textAlign: TextAlign.center,
+                    style: t.bodyMedium?.copyWith(color: Palette.muted),
+                  ),
+                )
+              : ListView(
+                  padding: const EdgeInsets.fromLTRB(12, 8, 12, 20),
+                  children: [
+                    for (final x in found)
+                      ListTile(
+                        key: Key('found-${x.id}'),
+                        leading: Icon(
+                          x.repeat != Repeat.none
+                              ? Icons.repeat
+                              : x.done
+                              ? Icons.check_circle
+                              : Icons.radio_button_unchecked,
+                          color: x.done ? Palette.sage : Palette.muted,
+                        ),
+                        title: Text(x.title),
+                        subtitle: Text(
+                          x.repeat != Repeat.none
+                              ? tr('${x.repeat.label} from ${dayMonth(x.day)}', '${dayMonth(x.day)}起${x.repeat.label}')
+                              : dayMonthWeekday(x.day),
+                        ),
+                        trailing: x.private
+                            ? const Icon(Icons.lock_outline, size: 16, color: Palette.muted)
+                            : null,
+                        onTap: () => _open(x),
+                      ),
+                  ],
+                ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Monday of the week [d] is in.
+DateTime weekStart(DateTime d) => DateTime(d.year, d.month, d.day - (d.weekday - 1));
+
+/// Seven days from [start] with the picked one filled in and a dot under
+/// today. Days in [marks] (0 for Monday) get a small dot: something planned.
+class WeekStrip extends StatelessWidget {
+  const WeekStrip({
+    super.key,
+    required this.start,
+    required this.picked,
+    required this.onPick,
+    this.marks = const {},
+    this.id = 'week',
+  });
+  final DateTime start, picked;
+  final ValueChanged<DateTime> onPick;
+  final Set<int> marks;
+
+  /// Starts each day's key, like "week-day-0" for Monday.
+  final String id;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    final cs = Theme.of(context).colorScheme;
+    return Row(
+      children: [
+        for (var i = 0; i < 7; i++)
+          Expanded(
+            child: Builder(
+              builder: (_) {
+                final d = DateTime(start.year, start.month, start.day + i);
+                final on = sameDay(d, picked);
+                final isToday = sameDay(d, DateTime.now());
+                return InkWell(
+                  key: Key('$id-day-$i'),
+                  borderRadius: BorderRadius.circular(10),
+                  onTap: () => onPick(d),
+                  child: Column(
+                    children: [
+                      Text(
+                        weekdayHeads[i],
+                        style: t.labelSmall?.copyWith(color: Palette.muted),
+                      ),
+                      const SizedBox(height: 4),
+                      Container(
+                        width: 26,
+                        height: 32,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: on ? cs.primary : null,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              '${d.day}',
+                              style: t.titleMedium?.copyWith(
+                                color: on ? cs.onPrimary : cs.onSurface.withValues(alpha: 0.75),
+                                fontWeight: on ? FontWeight.w700 : FontWeight.w400,
+                                height: 1.1,
+                              ),
+                            ),
+                            // The small dot under today, as in the wireframe.
+                            Container(
+                              key: isToday ? const Key('week-today-dot') : null,
+                              width: 4,
+                              height: 4,
+                              decoration: BoxDecoration(
+                                color: isToday
+                                    ? (on ? cs.onPrimary : cs.primary)
+                                    : Colors.transparent,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (marks.isNotEmpty)
+                        Container(
+                          width: 4,
+                          height: 4,
+                          margin: const EdgeInsets.only(top: 3),
+                          decoration: BoxDecoration(
+                            color: marks.contains(i)
+                                ? Palette.sage.withValues(alpha: 0.7)
+                                : Colors.transparent,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+      ],
+    );
+  }
+}
+
 
 /// Mood diary (IMG_6792): today's date, a 7-day dot row and six moods.
 Future<void> showMoodSheet(BuildContext context, DayStore s) =>
@@ -852,65 +1327,125 @@ class DashedRing extends CustomPainter {
 
 
 /// Asks for a name and a date, then adds a countdown.
-Future<void> addCountdown(BuildContext context, DayStore s) async {
-  final name = TextEditingController();
-  DateTime? date;
-  final ok = await showDialog<bool>(
+Future<void> addCountdown(BuildContext context, DayStore s) =>
+    editCountdown(context, s);
+
+/// Adds a countdown, or changes or deletes [c]. A day that has passed counts
+/// the days since; a yearly one, like a birthday, comes round every year.
+Future<void> editCountdown(
+  BuildContext context,
+  DayStore s, [
+  Countdown? c,
+]) async {
+  final name = TextEditingController(text: c?.title);
+  DateTime? date = c?.date;
+  var yearly = c?.yearly ?? false;
+  var remind = c?.remind ?? true;
+  final today = dayOf(DateTime.now());
+  final result = await showDialog<String>(
     context: context,
     builder: (ctx) => StatefulBuilder(
-      builder: (ctx, set) => AlertDialog(
-        title: Text(tr('New countdown', '新的倒数日')),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              key: const Key('countdown-name'),
-              controller: name,
-              autofocus: true,
-              decoration: InputDecoration(
-                hintText: tr('Exams, a trip, a birthday…', '考试、旅行、生日……'),
-              ),
+      builder: (ctx, set) {
+        final past = date != null && !yearly && dayOf(date!).isBefore(today);
+        return AlertDialog(
+          title: Text(
+            c == null ? tr('New countdown', '新的倒数日') : tr('Edit countdown', '编辑倒数日'),
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TextField(
+                  key: const Key('countdown-name'),
+                  controller: name,
+                  autofocus: c == null,
+                  decoration: InputDecoration(
+                    hintText: tr('Exams, a trip, a birthday…', '考试、旅行、生日……'),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  key: const Key('countdown-date'),
+                  icon: const Icon(Icons.event),
+                  label: Text(
+                    date == null ? tr('Pick the day', '选日子') : fullDate(date!),
+                  ),
+                  onPressed: () async {
+                    final d = await showDatePicker(
+                      context: ctx,
+                      firstDate: DateTime(today.year - 100),
+                      lastDate: DateTime(today.year + 50),
+                      initialDate: date ?? today.add(const Duration(days: 7)),
+                    );
+                    if (d != null) set(() => date = d);
+                  },
+                ),
+                if (past)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: Text(
+                      tr('This day has passed, so it counts the days since.', '这天已经过去，会数已经过了多少天。'),
+                      style: Theme.of(ctx).textTheme.bodySmall?.copyWith(color: Palette.muted),
+                    ),
+                  ),
+                SwitchListTile(
+                  key: const Key('countdown-yearly'),
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(tr('Every year', '每年重复')),
+                  subtitle: Text(tr('Like a birthday', '比如生日')),
+                  value: yearly,
+                  onChanged: (v) => set(() => yearly = v),
+                ),
+                SwitchListTile(
+                  key: const Key('countdown-remind'),
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(tr('Remind me', '提醒我')),
+                  subtitle: Text(tr('9 am the day before, and on the day', '前一天和当天早上 9 点')),
+                  value: remind,
+                  onChanged: (v) => set(() => remind = v),
+                ),
+              ],
             ),
-            const SizedBox(height: 12),
-            OutlinedButton.icon(
-              key: const Key('countdown-date'),
-              icon: const Icon(Icons.event),
-              label: Text(
-                date == null
-                    ? tr('Pick the day', '选日子')
-                    : fullDate(date!),
+          ),
+          actions: [
+            if (c != null)
+              TextButton(
+                key: const Key('countdown-delete'),
+                onPressed: () => Navigator.of(ctx).pop('delete'),
+                child: Text(tr('Delete', '删除')),
               ),
-              onPressed: () async {
-                final now = DateTime.now();
-                final d = await showDatePicker(
-                  context: ctx,
-                  firstDate: now,
-                  lastDate: DateTime(now.year + 10),
-                  initialDate: now.add(const Duration(days: 7)),
-                );
-                if (d != null) set(() => date = d);
-              },
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: Text(tr('Cancel', '取消')),
+            ),
+            FilledButton(
+              key: const Key('countdown-save'),
+              onPressed: () => Navigator.of(ctx).pop('save'),
+              child: Text(c == null ? tr('Add', '添加') : tr('Save', '保存')),
             ),
           ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text(tr('Cancel', '取消')),
-          ),
-          FilledButton(
-            key: const Key('countdown-save'),
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: Text(tr('Add', '添加')),
-          ),
-        ],
-      ),
+        );
+      },
     ),
   );
-  if (ok != true || name.text.trim().isEmpty) return;
-  await s.addCountdown(
-    name.text.trim(),
-    date ?? DateTime.now().add(const Duration(days: 7)),
-  );
+  if (result == 'delete' && c != null) {
+    await s.remove(s.countdowns, c);
+    Feel.removed();
+    return;
+  }
+  if (result != 'save' || name.text.trim().isEmpty) return;
+  final day = date ?? today.add(const Duration(days: 7));
+  if (c == null) {
+    await s.addCountdown(name.text.trim(), day, yearly: yearly, remind: remind);
+  } else {
+    c
+      ..title = name.text.trim()
+      ..date = day
+      ..yearly = yearly
+      ..remind = remind;
+    await s.save();
+  }
   Feel.logged();
+  if (remind) await Remind.ask();
 }

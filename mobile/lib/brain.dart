@@ -5,6 +5,7 @@ import 'dart:io';
 import 'day.dart';
 import 'l10n.dart';
 import 'prefs.dart';
+import 'task_talk.dart';
 
 /// The cat's online brain, which is optional: a Supabase Edge Function that
 /// asks an AI for the reply, Groq's free plan first and DeepSeek as a
@@ -77,10 +78,13 @@ const rememberStarts = ['remember ', '记住', '帮我记住'];
 const moneyWords = ['spend', 'spent', 'money', '花', '钱', '账'];
 
 /// Messages the cat always answers on the phone: spending never leaves it,
-/// and "remember …" is saved right away.
+/// "remember …" is saved right away, and "remind me …" or "add …" puts a
+/// task on the list.
 bool staysOnPhone(String said) {
   final m = said.trim().toLowerCase();
-  return rememberStarts.any(m.startsWith) || moneyWords.any(m.contains);
+  return rememberStarts.any(m.startsWith) ||
+      moneyWords.any(m.contains) ||
+      parseTaskAsk(said) != null;
 }
 
 /// Recent chat to send, oldest first. Lines answered on the phone, and the

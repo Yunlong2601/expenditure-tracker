@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -45,6 +47,30 @@ class AppShell extends StatefulWidget {
 
 class _AppShellState extends State<AppShell> {
   late var _tab = widget.initialTab;
+  bool _alertsQueued = false;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.store.addListener(_queueAlerts);
+    _queueAlerts();
+  }
+
+  @override
+  void dispose() {
+    widget.store.removeListener(_queueAlerts);
+    super.dispose();
+  }
+
+  /// Task and countdown reminders follow every change, once per batch.
+  void _queueAlerts() {
+    if (_alertsQueued) return;
+    _alertsQueued = true;
+    scheduleMicrotask(() {
+      _alertsQueued = false;
+      Remind.syncAlerts(widget.store);
+    });
+  }
 
   Future<void> _push(Widget w) =>
       Navigator.of(context).push<void>(MaterialPageRoute(builder: (_) => w));
@@ -59,11 +85,11 @@ class _AppShellState extends State<AppShell> {
     );
   }
 
-  void _records() {
+  void _records({int tab = 0}) {
     Feel.tap();
-    Navigator.of(
-      context,
-    ).push<void>(_slide(RecordsScreen(store: widget.store), fromLeft: false));
+    Navigator.of(context).push<void>(
+      _slide(RecordsScreen(store: widget.store, tab: tab), fromLeft: false),
+    );
   }
 
   String _spentToday() =>
@@ -115,6 +141,7 @@ class _AppShellState extends State<AppShell> {
               store: widget.store,
               ledger: widget.ledger,
               onMoney: _money,
+              onFocus: () => _records(tab: 1),
             ),
             MeTab(
               onSettings: _settings,

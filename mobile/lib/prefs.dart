@@ -102,6 +102,10 @@ class Prefs {
   int get chatty => (_values['chatty'] as num?)?.toInt() ?? 1;
   Future<void> setChatty(int v) => _set('chatty', v == 1 ? null : v);
 
+  /// The calm sound under a focus session: rain, waves, fire, or none.
+  String? get focusSound => _values['focus_sound'] as String?;
+  Future<void> setFocusSound(String? v) => _set('focus_sound', v);
+
   /// Quiet mode: no sounds or check-ins at all.
   bool get quiet => _values['quiet'] == true;
   Future<void> setQuiet(bool v) => _set('quiet', v ? true : null);

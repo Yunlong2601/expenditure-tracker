@@ -119,6 +119,11 @@ enum Feel {
       switch call.method {
       case "play":
         if let asset = call.arguments as? String { play(registrar.lookupKey(forAsset: asset)) }
+      case "loop":
+        if let asset = call.arguments as? String { loop(registrar.lookupKey(forAsset: asset)) }
+      case "stopLoop":
+        looping?.stop()
+        looping = nil
       case "success":
         UINotificationFeedbackGenerator().notificationOccurred(.success)
       case "warning":
@@ -130,13 +135,33 @@ enum Feel {
     }
   }
 
+  /// The calm sound playing under a focus session, if any.
+  private static var looping: AVAudioPlayer?
+
+  private static func readySession() {
+    if sessionReady { return }
+    // Ambient: obeys the silent switch and doesn't stop her music.
+    try? AVAudioSession.sharedInstance().setCategory(.ambient, options: [.mixWithOthers])
+    try? AVAudioSession.sharedInstance().setActive(true)
+    sessionReady = true
+  }
+
+  /// Plays a sound over and over, softly, until "stopLoop".
+  private static func loop(_ key: String) {
+    readySession()
+    looping?.stop()
+    looping = nil
+    guard let path = Bundle.main.path(forResource: key, ofType: nil),
+      let player = try? AVAudioPlayer(contentsOf: URL(fileURLWithPath: path))
+    else { return }
+    player.numberOfLoops = -1
+    player.volume = 0.6
+    player.play()
+    looping = player
+  }
+
   private static func play(_ key: String) {
-    if !sessionReady {
-      // Ambient: obeys the silent switch and doesn't stop her music.
-      try? AVAudioSession.sharedInstance().setCategory(.ambient, options: [.mixWithOthers])
-      try? AVAudioSession.sharedInstance().setActive(true)
-      sessionReady = true
-    }
+    readySession()
     if players[key] == nil, let path = Bundle.main.path(forResource: key, ofType: nil) {
       let url = URL(fileURLWithPath: path)
       players[key] = (0..<3).compactMap { _ in
@@ -198,6 +223,28 @@ enum Remind {
       case "cancel":
         center.removePendingNotificationRequests(withIdentifiers: ids)
         result(nil)
+      case "alerts":
+        // Task and countdown reminders, each once at its time: replace them all.
+        let items = call.arguments as? [[String: Any]] ?? []
+        center.getPendingNotificationRequests { pending in
+          let old = pending.map { $0.identifier }.filter { $0.hasPrefix("alert-") }
+          center.removePendingNotificationRequests(withIdentifiers: old)
+          let cal = Calendar.current
+          for item in items {
+            guard let id = item["id"] as? String, let ms = (item["at"] as? NSNumber)?.doubleValue,
+              let body = item["body"] as? String
+            else { continue }
+            let content = UNMutableNotificationContent()
+            content.title = "Tiny Habits Cat"
+            content.body = body
+            if item["sound"] as? Bool ?? true { content.sound = .default }
+            let at = Date(timeIntervalSince1970: ms / 1000)
+            let when = cal.dateComponents([.year, .month, .day, .hour, .minute], from: at)
+            let trigger = UNCalendarNotificationTrigger(dateMatching: when, repeats: false)
+            center.add(UNNotificationRequest(identifier: "alert-\(id)", content: content, trigger: trigger))
+          }
+          DispatchQueue.main.async { result(nil) }
+        }
       case "checkins":
         // The cat's daily check-ins: replace every one with the new list.
         let items = call.arguments as? [[String: Any]] ?? []

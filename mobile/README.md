@@ -25,7 +25,26 @@ TOTAL, 合计 or 实付, the big number on a payment screen), so unusual layouts
 crumpled or faded receipts and handwriting will go to the Quick check more
 often.
 
+## Tasks, focus and countdowns
+
+- **Today and Schedule** on the Pet tab: Schedule shows a week strip so you
+  can plan any day. The magnifier searches every task, done or planned.
+- **Repeats**: a task can come back every day, on weekdays or every week, and
+  each day is ticked on its own. Countdowns can repeat every year, like
+  birthdays, and a day that has passed counts the days since.
+- **Reminders**: a task with a time rings at that time, and countdowns ring at
+  9 am the day before and on the day. They are local notifications on the
+  phone; quiet mode keeps them but makes them silent.
+- **Focus**: a timer of 15, 25, 45 or any number of minutes, or a stopwatch.
+  Start it from a task with *Focus on this*, and add rain, waves or fire
+  sounds (made for this app, in `assets/sounds/`).
+- **Dashboard**: done, not done, done rate and day streak, bars for the week,
+  and focus totals for the day and the last seven days.
+
 ## Chat with the cat
+
+Say "remind me at 8 to read", "add buy milk" or "每天晚上九点提醒我刷牙" and the
+cat puts it on your list, on the phone, in English or Chinese.
 
 The cat answers on the phone with short built-in replies. For a real AI chat,
 set up the small Supabase function in [`supabase/`](../supabase/README.md) and

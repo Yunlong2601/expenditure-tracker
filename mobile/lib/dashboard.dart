@@ -8,6 +8,7 @@ import 'home_tab.dart';
 import 'kitty.dart';
 import 'ledger.dart';
 import 'l10n.dart';
+import 'stack_sheet.dart';
 import 'theme.dart';
 
 /// What she spent on [day], like "S$12.40", or null if nothing.
@@ -32,10 +33,14 @@ class DashboardTab extends StatefulWidget {
     required this.store,
     this.ledger,
     this.onMoney,
+    this.onFocus,
   });
   final DayStore store;
   final Ledger? ledger;
   final VoidCallback? onMoney;
+
+  /// Opens the focus timer.
+  final VoidCallback? onFocus;
 
   @override
   State<DashboardTab> createState() => _DashboardTabState();
@@ -119,32 +124,35 @@ class _DashboardTabState extends State<DashboardTab> {
               ),
             ],
           ),
-          if (_s.upcoming().isEmpty)
+          if (_s.countdowns.isEmpty)
             Text(
               tr('Exams, trips, birthdays: count down to what matters.', '考试、旅行、生日：给重要的日子倒数。'),
               style: t.bodyMedium?.copyWith(color: Palette.muted),
             ),
-          for (final c in _s.upcoming())
+          for (final c in [..._s.upcoming(), ..._s.past()])
             ListTile(
+              key: Key('countdown-${c.id}'),
               contentPadding: EdgeInsets.zero,
+              onTap: () => editCountdown(context, _s, c),
+              leading: Icon(
+                c.yearly ? Icons.cake_outlined : (c.isPast() ? Icons.history : Icons.hourglass_bottom),
+                color: c.isPast() ? _sinceColor : Palette.sage,
+              ),
               title: Text(c.title),
-              subtitle: Text('${fullDate(c.date)} ${weekdayShort(c.date)}'),
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    c.daysLeft() == 0 ? tr('Today', '就是今天') : tr('${c.daysLeft()} days', '${c.daysLeft()} 天'),
-                    style: t.titleMedium?.copyWith(
-                      color: Palette.sage,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  IconButton(
-                    tooltip: tr('Delete', '删除'),
-                    icon: const Icon(Icons.close, size: 18),
-                    onPressed: () => _s.remove(_s.countdowns, c),
-                  ),
-                ],
+              subtitle: Text(
+                '${fullDate(c.next())} ${weekdayShort(c.next())}'
+                '${c.yearly ? tr(' · every year', ' · 每年') : ''}',
+              ),
+              trailing: Text(
+                c.isPast()
+                    ? tr('${c.daysSince()} days since', '已经 ${c.daysSince()} 天')
+                    : c.daysLeft() == 0
+                    ? tr('Today', '就是今天')
+                    : tr('${c.daysLeft()} days', '${c.daysLeft()} 天'),
+                style: t.titleMedium?.copyWith(
+                  color: c.isPast() ? _sinceColor : Palette.sage,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
         ],
@@ -163,7 +171,10 @@ class _DashboardTabState extends State<DashboardTab> {
     final dayLabel = isToday ? tr('Today', '今日') : dayMonth(_picked);
     final tasks = _s.tasksOn(_picked);
     final done = _s.doneOn(_picked);
-    final timed = tasks.where((x) => x.minutes != null).length;
+    final open = tasks.where((x) => !x.done).length;
+    final rate = tasks.isEmpty
+        ? 0
+        : (tasks.where((x) => x.done).length * 100 / tasks.length).round();
     final focus = _s.focusMinutesOn(_picked);
     final spent = spentOn(widget.ledger, _picked);
     final mood = _s.moodOf(_picked);
@@ -256,7 +267,7 @@ class _DashboardTabState extends State<DashboardTab> {
                               ),
                             ],
                           ),
-                          _WeekStrip(
+                          WeekStrip(
                             start: _weekStart,
                             picked: _picked,
                             onPick: _pick,
@@ -383,14 +394,14 @@ class _DashboardTabState extends State<DashboardTab> {
                   _Stat(
                     icon: Icons.schedule,
                     color: const Color(0xFFE8B067),
-                    value: '$timed',
-                    label: tr('Timed', '定时'),
+                    value: '$open',
+                    label: tr('Not done', '未完成'),
                   ),
                   _Stat(
                     icon: Icons.track_changes,
                     color: const Color(0xFF7FB58A),
-                    value: '$focus',
-                    label: tr('Focus min', '专注分钟'),
+                    value: '$rate%',
+                    label: tr('Done rate', '完成率'),
                   ),
                   _Stat(
                     icon: Icons.local_fire_department,
@@ -400,9 +411,13 @@ class _DashboardTabState extends State<DashboardTab> {
                   ),
                 ],
               ),
+              const SizedBox(height: 14),
+              _WeekBars(store: _s, picked: _picked),
             ],
           ),
         ),
+        const SizedBox(height: 12),
+        _focusCard(t),
         const SizedBox(height: 12),
         // Mood.
         Panel(
@@ -480,6 +495,62 @@ class _DashboardTabState extends State<DashboardTab> {
     );
   }
 
+  /// Focus totals: the picked day, its sessions, and the seven days to it.
+  Widget _focusCard(TextTheme t) {
+    final day = _s.focusMinutesOn(_picked);
+    final sessions = _s.focusOn(_picked).length;
+    final week = _s.focusMinutesWeek(_picked);
+    return Panel(
+      key: const Key('focus-card'),
+      onTap: widget.onFocus,
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Text(
+                tr('Focus', '专注'),
+                style: t.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+              ),
+              const Spacer(),
+              if (widget.onFocus != null)
+                const Icon(Icons.chevron_right, color: Palette.muted),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _Stat(
+                icon: Icons.timer_outlined,
+                color: const Color(0xFF7FB58A),
+                value: '$day',
+                label: tr('Minutes', '分钟'),
+              ),
+              _Stat(
+                icon: Icons.repeat,
+                color: const Color(0xFF8EA7D8),
+                value: '$sessions',
+                label: tr('Sessions', '次数'),
+              ),
+              _Stat(
+                icon: Icons.date_range,
+                color: const Color(0xFFE8B067),
+                value: '$week',
+                label: tr('7-day min', '近7天分钟'),
+              ),
+              _Stat(
+                icon: Icons.insights,
+                color: const Color(0xFFEB8A5A),
+                value: '${(week / 7).round()}',
+                label: tr('Daily avg', '日均分钟'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   /// Days in a row, ending today, with at least one thing done.
   int _streak() {
     var d = dayOf(DateTime.now());
@@ -490,6 +561,87 @@ class _DashboardTabState extends State<DashboardTab> {
       d = d.subtract(const Duration(days: 1));
     }
     return n;
+  }
+}
+
+/// The orange of days since, as Days Matter colours the past.
+const _sinceColor = Color(0xFFE08A45);
+
+/// Bars for tasks done each day of the picked day's week, as in IMG_6779.
+class _WeekBars extends StatelessWidget {
+  const _WeekBars({required this.store, required this.picked});
+  final DayStore store;
+  final DateTime picked;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    final cs = Theme.of(context).colorScheme;
+    final start = weekStart(picked);
+    final days = [for (var i = 0; i < 7; i++) DateTime(start.year, start.month, start.day + i)];
+    final counts = [for (final d in days) store.doneOn(d).length];
+    final most = counts.fold(0, (a, b) => a > b ? a : b);
+    return Semantics(
+      label: tr(
+        'Done this week: ${counts.join(', ')}',
+        '本周完成：${counts.join('、')}',
+      ),
+      excludeSemantics: true,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(tr('This week', '本周完成'), style: t.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
+              const Spacer(),
+              if (most == 0)
+                Text(
+                  tr('Finish tasks and bars grow here', '完成任务后，这里会长出柱子'),
+                  style: t.labelSmall?.copyWith(color: Palette.muted),
+                ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 78,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                for (var i = 0; i < 7; i++)
+                  Expanded(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        if (counts[i] > 0)
+                          Text('${counts[i]}', style: t.labelSmall?.copyWith(color: Palette.muted)),
+                        Container(
+                          key: Key('bar-$i'),
+                          width: 16,
+                          height: most == 0 ? 3 : 3 + 44 * counts[i] / most,
+                          decoration: BoxDecoration(
+                            color: sameDay(days[i], picked)
+                                ? cs.primary
+                                : cs.primary.withValues(alpha: counts[i] == 0 ? 0.15 : 0.45),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          weekdayHeads[i],
+                          style: t.labelSmall?.copyWith(
+                            color: sameDay(days[i], picked) ? cs.primary : Palette.muted,
+                            fontWeight: sameDay(days[i], picked) ? FontWeight.w700 : null,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -521,83 +673,6 @@ class _Stat extends StatelessWidget {
   }
 }
 
-
-class _WeekStrip extends StatelessWidget {
-  const _WeekStrip({
-    required this.start,
-    required this.picked,
-    required this.onPick,
-  });
-  final DateTime start, picked;
-  final ValueChanged<DateTime> onPick;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = Theme.of(context).textTheme;
-    final cs = Theme.of(context).colorScheme;
-    return Row(
-      children: [
-        for (var i = 0; i < 7; i++)
-          Expanded(
-            child: Builder(
-              builder: (_) {
-                final d = start.add(Duration(days: i));
-                final on = sameDay(d, picked);
-                final isToday = sameDay(d, DateTime.now());
-                return InkWell(
-                  borderRadius: BorderRadius.circular(10),
-                  onTap: () => onPick(d),
-                  child: Column(
-                    children: [
-                      Text(
-                        weekdayHeads[i],
-                        style: t.labelSmall?.copyWith(color: Palette.muted),
-                      ),
-                      const SizedBox(height: 4),
-                      Container(
-                        width: 26,
-                        height: 32,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: on ? cs.primary : null,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              '${d.day}',
-                              style: t.titleMedium?.copyWith(
-                                color: on ? cs.onPrimary : cs.onSurface.withValues(alpha: 0.75),
-                                fontWeight: on ? FontWeight.w700 : FontWeight.w400,
-                                height: 1.1,
-                              ),
-                            ),
-                            // The small dot under today, as in the wireframe.
-                            Container(
-                              key: isToday ? const Key('week-today-dot') : null,
-                              width: 4,
-                              height: 4,
-                              decoration: BoxDecoration(
-                                color: isToday
-                                    ? (on ? cs.onPrimary : cs.primary)
-                                    : Colors.transparent,
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
-          ),
-      ],
-    );
-  }
-}
 
 class _MonthGrid extends StatelessWidget {
   const _MonthGrid({
@@ -685,6 +760,7 @@ class _MonthGrid extends StatelessWidget {
                       final hasTasks = store.doneOn(d).isNotEmpty;
                       final mood = store.moodOf(d);
                       final spent = spentOn(ledger, d) != null;
+                      final counting = store.countdownsOn(d).isNotEmpty;
                       return Padding(
                         padding: const EdgeInsets.all(2.5),
                         child: InkWell(
@@ -765,6 +841,7 @@ class _MonthGrid extends StatelessWidget {
                                       MoodFace(mood: mood, size: 14),
                                     if (hasTasks) _dot(const Color(0xFF6FAE6A)),
                                     if (spent) _dot(const Color(0xFFE8B067)),
+                                    if (counting) _dot(_countColor),
                                   ],
                                 ),
                               ],
@@ -792,12 +869,16 @@ class _MonthGrid extends StatelessWidget {
               style: t.labelSmall?.copyWith(color: Palette.muted),
             ),
             const MoodFace(mood: Mood.happy, size: 12),
-            Text(tr(' Mood', ' 心情'), style: t.labelSmall?.copyWith(color: Palette.muted)),
+            Text(tr(' Mood   ', ' 心情   '), style: t.labelSmall?.copyWith(color: Palette.muted)),
+            _dot(_countColor),
+            Text(tr(' Countdown', ' 倒数日'), style: t.labelSmall?.copyWith(color: Palette.muted)),
           ],
         ),
       ],
     );
   }
+
+  static const _countColor = Color(0xFF6E9BD8);
 
   Widget _dot(Color c) => Container(
     width: 7,
@@ -973,6 +1054,7 @@ class DaySheet extends StatelessWidget {
         final moods = store.moodsOn(day);
         final lines = store.timeline.where((e) => sameDay(e.at, day)).toList();
         final spent = spentOn(ledger, day);
+        final counting = store.countdownsOn(day);
         Widget head(String s) => Padding(
           padding: const EdgeInsets.only(top: 16, bottom: 6),
           child: Text(
@@ -994,6 +1076,14 @@ class DaySheet extends StatelessWidget {
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
                 children: [
+                  if (counting.isNotEmpty) ...[
+                    head(tr('Countdowns', '倒数日')),
+                    for (final c in counting)
+                      Text(
+                        c.yearly ? tr('${c.title} (every year)', '${c.title}（每年）') : c.title,
+                        style: t.bodyLarge,
+                      ),
+                  ],
                   head(tr('Tasks', '任务')),
                   if (tasks.isEmpty)
                     Text(
@@ -1006,7 +1096,13 @@ class DaySheet extends StatelessWidget {
                       child: TaskRow(
                         task: x,
                         onTick: () => store.tick(x),
-                        onTap: () {},
+                        onTap: () => showTinySheet<void>(
+                          context,
+                          (_) => x.isStack
+                              ? StackSheet(store: store, task: x)
+                              : TaskSheet(store: store, task: x),
+                          tall: x.isStack,
+                        ),
                       ),
                     ),
                   head(tr('Mood', '心情')),

@@ -36,4 +36,17 @@ void main() {
     expect(find.text('Your list is empty. Want to add one small thing?'), findsOneWidget);
     expect(s.chat.map((e) => e.kind), ['me', 'cat']);
   });
+
+
+  testWidgets('asking the cat to remind you puts the task on the list', (tester) async {
+    await Prefs.current.setChatOn(true);
+    final s = DayStore.memory();
+    await tester.pumpWidget(MaterialApp(home: ChatScreen(store: s)));
+    await tester.enterText(find.byKey(const Key('chat-field')), 'add buy milk');
+    await tester.tap(find.byKey(const Key('chat-send')));
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.pump();
+    expect(s.tasks.single.title, 'Buy milk');
+    expect(find.text('Added “Buy milk” today.'), findsOneWidget);
+  });
 }

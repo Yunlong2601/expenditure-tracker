@@ -75,6 +75,13 @@ class Feel {
     play(Sound.oops);
   }
 
+  /// Plays a calm sound from assets/sounds on a loop under a focus session,
+  /// or stops it with null. She picks it herself, so it plays whatever the
+  /// Sounds switch says; the silent switch still mutes it.
+  static void loop(String? name) => name == null
+      ? _call('stopLoop')
+      : _call('loop', 'assets/sounds/$name.wav');
+
   static void _call(String method, [Object? arg]) {
     _channel.invokeMethod<void>(method, arg).catchError((_) {});
   }
