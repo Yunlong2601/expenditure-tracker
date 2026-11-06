@@ -1,4 +1,8 @@
+import 'dart:convert';
+import 'dart:io' show Platform;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'brain.dart';
 import 'chat.dart' show ConsentSheet;
@@ -8,6 +12,7 @@ import 'feel.dart';
 import 'l10n.dart';
 import 'prefs.dart';
 import 'remind.dart';
+import 'share.dart';
 import 'theme.dart';
 
 /// The Me tab (IMG_6780): the cat's name, four quick switches,
@@ -684,14 +689,126 @@ class _HelpSheet extends StatelessWidget {
       ),
     ];
     return SafeArea(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          SheetHeader(title: tr('Help', '帮助')),
-          for (final (title, body) in tips)
-            ListTile(title: Text(title), subtitle: Text(body)),
-          const SizedBox(height: 16),
-        ],
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SheetHeader(title: tr('Help and feedback', '帮助与反馈')),
+            for (final (title, body) in tips)
+              ListTile(title: Text(title), subtitle: Text(body)),
+            const Divider(indent: 16, endIndent: 16),
+            ListTile(
+              key: const Key('open-feedback'),
+              leading: const Icon(Icons.edit_note_rounded, color: Palette.sage),
+              title: Text(tr('Send feedback', '反馈建议')),
+              subtitle: Text(tr('Something broken, or an idea? Tell us.', '遇到问题，或者有想法？告诉我们。')),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () {
+                Navigator.of(context).pop();
+                showTinySheet<void>(context, (_) => const FeedbackSheet());
+              },
+            ),
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Feedback (帮助与反馈): she writes it, and it goes out through the share
+/// sheet (Mail, Messages, WeChat…). Nothing is sent by the app itself.
+class FeedbackSheet extends StatefulWidget {
+  const FeedbackSheet({super.key});
+
+  @override
+  State<FeedbackSheet> createState() => _FeedbackSheetState();
+}
+
+class _FeedbackSheetState extends State<FeedbackSheet> {
+  final _c = TextEditingController();
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  /// The feedback with what helps us understand it, and nothing personal.
+  static String note(String text) {
+    String os;
+    try {
+      os = '${Platform.operatingSystem} ${Platform.operatingSystemVersion}';
+    } on Object catch (_) {
+      os = 'web';
+    }
+    return [
+      text.trim(),
+      '',
+      '---',
+      'Tiny Habits Cat 0.2.0 · ${zh ? 'zh' : 'en'} · $os',
+    ].join('\n');
+  }
+
+  Future<void> _send() async {
+    final text = _c.text.trim();
+    if (text.isEmpty) return;
+    Feel.tap();
+    final body = note(text);
+    final shared = await Share.bytes(utf8.encode(body), 'feedback.txt');
+    if (!mounted) return;
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    if (!shared) {
+      await Clipboard.setData(ClipboardData(text: body));
+      messenger?.showSnackBar(
+        SnackBar(content: Text(tr('Copied. Paste it into a message to us.', '已复制，粘贴到消息里发给我们就好。'))),
+      );
+    }
+    if (mounted) Navigator.of(context).pop();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    return SafeArea(
+      child: Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SheetHeader(
+              title: tr('Send feedback', '反馈建议'),
+              action: tr('Send', '发送'),
+              onAction: _send,
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: TextField(
+                key: const Key('feedback-field'),
+                controller: _c,
+                autofocus: true,
+                minLines: 4,
+                maxLines: 8,
+                maxLength: 2000,
+                textCapitalization: TextCapitalization.sentences,
+                decoration: InputDecoration(
+                  hintText: tr('What happened, or what would you like?', '发生了什么，或者你希望有什么？'),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: Text(
+                tr(
+                  'It opens your share sheet so you choose how to send it. Only the app version, language and phone system are added.',
+                  '会打开分享面板，由你选择怎么发送。只会附上 App 版本、语言和手机系统。',
+                ),
+                style: t.bodySmall?.copyWith(color: Palette.muted),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
