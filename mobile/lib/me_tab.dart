@@ -719,7 +719,10 @@ class _HelpSheet extends StatelessWidget {
 /// Feedback (帮助与反馈): she writes it, and it goes out through the share
 /// sheet (Mail, Messages, WeChat…). Nothing is sent by the app itself.
 class FeedbackSheet extends StatefulWidget {
-  const FeedbackSheet({super.key});
+  const FeedbackSheet({super.key, this.share = Share.bytes});
+
+  /// Opens the share sheet for a file; false when it can't.
+  final Future<bool> Function(List<int> bytes, String name) share;
 
   @override
   State<FeedbackSheet> createState() => _FeedbackSheetState();
@@ -755,7 +758,7 @@ class _FeedbackSheetState extends State<FeedbackSheet> {
     if (text.isEmpty) return;
     Feel.tap();
     final body = note(text);
-    final shared = await Share.bytes(utf8.encode(body), 'feedback.txt');
+    final shared = await widget.share(utf8.encode(body), 'feedback.txt');
     if (!mounted) return;
     final messenger = ScaffoldMessenger.maybeOf(context);
     if (!shared) {
