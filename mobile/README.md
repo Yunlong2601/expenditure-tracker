@@ -25,6 +25,14 @@ TOTAL, 合计 or 实付, the big number on a payment screen), so unusual layouts
 crumpled or faded receipts and handwriting will go to the Quick check more
 often.
 
+## Chat with the cat
+
+The cat answers on the phone with short built-in replies. For a real AI chat,
+set up the small Supabase function in [`supabase/`](../supabase/README.md) and
+build with `--dart-define=CAT_AI_URL=...` and `--dart-define=CAT_AI_KEY=...`.
+Spending and private tasks are never sent, and if the AI can't be reached the
+cat goes back to on-phone replies.
+
 ## Put it on your iPhone
 
 Apple only lets you install apps built on a Mac (or a cloud Mac).

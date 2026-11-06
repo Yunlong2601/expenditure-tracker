@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'brain.dart';
+import 'chat.dart' show ConsentSheet;
 import 'companion.dart';
 import 'day.dart';
 import 'feel.dart';
@@ -338,10 +340,15 @@ class _MeTabState extends State<MeTab> {
                 context: context,
                 applicationName: 'Tiny Habits Cat',
                 applicationVersion: '0.2.0',
-                applicationLegalese: tr(
-                  'By Shenetic. Everything stays on your phone.',
-                  '由 Shenetic 制作。所有数据都留在你的手机上。',
-                ),
+                applicationLegalese: CatBrain.current == null
+                    ? tr(
+                        'By Shenetic. Everything stays on your phone.',
+                        '由 Shenetic 制作。所有数据都留在你的手机上。',
+                      )
+                    : tr(
+                        'By Shenetic. Your data stays on your phone; only chat goes to the AI.',
+                        '由 Shenetic 制作。数据都留在你的手机上，只有聊天会发送给 AI。',
+                      ),
               ),
             ),
           ],
@@ -575,15 +582,25 @@ class _PrivacySheetState extends State<_PrivacySheet> {
           key: const Key('chat-on'),
           title: Text(tr('Chat with the cat', '和小猫聊天')),
           subtitle: Text(
-            tr(
-              'Replies are made on this phone. Turn off to stop the cat reading your day.',
-              '回复在这台手机上生成。关掉后，小猫就不会读取你的一天。',
-            ),
+            CatBrain.current == null
+                ? tr(
+                    'Replies are made on this phone. Turn off to stop the cat reading your day.',
+                    '回复在这台手机上生成。关掉后，小猫就不会读取你的一天。',
+                  )
+                : tr(
+                    'Replies come from an AI service (Groq or DeepSeek). Turn off to stop sending your chat.',
+                    '回复由 AI 服务（Groq 或 DeepSeek）生成。关掉后，就不再发送聊天内容。',
+                  ),
           ),
-          value: Prefs.current.chatOn,
+          value: chatAgreed,
           onChanged: (v) async {
-            await Prefs.current.setChatOn(v);
-            setState(() {});
+            // Turning it on shows the same note as the chat does first.
+            if (v &&
+                await showTinySheet<bool>(context, (_) => const ConsentSheet()) != true) {
+              return;
+            }
+            await setChatAgreed(v);
+            if (mounted) setState(() {});
           },
         ),
         ListTile(
@@ -598,12 +615,17 @@ class _PrivacySheetState extends State<_PrivacySheet> {
         ),
         ListTile(
           leading: const Icon(Icons.lock_outline),
-          title: Text(tr('Everything stays on your phone', '所有数据都留在手机上')),
+          title: Text(tr('Your data stays on your phone', '数据都留在手机上')),
           subtitle: Text(
-            tr(
-              'Tasks, moods, notes and expenses are never uploaded. Back them up from Data.',
-              '任务、心情、笔记和账目都不会上传。可以在「数据」里备份。',
-            ),
+            CatBrain.current == null
+                ? tr(
+                    'Tasks, moods, notes and expenses are never uploaded. Back them up from Data.',
+                    '任务、心情、笔记和账目都不会上传。可以在「数据」里备份。',
+                  )
+                : tr(
+                    'Only chat sends anything out: what the cat needs to reply. Expenses never leave your phone. Back up from Data.',
+                    '只有聊天会发送小猫回复所需的内容。账目从不离开手机。可以在「数据」里备份。',
+                  ),
           ),
         ),
         const SizedBox(height: 16),

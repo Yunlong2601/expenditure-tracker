@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 
+import 'brain.dart';
 import 'companion.dart';
 import 'day.dart';
 import 'feel.dart';
@@ -13,8 +14,9 @@ import 'remind.dart';
 import 'theme.dart';
 
 /// Chat with the cat (IMG_6783 to 6788), opened by swiping in from the left
-/// on Home. Replies are written on the phone from what the app knows about
-/// her day; nothing is sent anywhere.
+/// on Home. When the build has the online AI ([CatBrain]), replies come from
+/// it; otherwise, or when it can't be reached, they're written on the phone
+/// from what the app knows about the day. Spending never leaves the phone.
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key, required this.store, this.spentToday});
   final DayStore store;
@@ -31,11 +33,14 @@ class _ChatScreenState extends State<ChatScreen> {
   final _scroll = ScrollController();
   DayStore get _s => widget.store;
 
+  /// Replies still on their way; shows the typing dots.
+  int _waiting = 0;
+
   @override
   void initState() {
     super.initState();
     writeNotebook(_s);
-    if (!Prefs.current.chatOn) {
+    if (!chatAgreed) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _askConsent());
     }
   }
@@ -50,7 +55,7 @@ class _ChatScreenState extends State<ChatScreen> {
   Future<void> _askConsent() async {
     final yes = await showTinySheet<bool>(context, (_) => const ConsentSheet());
     if (yes == true) {
-      await Prefs.current.setChatOn(true);
+      await setChatAgreed(true);
       if (mounted) setState(() {});
     }
   }
@@ -58,14 +63,23 @@ class _ChatScreenState extends State<ChatScreen> {
   Future<void> _send([String? text]) async {
     final v = (text ?? _c.text).trim();
     if (v.isEmpty) return;
-    if (!Prefs.current.chatOn) return _askConsent();
+    if (!chatAgreed) return _askConsent();
     _c.clear();
     Feel.tap();
+    final before = _s.chat.toList();
     await _s.add(_s.chat, v, kind: 'me');
-    final reply = catReply(v, _s, spentToday: widget.spentToday);
-    await Future<void>.delayed(const Duration(milliseconds: 450));
+    setState(() => _waiting++);
+    final pause = Future<void>.delayed(const Duration(milliseconds: 450));
+    final String reply;
+    try {
+      reply = await catAnswer(v, _s, before: before, spentToday: widget.spentToday);
+      await pause;
+    } finally {
+      if (mounted) setState(() => _waiting--);
+    }
     await _s.add(_s.chat, reply, kind: 'cat');
     Feel.play(Sound.mew);
+    if (!mounted) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scroll.hasClients) {
         _scroll.animateTo(
@@ -193,6 +207,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   reverse: true,
                   padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
                   children: [
+                    if (_waiting > 0) const _Typing(),
                     for (final e in lines)
                       _Bubble(text: e.text, mine: e.kind == 'me'),
                     _Bubble(
@@ -361,6 +376,108 @@ class _Bubble extends StatelessWidget {
   }
 }
 
+/// The cat's typing dots while a reply is on its way.
+class _Typing extends StatefulWidget {
+  const _Typing();
+
+  @override
+  State<_Typing> createState() => _TypingState();
+}
+
+class _TypingState extends State<_Typing> with SingleTickerProviderStateMixin {
+  late final _a = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1100),
+  );
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Still dots when reduced motion is on.
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _a.stop();
+    } else if (!_a.isAnimating) {
+      _a.repeat();
+    }
+  }
+
+  @override
+  void dispose() {
+    _a.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    Widget dot(int i) => AnimatedBuilder(
+      animation: _a,
+      builder: (context, _) {
+        final wave = (sin(_a.value * 2 * pi - i * 0.9) + 1) / 2;
+        return Container(
+          width: 7,
+          height: 7,
+          margin: const EdgeInsets.symmetric(horizontal: 2.5),
+          decoration: BoxDecoration(
+            color: Palette.muted.withValues(alpha: 0.35 + 0.65 * wave),
+            shape: BoxShape.circle,
+          ),
+        );
+      },
+    );
+    return Semantics(
+      liveRegion: true,
+      label: tr('${Prefs.current.catName} is typing', '${Prefs.current.catName}正在输入'),
+      child: ExcludeSemantics(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const CatAvatar(size: 40),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 17),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).cardTheme.color,
+                  borderRadius: BorderRadius.circular(18),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.04),
+                      blurRadius: 8,
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [dot(0), dot(1), dot(2)],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The cat's reply: from the online AI when it's set up and answers,
+/// otherwise made on the phone. Spending and "remember" stay on the phone.
+/// [before] is the chat before this message.
+Future<String> catAnswer(
+  String said,
+  DayStore s, {
+  Iterable<Entry> before = const [],
+  String Function()? spentToday,
+  CatBrain? brain,
+}) async {
+  final b = brain ?? CatBrain.current;
+  if (b != null && !staysOnPhone(said)) {
+    final r = await b.ask(replyAsk(said, s, before));
+    if (r != null) return r;
+  }
+  return catReply(said, s, spentToday: spentToday);
+}
+
 /// The cat's reply, made on the phone from what the app knows.
 String catReply(
   String said,
@@ -378,7 +495,7 @@ String catReply(
   final done = s.doneOn(today).where((t) => !t.private).length;
   String pick(List<String> o) => o[r.nextInt(o.length)];
 
-  for (final start in ['remember ', '记住', '帮我记住']) {
+  for (final start in rememberStarts) {
     if (m.startsWith(start)) {
       final what = said.substring(start.length).replaceFirst(RegExp(r'^[:：，,\s]+'), '').trim();
       s.memories.add(Entry(at: today, text: what));
@@ -409,7 +526,7 @@ String catReply(
       '还剩 ${left.length} 件。下一件：$name${at.isEmpty ? '' : '（$at）'}。你可以的！',
     );
   }
-  if (has(['spend', 'spent', 'money', '花', '钱', '账'])) {
+  if (has(moneyWords)) {
     final v = spentToday?.call();
     return v == null
         ? tr('Open Money on the Dashboard to see it.', '在看板的「记账」里可以看到。')
@@ -461,45 +578,58 @@ String catReply(
 String clockText(int minutes) =>
     '${(minutes ~/ 60).toString().padLeft(2, '0')}:${(minutes % 60).toString().padLeft(2, '0')}';
 
-/// Writes a short page for each past day she chatted, once.
-void writeNotebook(DayStore s) {
+/// Writes a short page for each past day of chat, once. With the online AI,
+/// the cat writes the last few days itself; older days, and any page the AI
+/// can't write, use the template.
+Future<void> writeNotebook(DayStore s, {CatBrain? brain}) async {
+  final b = brain ?? CatBrain.current;
   final today = dayOf(DateTime.now());
   final days = {for (final e in s.chat) dayOf(e.at)}
-      .where((d) => d.isBefore(today));
+      .where((d) => d.isBefore(today))
+      .toList()
+    ..sort();
   var wrote = false;
   for (final d in days) {
     if (s.notebook.any((n) => sameDay(n.at, d))) continue;
-    final talked = s.chat
-        .where((e) => sameDay(e.at, d) && e.kind == 'me')
-        .length;
-    final done = s.doneOn(d).where((t) => !t.private).length;
-    final mood = s.moodOf(d);
-    s.notebook.add(
-      Entry(
-        at: d,
-        text: zh
-            ? '那天我们聊了 $talked 次。'
-                  '${done > 0 ? '你完成了 $done 件事。' : ''}'
-                  '${mood != null ? '你的心情是${mood.zh}。' : ''}'
-                  '你来找我，我很开心。'
-            : '${talked == 1 ? 'We chatted once' : 'We chatted $talked times'} that day. '
-                  '${done > 0 ? 'You finished ${done == 1 ? 'one thing' : '$done things'}. ' : ''}'
-                  '${mood != null ? 'You felt ${mood.label.toLowerCase()}. ' : ''}'
-                  'I’m glad you came by.',
-      ),
-    );
+    String? page;
+    if (b != null && today.difference(d).inDays <= 3) {
+      page = await b.ask(notebookAsk(s, d));
+      // Another visit may have written it while we waited.
+      if (s.notebook.any((n) => sameDay(n.at, d))) continue;
+    }
+    s.notebook.add(Entry(at: d, text: page ?? notebookPage(s, d)));
     wrote = true;
   }
-  if (wrote) s.save();
+  if (wrote) await s.save();
 }
 
-/// Before chatting (IMG_6783): what the cat uses and the promises.
+/// The template page for [d].
+String notebookPage(DayStore s, DateTime d) {
+  final talked = s.chat.where((e) => sameDay(e.at, d) && e.kind == 'me').length;
+  final done = s.doneOn(d).where((t) => !t.private).length;
+  final mood = s.moodOf(d);
+  return zh
+      ? '那天我们聊了 $talked 次。'
+            '${done > 0 ? '你完成了 $done 件事。' : ''}'
+            '${mood != null ? '你的心情是${mood.zh}。' : ''}'
+            '你来找我，我很开心。'
+      : '${talked == 1 ? 'We chatted once' : 'We chatted $talked times'} that day. '
+            '${done > 0 ? 'You finished ${done == 1 ? 'one thing' : '$done things'}. ' : ''}'
+            '${mood != null ? 'You felt ${mood.label.toLowerCase()}. ' : ''}'
+            'I’m glad you came by.';
+}
+
+/// Before chatting (IMG_6783): what the cat uses and the promises. [online]
+/// is true when replies come from the online AI, so the wording says what is
+/// sent and where.
 class ConsentSheet extends StatelessWidget {
-  const ConsentSheet({super.key});
+  const ConsentSheet({super.key, this.online});
+  final bool? online;
 
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
+    final ai = online ?? CatBrain.current != null;
     Widget row(IconData i, String s) => Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
@@ -541,7 +671,12 @@ class ConsentSheet extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    tr('The cat’s replies are made on this phone. To understand you, it looks at:', '小猫的回复在这台手机上生成。为了更懂你，它会参考：'),
+                    ai
+                        ? tr(
+                            'To reply, the cat sends these through our server to an AI service (Groq or DeepSeek):',
+                            '为了回复你，小猫会经由我们的服务器，把这些发送给 AI 服务（Groq 或 DeepSeek）：',
+                          )
+                        : tr('The cat’s replies are made on this phone. To understand you, it looks at:', '小猫的回复在这台手机上生成。为了更懂你，它会参考：'),
                     style: t.bodyLarge?.copyWith(height: 1.45),
                   ),
                   const SizedBox(height: 12),
@@ -572,8 +707,14 @@ class ConsentSheet extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  check(tr('Nothing leaves your phone', '数据不会离开你的手机')),
-                  check(tr('Private tasks are never read', '不公开的事不会被读取')),
+                  if (ai) ...[
+                    check(tr('Only these are sent. Spending and private tasks stay on your phone', '只发送上面这些。花销和不公开的事留在手机上')),
+                    check(tr('AI can make mistakes. Don’t share passwords, your address or other private details', 'AI 也会出错。不要发送密码、住址等隐私信息')),
+                    check(tr('If the AI can’t be reached, the cat answers on your phone', '连不上 AI 时，小猫会在手机上回复')),
+                  ] else ...[
+                    check(tr('Nothing leaves your phone', '数据不会离开你的手机')),
+                    check(tr('Private tasks are never read', '不公开的事不会被读取')),
+                  ],
                   check(tr('Tasks, focus and records work fine without chat', '不聊天也能正常使用任务、专注和记录')),
                   check(tr('You can turn it off any time in Me → Account & security', '随时可以在「我的 → 账号与安全」里关闭')),
                   const SizedBox(height: 24),

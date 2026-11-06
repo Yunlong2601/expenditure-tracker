@@ -93,6 +93,11 @@ class Prefs {
   bool get chatOn => _values['chat_on'] == true;
   Future<void> setChatOn(bool v) => _set('chat_on', v ? true : null);
 
+  /// Agreed that chat may go to the online AI. Asked again on its own, so
+  /// agreeing to on-phone chat never counts for the AI.
+  bool get chatAi => _values['chat_ai'] == true;
+  Future<void> setChatAi(bool v) => _set('chat_ai', v ? true : null);
+
   /// How often the cat speaks up: 0 quiet, 1 sometimes, 2 often.
   int get chatty => (_values['chatty'] as num?)?.toInt() ?? 1;
   Future<void> setChatty(int v) => _set('chatty', v == 1 ? null : v);
