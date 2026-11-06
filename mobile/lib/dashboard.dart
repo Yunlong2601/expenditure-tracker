@@ -23,9 +23,9 @@ String? spentOn(Ledger? l, DateTime day) {
       .join(' + ');
 }
 
-/// The Dashboard tab (IMG_6790 to 6792): a week strip, today's review, the
-/// tasks card with its completed log, the month calendar, mood, focus,
-/// money and countdowns.
+/// The Dashboard tab (IMG_6790 to 6792): a week card that opens the month
+/// calendar, countdowns, the day's review, the tasks card with its completed
+/// log, mood, focus and money.
 class DashboardTab extends StatefulWidget {
   const DashboardTab({
     super.key,
@@ -46,12 +46,110 @@ class _DashboardTabState extends State<DashboardTab> {
   DateTime _picked = dayOf(DateTime.now());
   late DateTime _month = DateTime(_picked.year, _picked.month);
 
+  /// The month calendar opens from the small week card at the top.
+  bool _calendarOpen = false;
+
+  void _toggleCalendar() {
+    Feel.tap();
+    setState(() {
+      _calendarOpen = !_calendarOpen;
+      _month = DateTime(_picked.year, _picked.month);
+    });
+  }
+
   void _pick(DateTime d) {
     Feel.tap();
     setState(() {
       _picked = dayOf(d);
       _month = DateTime(d.year, d.month);
     });
+  }
+
+  /// The month calendar (IMG_6791): tap a day to pick it, again to open it.
+  Widget _calendar() {
+    return Panel(
+      padding: const EdgeInsets.fromLTRB(12, 14, 12, 12),
+      child: _MonthGrid(
+        month: _month,
+        picked: _picked,
+        store: _s,
+        ledger: widget.ledger,
+        onMonth: (m) => setState(() => _month = m),
+        onAdd: (d) {
+          Feel.tap();
+          showTinySheet<void>(
+            context,
+            (_) => TaskSheet(store: _s, day: dayOf(d)),
+          );
+        },
+        // The first tap picks a day and shows its +; a second tap opens it.
+        onPick: (d) {
+          final again = sameDay(d, _picked);
+          _pick(d);
+          if (!again) return;
+          showTinySheet<void>(
+            context,
+            (_) =>
+                DaySheet(store: _s, day: dayOf(d), ledger: widget.ledger),
+            tall: true,
+          );
+        },
+      ),
+    );
+  }
+
+  /// Countdowns, first on the Dashboard so the next big day is in view.
+  Widget _countdowns(TextTheme t) {
+    return Panel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(
+                tr('Countdowns', '倒数日'),
+                style: t.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+              ),
+              const Spacer(),
+              TextButton.icon(
+                key: const Key('add-countdown'),
+                onPressed: () => addCountdown(context, _s),
+                icon: const Icon(Icons.add),
+                label: Text(tr('Add', '添加')),
+              ),
+            ],
+          ),
+          if (_s.upcoming().isEmpty)
+            Text(
+              tr('Exams, trips, birthdays: count down to what matters.', '考试、旅行、生日：给重要的日子倒数。'),
+              style: t.bodyMedium?.copyWith(color: Palette.muted),
+            ),
+          for (final c in _s.upcoming())
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text(c.title),
+              subtitle: Text('${fullDate(c.date)} ${weekdayShort(c.date)}'),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    c.daysLeft() == 0 ? tr('Today', '就是今天') : tr('${c.daysLeft()} days', '${c.daysLeft()} 天'),
+                    style: t.titleMedium?.copyWith(
+                      color: Palette.sage,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: tr('Delete', '删除'),
+                    icon: const Icon(Icons.close, size: 18),
+                    onPressed: () => _s.remove(_s.countdowns, c),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
   }
 
   DateTime get _weekStart =>
@@ -105,8 +203,15 @@ class _DashboardTabState extends State<DashboardTab> {
                   const SizedBox(height: 14),
                   SizedBox(
                     width: 232,
-                    child: Panel(
-                      padding: const EdgeInsets.fromLTRB(6, 6, 6, 10),
+                    child: Semantics(
+                      expanded: _calendarOpen,
+                      hint: _calendarOpen
+                          ? tr('Hides the month calendar', '收起月历')
+                          : tr('Shows the month calendar', '展开月历'),
+                      child: Panel(
+                      key: const Key('calendar-toggle'),
+                      onTap: _toggleCalendar,
+                      padding: const EdgeInsets.fromLTRB(6, 6, 6, 2),
                       child: Column(
                         children: [
                           Row(
@@ -156,8 +261,20 @@ class _DashboardTabState extends State<DashboardTab> {
                             picked: _picked,
                             onPick: _pick,
                           ),
+                          // A small handle that says the card opens.
+                          AnimatedRotation(
+                            key: const Key('calendar-handle'),
+                            turns: _calendarOpen ? 0.5 : 0,
+                            duration: _motion(context),
+                            child: const Icon(
+                              Icons.keyboard_arrow_down_rounded,
+                              size: 18,
+                              color: Palette.muted,
+                            ),
+                          ),
                         ],
                       ),
+                    ),
                     ),
                   ),
                 ],
@@ -165,6 +282,20 @@ class _DashboardTabState extends State<DashboardTab> {
             ],
           ),
         ),
+        // The month calendar, opened from the week card.
+        AnimatedSize(
+          duration: _motion(context),
+          curve: Curves.easeOutCubic,
+          alignment: Alignment.topCenter,
+          child: _calendarOpen
+              ? Padding(
+                  padding: const EdgeInsets.only(top: 12),
+                  child: _calendar(),
+                )
+              : const SizedBox(width: double.infinity),
+        ),
+        const SizedBox(height: 12),
+        _countdowns(t),
         const SizedBox(height: 12),
         // Today's review.
         Panel(
@@ -273,37 +404,6 @@ class _DashboardTabState extends State<DashboardTab> {
           ),
         ),
         const SizedBox(height: 12),
-        // Month calendar.
-        Panel(
-          padding: const EdgeInsets.fromLTRB(12, 14, 12, 12),
-          child: _MonthGrid(
-            month: _month,
-            picked: _picked,
-            store: _s,
-            ledger: widget.ledger,
-            onMonth: (m) => setState(() => _month = m),
-            onAdd: (d) {
-              Feel.tap();
-              showTinySheet<void>(
-                context,
-                (_) => TaskSheet(store: _s, day: dayOf(d)),
-              );
-            },
-            // The first tap picks a day and shows its +; a second tap opens it.
-            onPick: (d) {
-              final again = sameDay(d, _picked);
-              _pick(d);
-              if (!again) return;
-              showTinySheet<void>(
-                context,
-                (_) =>
-                    DaySheet(store: _s, day: dayOf(d), ledger: widget.ledger),
-                tall: true,
-              );
-            },
-          ),
-        ),
-        const SizedBox(height: 12),
         // Mood.
         Panel(
           onTap: () => showMoodSheet(context, _s),
@@ -376,58 +476,6 @@ class _DashboardTabState extends State<DashboardTab> {
             ),
           ),
         ],
-        const SizedBox(height: 12),
-        // Countdowns.
-        Panel(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Text(
-                    tr('Countdowns', '倒数日'),
-                    style: t.titleLarge?.copyWith(fontWeight: FontWeight.w700),
-                  ),
-                  const Spacer(),
-                  TextButton.icon(
-                    key: const Key('add-countdown'),
-                    onPressed: () => addCountdown(context, _s),
-                    icon: const Icon(Icons.add),
-                    label: Text(tr('Add', '添加')),
-                  ),
-                ],
-              ),
-              if (_s.upcoming().isEmpty)
-                Text(
-                  tr('Exams, trips, birthdays: count down to what matters.', '考试、旅行、生日：给重要的日子倒数。'),
-                  style: t.bodyMedium?.copyWith(color: Palette.muted),
-                ),
-              for (final c in _s.upcoming())
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(c.title),
-                  subtitle: Text('${fullDate(c.date)} ${weekdayShort(c.date)}'),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        c.daysLeft() == 0 ? tr('Today', '就是今天') : tr('${c.daysLeft()} days', '${c.daysLeft()} 天'),
-                        style: t.titleMedium?.copyWith(
-                          color: Palette.sage,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      IconButton(
-                        tooltip: tr('Delete', '删除'),
-                        icon: const Icon(Icons.close, size: 18),
-                        onPressed: () => _s.remove(_s.countdowns, c),
-                      ),
-                    ],
-                  ),
-                ),
-            ],
-          ),
-        ),
       ],
     );
   }
@@ -1041,6 +1089,11 @@ class _AddDay extends StatelessWidget {
   }
 }
 
+
+/// How long the calendar takes to open; instant with reduced motion.
+Duration _motion(BuildContext context) => MediaQuery.disableAnimationsOf(context)
+    ? Duration.zero
+    : const Duration(milliseconds: 260);
 
 /// A small chevron for the week card, with a full-size tap area.
 class _Chevron extends StatelessWidget {

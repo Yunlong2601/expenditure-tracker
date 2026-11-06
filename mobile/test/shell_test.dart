@@ -115,6 +115,10 @@ void main() {
     expect(find.byKey(const Key('week-today-dot')), findsOneWidget);
     final tomorrow = DateTime.now().add(const Duration(days: 1));
     final cell = find.byKey(Key('day-${tomorrow.month}-${tomorrow.day}'));
+    // The month calendar stays folded until the week card is tapped.
+    expect(cell, findsNothing);
+    await tester.tap(find.byKey(const Key('calendar-handle')));
+    await tester.pumpAndSettle();
     // The calendar sits below the fold, so scroll the Dashboard to it.
     await tester.scrollUntilVisible(
       cell,
@@ -140,6 +144,30 @@ void main() {
     expect(t.title, 'Pack bag');
     expect(t.day, dayOf(tomorrow));
     expect(t.private, isTrue);
+  });
+
+  testWidgets('the Dashboard shows countdowns first and folds the calendar', (
+    tester,
+  ) async {
+    await Prefs.current.setOnboarded();
+    await store.addCountdown('Exam', DateTime.now().add(const Duration(days: 9)));
+    await tester.pumpWidget(_app(store));
+    await tester.tap(find.text('Dashboard').last);
+    await tester.pumpAndSettle();
+    // Countdowns sit above the day's review, with the next one in view.
+    final countdowns = tester.getTopLeft(find.text('Countdowns')).dy;
+    expect(countdowns, lessThan(tester.getTopLeft(find.text('Today’s review')).dy));
+    expect(find.text('Exam'), findsOneWidget);
+    // Tapping the week card opens the month calendar, and again folds it.
+    final today = DateTime.now();
+    final cell = find.byKey(Key('day-${today.month}-${today.day}'));
+    expect(cell, findsNothing);
+    await tester.tap(find.byKey(const Key('calendar-handle')));
+    await tester.pumpAndSettle();
+    expect(cell, findsOneWidget);
+    await tester.tap(find.byKey(const Key('calendar-handle')));
+    await tester.pumpAndSettle();
+    expect(cell, findsNothing);
   });
 
   testWidgets('the Records tab opens on Timeline', (tester) async {
