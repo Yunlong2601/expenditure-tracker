@@ -603,7 +603,7 @@ class _WeekBars extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           SizedBox(
-            height: 78,
+            height: 90,
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
@@ -614,15 +614,18 @@ class _WeekBars extends StatelessWidget {
                       children: [
                         if (counts[i] > 0)
                           Text('${counts[i]}', style: t.labelSmall?.copyWith(color: Palette.muted)),
-                        Container(
-                          key: Key('bar-$i'),
-                          width: 16,
-                          height: most == 0 ? 3 : 3 + 44 * counts[i] / most,
-                          decoration: BoxDecoration(
-                            color: sameDay(days[i], picked)
-                                ? cs.primary
-                                : cs.primary.withValues(alpha: counts[i] == 0 ? 0.15 : 0.45),
-                            borderRadius: BorderRadius.circular(4),
+                        // Flexible lets the bar give way to large text sizes.
+                        Flexible(
+                          child: Container(
+                            key: Key('bar-$i'),
+                            width: 16,
+                            height: most == 0 ? 3 : 3 + 44 * counts[i] / most,
+                            decoration: BoxDecoration(
+                              color: sameDay(days[i], picked)
+                                  ? cs.primary
+                                  : cs.primary.withValues(alpha: counts[i] == 0 ? 0.15 : 0.45),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
                           ),
                         ),
                         const SizedBox(height: 4),

@@ -311,6 +311,7 @@ void main() {
     expect(f.stopwatch, isTrue);
     expect(find.text('00:00'), findsOneWidget);
     await tester.ensureVisible(find.byKey(const Key('sound-rain')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('sound-rain')));
     await tester.pumpAndSettle();
     expect(Prefs.current.focusSound, 'rain');
