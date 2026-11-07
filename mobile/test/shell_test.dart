@@ -108,11 +108,11 @@ void main() {
     // A screen reader hears which one is on, not just a tick.
     expect(
       tester.getSemantics(find.byKey(const Key('lang-zh'))),
-      containsSemantics(isSelected: true, isButton: true, label: '中文'),
+      isSemantics(isSelected: true, isButton: true, label: '中文'),
     );
     expect(
       tester.getSemantics(find.byKey(const Key('lang-en'))),
-      containsSemantics(isSelected: false),
+      isSemantics(isSelected: false),
     );
     await tester.tap(find.byKey(const Key('lang-en')));
     await tester.pumpAndSettle();
