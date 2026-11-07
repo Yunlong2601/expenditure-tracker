@@ -73,7 +73,7 @@ class _OnboardingState extends State<Onboarding> {
                       body,
                       textAlign: TextAlign.center,
                       style: t.bodyLarge?.copyWith(
-                        color: Palette.muted,
+                        color: context.muted,
                         height: 1.45,
                       ),
                     ),
@@ -89,8 +89,8 @@ class _OnboardingState extends State<Onboarding> {
                             height: 6,
                             decoration: BoxDecoration(
                               color: i == _page
-                                  ? Palette.sage
-                                  : Palette.muted.withValues(alpha: 0.3),
+                                  ? context.green
+                                  : context.muted.withValues(alpha: 0.3),
                               borderRadius: BorderRadius.circular(3),
                             ),
                           ),
@@ -115,7 +115,7 @@ class _OnboardingState extends State<Onboarding> {
                         onPressed: () => widget.onDone(false),
                         child: Text(
                           tr('Skip', '跳过'),
-                          style: TextStyle(color: Palette.muted),
+                          style: TextStyle(color: context.muted),
                         ),
                       )
                     else
@@ -148,11 +148,11 @@ class _SwipeHint extends StatelessWidget {
       children: [
         Align(
           alignment: Alignment.centerLeft,
-          child: Icon(Icons.chevron_right, color: Palette.sage),
+          child: Icon(Icons.chevron_right, color: context.green),
         ),
         Align(
           alignment: Alignment.centerRight,
-          child: Icon(Icons.chevron_left, color: Palette.sage),
+          child: Icon(Icons.chevron_left, color: context.green),
         ),
         Align(
           alignment: Alignment(0, 0.75),

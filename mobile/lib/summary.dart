@@ -156,7 +156,7 @@ class _SummaryCard extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      items.isEmpty ? tr('Nothing logged yet', '还没有记录') : tr('${items.length} things logged', '记了 ${items.length} 笔'),
+                      items.isEmpty ? tr('Nothing logged yet', '还没有记录') : tr('${count(items.length, 'thing')} logged', '记了 ${items.length} 笔'),
                       style: t.bodyMedium?.copyWith(color: on),
                     ),
                   ],
@@ -232,7 +232,7 @@ class _SummaryCard extends StatelessWidget {
             children: [
               paw(on.withValues(alpha: 0.6)),
               const SizedBox(width: 6),
-              Flexible(child: Text('Tiny Habits Cat', style: t.labelLarge?.copyWith(color: on.withValues(alpha: 0.8)))),
+              Flexible(child: Text('Tiny Habits Cat', style: t.labelLarge?.copyWith(color: on))),
             ],
           ),
         ],

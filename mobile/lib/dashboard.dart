@@ -127,7 +127,7 @@ class _DashboardTabState extends State<DashboardTab> {
           if (_s.countdowns.isEmpty)
             Text(
               tr('Exams, trips, birthdays: count down to what matters.', '考试、旅行、生日：给重要的日子倒数。'),
-              style: t.bodyMedium?.copyWith(color: Palette.muted),
+              style: t.bodyMedium?.copyWith(color: context.muted),
             ),
           for (final c in [..._s.upcoming(), ..._s.past()])
             ListTile(
@@ -136,7 +136,7 @@ class _DashboardTabState extends State<DashboardTab> {
               onTap: () => editCountdown(context, _s, c),
               leading: Icon(
                 c.yearly ? Icons.cake_outlined : (c.isPast() ? Icons.history : Icons.hourglass_bottom),
-                color: c.isPast() ? _sinceColor : Palette.sage,
+                color: c.isPast() ? _sinceColor : context.green,
               ),
               title: Text(c.title),
               subtitle: Text(
@@ -145,12 +145,12 @@ class _DashboardTabState extends State<DashboardTab> {
               ),
               trailing: Text(
                 c.isPast()
-                    ? tr('${c.daysSince()} days since', '已经 ${c.daysSince()} 天')
+                    ? tr('${count(c.daysSince(), 'day')} since', '已经 ${c.daysSince()} 天')
                     : c.daysLeft() == 0
                     ? tr('Today', '就是今天')
-                    : tr('${c.daysLeft()} days', '${c.daysLeft()} 天'),
+                    : tr(count(c.daysLeft(), 'day'), '${c.daysLeft()} 天'),
                 style: t.titleMedium?.copyWith(
-                  color: c.isPast() ? _sinceColor : Palette.sage,
+                  color: c.isPast() ? _sinceColor : context.green,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -210,7 +210,7 @@ class _DashboardTabState extends State<DashboardTab> {
                   ),
                   Text(
                     tr('Every day of effort, recorded', '记录努力的每一天'),
-                    style: t.bodyMedium?.copyWith(color: Palette.muted),
+                    style: t.bodyMedium?.copyWith(color: context.muted),
                   ),
                   const SizedBox(height: 14),
                   SizedBox(
@@ -278,10 +278,10 @@ class _DashboardTabState extends State<DashboardTab> {
                             key: const Key('calendar-handle'),
                             turns: _calendarOpen ? 0.5 : 0,
                             duration: _motion(context),
-                            child: const Icon(
+                            child: Icon(
                               Icons.keyboard_arrow_down_rounded,
                               size: 18,
-                              color: Palette.muted,
+                              color: context.muted,
                             ),
                           ),
                         ],
@@ -327,7 +327,7 @@ class _DashboardTabState extends State<DashboardTab> {
                     width: double.infinity,
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      color: Palette.sageSoft,
+                      color: context.greenSoft,
                       borderRadius: BorderRadius.circular(14),
                     ),
                     child: Text(
@@ -337,7 +337,7 @@ class _DashboardTabState extends State<DashboardTab> {
                                   '${mood == null ? '' : tr(' · felt ${mood.label.toLowerCase()}', ' · 心情${mood.zh}')}'
                                   '${spent == null ? '' : tr(' · spent $spent', ' · 花了 $spent')}',
                         style: t.bodyLarge?.copyWith(
-                          color: Palette.sage,
+                          color: context.green,
                           height: 1.45,
                         ),
                       ),
@@ -439,12 +439,12 @@ class _DashboardTabState extends State<DashboardTab> {
                     ),
                     Text(
                       tr('How are you feeling right now?', '此刻心情如何？'),
-                      style: t.bodyMedium?.copyWith(color: Palette.muted),
+                      style: t.bodyMedium?.copyWith(color: context.muted),
                     ),
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right, color: Palette.muted),
+              Icon(Icons.chevron_right, color: context.muted),
             ],
           ),
         ),
@@ -482,12 +482,12 @@ class _DashboardTabState extends State<DashboardTab> {
                         spent == null
                             ? tr('Nothing spent ${isToday ? 'today' : 'this day'}', isToday ? '今天还没花钱' : '这天没有花钱')
                             : '$dayLabel: $spent',
-                        style: t.bodyMedium?.copyWith(color: Palette.muted),
+                        style: t.bodyMedium?.copyWith(color: context.muted),
                       ),
                     ],
                   ),
                 ),
-                const Icon(Icons.chevron_right, color: Palette.muted),
+                Icon(Icons.chevron_right, color: context.muted),
               ],
             ),
           ),
@@ -514,7 +514,7 @@ class _DashboardTabState extends State<DashboardTab> {
               ),
               const Spacer(),
               if (widget.onFocus != null)
-                const Icon(Icons.chevron_right, color: Palette.muted),
+                Icon(Icons.chevron_right, color: context.muted),
             ],
           ),
           const SizedBox(height: 6),
@@ -566,7 +566,8 @@ class _DashboardTabState extends State<DashboardTab> {
 }
 
 /// The orange of days since, as Days Matter colours the past.
-const _sinceColor = Color(0xFFE08A45);
+// Dark enough to read on white, light enough to read on the dark cards.
+const _sinceColor = Color(0xFFB86A2B);
 
 /// Bars for tasks done each day of the picked day's week, as in IMG_6779.
 class _WeekBars extends StatelessWidget {
@@ -598,7 +599,7 @@ class _WeekBars extends StatelessWidget {
               if (most == 0)
                 Text(
                   tr('Finish tasks and bars grow here', '完成任务后，这里会长出柱子'),
-                  style: t.labelSmall?.copyWith(color: Palette.muted),
+                  style: t.labelSmall?.copyWith(color: context.muted),
                 ),
             ],
           ),
@@ -614,7 +615,7 @@ class _WeekBars extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
                         if (counts[i] > 0)
-                          Text('${counts[i]}', style: t.labelSmall?.copyWith(color: Palette.muted)),
+                          Text('${counts[i]}', style: t.labelSmall?.copyWith(color: context.muted)),
                         // Flexible lets the bar give way to large text sizes.
                         Flexible(
                           child: Container(
@@ -633,7 +634,7 @@ class _WeekBars extends StatelessWidget {
                         Text(
                           weekdayHeads[i],
                           style: t.labelSmall?.copyWith(
-                            color: sameDay(days[i], picked) ? cs.primary : Palette.muted,
+                            color: sameDay(days[i], picked) ? cs.primary : context.muted,
                             fontWeight: sameDay(days[i], picked) ? FontWeight.w700 : null,
                           ),
                         ),
@@ -671,7 +672,7 @@ class _Stat extends StatelessWidget {
           value,
           style: t.titleMedium?.copyWith(fontWeight: FontWeight.w700),
         ),
-        Text(label, style: t.labelSmall?.copyWith(color: Palette.muted)),
+        Text(label, style: t.labelSmall?.copyWith(color: context.muted)),
       ],
     );
   }
@@ -714,7 +715,7 @@ class _MonthGrid extends StatelessWidget {
             const SizedBox(width: 8),
             Text(
               '${month.year}',
-              style: t.titleMedium?.copyWith(color: Palette.muted),
+              style: t.titleMedium?.copyWith(color: context.muted),
             ),
             const Spacer(),
             IconButton(
@@ -738,7 +739,7 @@ class _MonthGrid extends StatelessWidget {
                   child: Text(
                     w,
                     style: t.labelMedium?.copyWith(
-                      color: i == 6 ? cs.primary : Palette.muted,
+                      color: i == 6 ? cs.primary : context.muted,
                     ),
                   ),
                 ),
@@ -821,7 +822,7 @@ class _MonthGrid extends StatelessWidget {
                                           ? cs.onPrimary
                                           : (inMonth
                                                 ? null
-                                                : Palette.muted.withValues(
+                                                : context.muted.withValues(
                                                     alpha: 0.6,
                                                   )),
                                       fontWeight: FontWeight.w600,
@@ -865,17 +866,17 @@ class _MonthGrid extends StatelessWidget {
             _dot(const Color(0xFF6FAE6A)),
             Text(
               tr(' Done   ', ' 完成   '),
-              style: t.labelSmall?.copyWith(color: Palette.muted),
+              style: t.labelSmall?.copyWith(color: context.muted),
             ),
             _dot(const Color(0xFFE8B067)),
             Text(
               tr(' Spent   ', ' 花销   '),
-              style: t.labelSmall?.copyWith(color: Palette.muted),
+              style: t.labelSmall?.copyWith(color: context.muted),
             ),
             const MoodFace(mood: Mood.happy, size: 12),
-            Text(tr(' Mood   ', ' 心情   '), style: t.labelSmall?.copyWith(color: Palette.muted)),
+            Text(tr(' Mood   ', ' 心情   '), style: t.labelSmall?.copyWith(color: context.muted)),
             _dot(_countColor),
-            Text(tr(' Countdown', ' 倒数日'), style: t.labelSmall?.copyWith(color: Palette.muted)),
+            Text(tr(' Countdown', ' 倒数日'), style: t.labelSmall?.copyWith(color: context.muted)),
           ],
         ),
       ],
@@ -971,7 +972,7 @@ class CompletedSheet extends StatelessWidget {
                         ),
                         Text(
                           '$label${dayMonthWeekday(day)}',
-                          style: t.bodyMedium?.copyWith(color: Palette.muted),
+                          style: t.bodyMedium?.copyWith(color: context.muted),
                         ),
                       ],
                     ),
@@ -1010,7 +1011,7 @@ class CompletedSheet extends StatelessWidget {
                         const SizedBox(height: 4),
                         Text(
                           tr('Finish one and it shows up here', '完成一件，它就会出现在这里'),
-                          style: t.bodyMedium?.copyWith(color: Palette.muted),
+                          style: t.bodyMedium?.copyWith(color: context.muted),
                         ),
                       ],
                     ),
@@ -1021,9 +1022,9 @@ class CompletedSheet extends StatelessWidget {
                         for (final x in done)
                           ListTile(
                             contentPadding: EdgeInsets.zero,
-                            leading: const Icon(
+                            leading: Icon(
                               Icons.check_circle,
-                              color: Palette.sage,
+                              color: context.green,
                             ),
                             title: Text(x.title),
                             trailing: Text(
@@ -1097,7 +1098,7 @@ class DaySheet extends StatelessWidget {
                   if (tasks.isEmpty)
                     Text(
                       tr('No tasks', '没有任务'),
-                      style: t.bodyMedium?.copyWith(color: Palette.muted),
+                      style: t.bodyMedium?.copyWith(color: context.muted),
                     ),
                   for (final x in tasks)
                     Padding(
@@ -1118,7 +1119,7 @@ class DaySheet extends StatelessWidget {
                   if (moods.isEmpty)
                     Text(
                       tr('Not logged', '没有记录'),
-                      style: t.bodyMedium?.copyWith(color: Palette.muted),
+                      style: t.bodyMedium?.copyWith(color: context.muted),
                     ),
                   Wrap(
                     spacing: 10,
@@ -1135,7 +1136,7 @@ class DaySheet extends StatelessWidget {
                   ),
                   head(tr('Focus', '专注')),
                   Text(
-                    tr('${store.focusMinutesOn(day)} minutes', '${store.focusMinutesOn(day)} 分钟'),
+                    tr(count(store.focusMinutesOn(day), 'minute'), '${store.focusMinutesOn(day)} 分钟'),
                     style: t.bodyLarge,
                   ),
                   if (lines.isNotEmpty) ...[

@@ -126,7 +126,6 @@ class _StackSheetState extends State<StackSheet> {
                   IconButton.outlined(
                     tooltip: tr('How stacks work', '一叠是怎么用的'),
                     iconSize: 18,
-                    visualDensity: VisualDensity.compact,
                     icon: const Icon(Icons.question_mark),
                     onPressed: () => setState(() => _help = !_help),
                   ),
@@ -138,7 +137,7 @@ class _StackSheetState extends State<StackSheet> {
                   child: Text(
                     tr('Steps stacked on top of each other: your list shows only the top one, and the next appears when you check it off. Hold a step to reorder; swipe left to delete.', '步骤一层层叠在一起：清单上只显示最上面那一步，勾掉后下一步才出现。长按步骤可以排序，左滑删除。'),
                     style: t.bodyMedium?.copyWith(
-                      color: Palette.muted,
+                      color: context.muted,
                       height: 1.4,
                     ),
                   ),
@@ -148,8 +147,8 @@ class _StackSheetState extends State<StackSheet> {
                 children: [
                   Expanded(
                     child: Text(
-                      tr('$done of ${_steps.length} steps done', '已完成 $done/${_steps.length} 步'),
-                      style: t.bodyMedium?.copyWith(color: Palette.muted),
+                      tr('$done of ${count(_steps.length, 'step')} done', '已完成 $done/${_steps.length} 步'),
+                      style: t.bodyMedium?.copyWith(color: context.muted),
                     ),
                   ),
                   PopupMenuButton<String>(
@@ -285,15 +284,15 @@ class _StepCard extends StatelessWidget {
                 height: 28,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  border: Border.all(color: Palette.muted, width: 1.4),
+                  border: Border.all(color: context.muted, width: 1.4),
                   borderRadius: BorderRadius.circular(7),
-                  color: step.done ? Palette.sageSoft : null,
+                  color: step.done ? context.greenSoft : null,
                 ),
                 child: step.done
-                    ? const Icon(Icons.check, size: 16, color: Palette.sage)
+                    ? Icon(Icons.check, size: 16, color: context.green)
                     : Text(
                         '$n',
-                        style: t.labelMedium?.copyWith(color: Palette.muted),
+                        style: t.labelMedium?.copyWith(color: context.muted),
                       ),
               ),
               const SizedBox(width: 14),
@@ -305,7 +304,7 @@ class _StepCard extends StatelessWidget {
                       step.title.isEmpty ? tr('New step', '新步骤') : step.title,
                       style: t.titleMedium?.copyWith(
                         fontWeight: FontWeight.w600,
-                        color: step.title.isEmpty ? Palette.muted : null,
+                        color: step.title.isEmpty ? context.muted : null,
                         decoration: step.done
                             ? TextDecoration.lineThrough
                             : null,
@@ -314,24 +313,28 @@ class _StepCard extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       step.done ? tr('Done', '已完成') : tr('To-do', '待办'),
-                      style: t.bodySmall?.copyWith(color: Palette.muted),
+                      style: t.bodySmall?.copyWith(color: context.muted),
                     ),
                     InkWell(
                       onTap: onToggleNote,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 4),
+                      // Big enough to tap (48 points), though the words are small.
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(
+                          minHeight: 48,
+                          minWidth: 48,
+                        ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(
                               noteOpen ? Icons.expand_less : Icons.expand_more,
                               size: 14,
-                              color: Palette.muted,
+                              color: context.muted,
                             ),
                             Text(
                               tr(' Note', ' 备注'),
                               style: t.bodySmall?.copyWith(
-                                color: Palette.muted,
+                                color: context.muted,
                               ),
                             ),
                           ],
@@ -352,7 +355,7 @@ class _StepCard extends StatelessWidget {
                 ),
               ),
               PopupMenuButton<String>(
-                icon: const Icon(Icons.more_horiz, color: Palette.muted),
+                icon: Icon(Icons.more_horiz, color: context.muted),
                 onSelected: onMenu,
                 itemBuilder: (_) => [
                   PopupMenuItem(

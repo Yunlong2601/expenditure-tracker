@@ -36,8 +36,12 @@ class _RecordsScreenState extends State<RecordsScreen> {
         builder: (context, _) => ListView(
           padding: EdgeInsets.zero,
           children: [
-            SizedBox(
-              height: 196 + MediaQuery.paddingOf(context).top,
+            // At least the art's height; taller when big text wraps the tabs
+            // onto more lines, so none is cut off.
+            ConstrainedBox(
+              constraints: BoxConstraints(
+                minHeight: 196 + MediaQuery.paddingOf(context).top,
+              ),
               child: Stack(
                 children: [
                   // The cat writing notes, at the top right as in IMG_6782.
@@ -50,10 +54,12 @@ class _RecordsScreenState extends State<RecordsScreen> {
                       height: 184 + MediaQuery.paddingOf(context).top,
                     ),
                   ),
-                  Positioned(
-                    left: 8,
-                    top: MediaQuery.paddingOf(context).top + 40,
-                    right: 110,
+                  Padding(
+                    padding: EdgeInsets.only(
+                      left: 8,
+                      top: MediaQuery.paddingOf(context).top + 40,
+                      right: 110,
+                    ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -241,7 +247,7 @@ class _Timeline extends StatelessWidget {
                 Text(
                   tr('Write what you’re doing and the time is noted for you.', '写下正在做的事，开始时间会自动记下'),
                   textAlign: TextAlign.center,
-                  style: t.bodyMedium?.copyWith(color: Palette.muted),
+                  style: t.bodyMedium?.copyWith(color: context.muted),
                 ),
                 const SizedBox(height: 14),
               ] else
@@ -300,7 +306,7 @@ class _TimelineRow extends StatelessWidget {
               padding: const EdgeInsets.only(top: 12),
               child: Text(
                 time,
-                style: t.bodyMedium?.copyWith(color: Palette.muted),
+                style: t.bodyMedium?.copyWith(color: context.muted),
               ),
             ),
           ),
@@ -331,7 +337,7 @@ class _TimelineRow extends StatelessWidget {
                   vertical: 10,
                 ),
                 decoration: BoxDecoration(
-                  color: Palette.sand,
+                  color: context.sand,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Row(
@@ -340,10 +346,10 @@ class _TimelineRow extends StatelessWidget {
                     if (onDelete != null)
                       GestureDetector(
                         onTap: onDelete,
-                        child: const Icon(
+                        child: Icon(
                           Icons.close,
                           size: 16,
-                          color: Palette.muted,
+                          color: context.muted,
                         ),
                       ),
                   ],
@@ -811,7 +817,7 @@ class _FocusTimerState extends State<FocusTimer> {
           const SizedBox(height: 16),
           Row(
             children: [
-              const Icon(Icons.music_note_outlined, size: 18, color: Palette.muted),
+              Icon(Icons.music_note_outlined, size: 18, color: context.muted),
               const SizedBox(width: 6),
               Expanded(
                 child: Wrap(
@@ -868,7 +874,7 @@ class _FocusTimerState extends State<FocusTimer> {
             child: Text(
               _f.rule.about,
               key: const Key('rule-about'),
-              style: t.bodySmall?.copyWith(color: Palette.muted),
+              style: t.bodySmall?.copyWith(color: context.muted),
             ),
           ),
           if (_f.rule == StudyRule.lock)
@@ -914,7 +920,7 @@ class _FocusTimerState extends State<FocusTimer> {
           const SizedBox(height: 16),
           Text(
             tr('Focused today: $today min', '今天已专注 $today 分钟'),
-            style: t.bodyMedium?.copyWith(color: Palette.muted),
+            style: t.bodyMedium?.copyWith(color: context.muted),
           ),
         ],
       ),
@@ -971,7 +977,7 @@ class _Notes extends StatelessWidget {
             child: Text(
               tr('No notes yet. Ideas, lists, little thoughts: they all fit here.', '还没有笔记。想法、清单、小心思，都可以放在这里。'),
               textAlign: TextAlign.center,
-              style: t.bodyMedium?.copyWith(color: Palette.muted),
+              style: t.bodyMedium?.copyWith(color: context.muted),
             ),
           ),
         for (final n in notes)
@@ -989,7 +995,7 @@ class _Notes extends StatelessWidget {
                     const SizedBox(height: 6),
                     Text(
                       '${dayMonth(n.at)} ${hhmm(n.at)}',
-                      style: t.bodySmall?.copyWith(color: Palette.muted),
+                      style: t.bodySmall?.copyWith(color: context.muted),
                     ),
                   ],
                 ),

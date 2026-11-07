@@ -54,6 +54,10 @@ const log = String.fromEnvironment('STRESS_LOG');
 /// Roboto, which comes with Flutter, for English, and a Chinese font from
 /// the computer when there is one. Both are a little narrower than the
 /// iPhone's, which [stressAll] makes up for with slightly bigger text.
+///
+/// Chip and button labels whose theme style names no font still get the
+/// test font's squares (on a phone they get the system font), so for them
+/// this test errs on the wide side.
 Future<void> loadFont(List<String> files) async {
   final l = FontLoader('Roboto');
   for (final f in files) {
@@ -147,90 +151,82 @@ Future<void> seed(DayStore s) async {
 }
 
 /// Each screen or sheet, opened from a blank page.
-final screens =
-    <
-      String,
-      Future<void> Function(WidgetTester, BuildContext, DayStore, Ledger)
-    >{
-      'Pet tab': (t, c, s, l) async {},
-      'Schedule': (t, c, s, l) async {
-        await t.tap(find.byKey(const Key('tab-schedule')));
-      },
-      'Dashboard': (t, c, s, l) =>
-          t.tap(find.byType(NavigationDestination).at(1)),
-      'Me': (t, c, s, l) => t.tap(find.byType(NavigationDestination).at(2)),
-      'Records: Timeline': (t, c, s, l) => _push(c, RecordsScreen(store: s)),
-      'Records: Focus': (t, c, s, l) =>
-          _push(c, RecordsScreen(store: s, tab: 1)),
-      'Records: Notes': (t, c, s, l) =>
-          _push(c, RecordsScreen(store: s, tab: 2)),
-      'Study view': (t, c, s, l) async {
-        await Prefs.current.setStudyRule(StudyRule.lock.index);
-        FocusSession.current.setSubject('homework');
-        StudyScreen.open(c, s);
-        FocusSession.current.appLeft(
-          DateTime.now().subtract(const Duration(seconds: 5)),
-        );
-        await FocusSession.current.appBack();
-      },
-      'Study summary': (t, c, s, l) async {
-        StudyScreen.open(c, s);
-        await t.pump();
-        await FocusSession.current.finish(quit: true);
-      },
-      'Guided Access steps': (t, c, s, l) => _sheet(c, (_) => const LockHelp()),
-      'Chat': (t, c, s, l) async {
-        await Prefs.current.setChatOn(true);
-        await _push(c, ChatScreen(store: s));
-      },
-      'Chat consent': (t, c, s, l) => _sheet(c, (_) => const ConsentSheet()),
-      'Check-ins': (t, c, s, l) =>
-          _sheet(c, (_) => CheckInsSheet(store: s), tall: true),
-      'What I remember': (t, c, s, l) =>
-          _sheet(c, (_) => MemorySheet(store: s), tall: true),
-      'Notebook': (t, c, s, l) =>
-          _sheet(c, (_) => NotebookSheet(store: s), tall: true),
-      'New task': (t, c, s, l) => _sheet(c, (_) => TaskSheet(store: s)),
-      'Edit repeating task': (t, c, s, l) =>
-          _sheet(c, (_) => TaskSheet(store: s, task: s.tasks.first)),
-      'New stack': (t, c, s, l) =>
-          _sheet(c, (_) => StackSheet(store: s), tall: true),
-      'Edit stack': (t, c, s, l) => _sheet(
-        c,
-        (_) => StackSheet(store: s, task: s.tasks.firstWhere((x) => x.isStack)),
-        tall: true,
-      ),
-      'Search tasks': (t, c, s, l) async {
-        await _sheet(c, (_) => TaskSearchSheet(store: s), tall: true);
-        await t.pump();
-        await t.enterText(find.byKey(const Key('search-field')), 'e');
-      },
-      'Edit countdown': (t, c, s, l) async {
-        editCountdown(c, s, s.countdowns.first);
-      },
-      'Mood': (t, c, s, l) async {
-        showMoodSheet(c, s);
-      },
-      'Day sheet': (t, c, s, l) => _sheet(
-        c,
-        (_) => DaySheet(store: s, day: DateTime.now(), ledger: l),
-        tall: true,
-      ),
-      'Completed': (t, c, s, l) => _sheet(
-        c,
-        (_) => CompletedSheet(store: s, day: DateTime.now()),
-        tall: true,
-      ),
-      'Companion': (t, c, s, l) async {
-        showCompanion(c);
-      },
-      'Feedback': (t, c, s, l) => _sheet(c, (_) => const FeedbackSheet()),
-      'Money': (t, c, s, l) =>
-          _push(c, HomeScreen(ledger: l, reader: _NoReader())),
-      'Cash entry': (t, c, s, l) => _sheet(c, (_) => const QuickAddSheet()),
-      'Month picture': (t, c, s, l) => _push(c, SummaryScreen(ledger: l)),
-      'Settings': (t, c, s, l) => _push(c, SettingsScreen(ledger: l)),
-    };
+final screens = <String, Opener>{
+  'Pet tab': (t, c, s, l) async {},
+  'Schedule': (t, c, s, l) async {
+    await t.tap(find.byKey(const Key('tab-schedule')));
+  },
+  'Dashboard': (t, c, s, l) => t.tap(find.byType(NavigationDestination).at(1)),
+  'Me': (t, c, s, l) => t.tap(find.byType(NavigationDestination).at(2)),
+  'Records: Timeline': (t, c, s, l) => _push(c, RecordsScreen(store: s)),
+  'Records: Focus': (t, c, s, l) => _push(c, RecordsScreen(store: s, tab: 1)),
+  'Records: Notes': (t, c, s, l) => _push(c, RecordsScreen(store: s, tab: 2)),
+  'Study view': (t, c, s, l) async {
+    await Prefs.current.setStudyRule(StudyRule.lock.index);
+    FocusSession.current.setSubject('homework');
+    StudyScreen.open(c, s);
+    FocusSession.current.appLeft(
+      DateTime.now().subtract(const Duration(seconds: 5)),
+    );
+    await FocusSession.current.appBack();
+  },
+  'Study summary': (t, c, s, l) async {
+    StudyScreen.open(c, s);
+    await t.pump();
+    await FocusSession.current.finish(quit: true);
+  },
+  'Guided Access steps': (t, c, s, l) => _sheet(c, (_) => const LockHelp()),
+  'Chat': (t, c, s, l) async {
+    await Prefs.current.setChatOn(true);
+    await _push(c, ChatScreen(store: s));
+  },
+  'Chat consent': (t, c, s, l) => _sheet(c, (_) => const ConsentSheet()),
+  'Check-ins': (t, c, s, l) =>
+      _sheet(c, (_) => CheckInsSheet(store: s), tall: true),
+  'What I remember': (t, c, s, l) =>
+      _sheet(c, (_) => MemorySheet(store: s), tall: true),
+  'Notebook': (t, c, s, l) =>
+      _sheet(c, (_) => NotebookSheet(store: s), tall: true),
+  'New task': (t, c, s, l) => _sheet(c, (_) => TaskSheet(store: s)),
+  'Edit repeating task': (t, c, s, l) =>
+      _sheet(c, (_) => TaskSheet(store: s, task: s.tasks.first)),
+  'New stack': (t, c, s, l) =>
+      _sheet(c, (_) => StackSheet(store: s), tall: true),
+  'Edit stack': (t, c, s, l) => _sheet(
+    c,
+    (_) => StackSheet(store: s, task: s.tasks.firstWhere((x) => x.isStack)),
+    tall: true,
+  ),
+  'Search tasks': (t, c, s, l) async {
+    await _sheet(c, (_) => TaskSearchSheet(store: s), tall: true);
+    await t.pump();
+    await t.enterText(find.byKey(const Key('search-field')), 'e');
+  },
+  'Edit countdown': (t, c, s, l) async {
+    editCountdown(c, s, s.countdowns.first);
+  },
+  'Mood': (t, c, s, l) async {
+    showMoodSheet(c, s);
+  },
+  'Day sheet': (t, c, s, l) => _sheet(
+    c,
+    (_) => DaySheet(store: s, day: DateTime.now(), ledger: l),
+    tall: true,
+  ),
+  'Completed': (t, c, s, l) => _sheet(
+    c,
+    (_) => CompletedSheet(store: s, day: DateTime.now()),
+    tall: true,
+  ),
+  'Companion': (t, c, s, l) async {
+    showCompanion(c);
+  },
+  'Feedback': (t, c, s, l) => _sheet(c, (_) => const FeedbackSheet()),
+  'Money': (t, c, s, l) => _push(c, HomeScreen(ledger: l, reader: _NoReader())),
+  'Cash entry': (t, c, s, l) => _sheet(c, (_) => const QuickAddSheet()),
+  'Month picture': (t, c, s, l) => _push(c, SummaryScreen(ledger: l)),
+  'Settings': (t, c, s, l) => _push(c, SettingsScreen(ledger: l)),
+};
 
 Future<void> _push(BuildContext c, Widget w) async {
   Navigator.of(c).push<void>(MaterialPageRoute(builder: (_) => w));
@@ -242,6 +238,93 @@ Future<void> _sheet(
   bool tall = false,
 }) async {
   showTinySheet<void>(c, b, tall: tall);
+}
+
+typedef Opener = Future<void> Function(
+  WidgetTester,
+  BuildContext,
+  DayStore,
+  Ledger,
+);
+
+/// A ledger with two expenses, made outside test time: its first save
+/// waits on a future made where it's built.
+Future<Ledger> seededLedger(WidgetTester tester, Directory dir) async {
+  late final Ledger ledger;
+  await tester.runAsync(() async {
+    ledger = Ledger(dir);
+    await ledger.add(
+      amount: 4.5,
+      currency: 'SGD',
+      merchant: 'Kopitiam at the hawker centre near school',
+      category: 'Food & drink',
+    );
+    await ledger.add(
+      amount: 1288,
+      currency: 'CNY',
+      merchant: '超市',
+      category: 'Shopping',
+    );
+  });
+  return ledger;
+}
+
+/// Starts the app fresh with a full day, then opens one screen and lets
+/// it settle.
+Future<void> openScreen(
+  WidgetTester tester, {
+  required String lang,
+  required Ledger ledger,
+  required Opener open,
+}) async {
+  Prefs.current = Prefs.memory();
+  await Prefs.current.setOnboarded();
+  await Prefs.current.setLanguage(lang);
+  // The longest name the cat can be given (20 letters).
+  await Prefs.current.setCatName('Mochi Marshmallow II');
+  final s = DayStore.memory();
+  DayStore.current = s;
+  await seed(s);
+  await tester.pumpWidget(
+    MaterialApp(
+      key: UniqueKey(),
+      theme: tinyTheme(Brightness.light),
+      darkTheme: tinyTheme(Brightness.dark),
+      home: AppShell(store: s, ledger: ledger),
+    ),
+  );
+  await tester.pumpAndSettle();
+  final nav = tester.state<NavigatorState>(find.byType(Navigator).first);
+  await open(tester, nav.context, s, ledger);
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 400));
+  await tester.pump(const Duration(milliseconds: 400));
+}
+
+/// Ends any study session and clears the screen, so the next one starts clean.
+Future<void> closeScreen(WidgetTester tester) async {
+  if (FocusSession.current.started) {
+    await FocusSession.current.finish(early: true);
+  }
+  await tester.pumpWidget(const SizedBox());
+  await tester.pump(const Duration(seconds: 1));
+}
+
+/// Sets the phone's size, text size and light or dark.
+void usePhone(
+  WidgetTester tester,
+  Phone phone, {
+  double text = 1,
+  bool dark = false,
+}) {
+  tester.view.devicePixelRatio = 3;
+  tester.view.physicalSize = phone.size * 3;
+  tester.platformDispatcher.textScaleFactorTestValue = phone.text * text;
+  tester.platformDispatcher.platformBrightnessTestValue = dark
+      ? Brightness.dark
+      : Brightness.light;
+  addTearDown(tester.view.reset);
+  addTearDown(tester.platformDispatcher.clearAllTestValues);
 }
 
 void stressAll({
@@ -276,33 +359,9 @@ void stressAll({
       'every screen fits: ${phone.name}, $lang${dark ? ', dark' : ''}',
       (tester) async {
         final problems = <String>[];
-        // Made outside test time: its first save waits on a future made here.
-        late final Ledger ledger;
-        await tester.runAsync(() async {
-          ledger = Ledger(dir);
-          await ledger.add(
-            amount: 4.5,
-            currency: 'SGD',
-            merchant: 'Kopitiam at the hawker centre near school',
-            category: 'Food & drink',
-          );
-          await ledger.add(
-            amount: 1288,
-            currency: 'CNY',
-            merchant: '超市',
-            category: 'Shopping',
-          );
-        });
-        tester.view.devicePixelRatio = 3;
-        tester.view.physicalSize = phone.size * 3;
+        final ledger = await seededLedger(tester, dir);
         // Real fonts here are about 6% narrower than the iPhone's.
-        tester.platformDispatcher.textScaleFactorTestValue =
-            phone.text * (fonts.isEmpty ? 1 : 1.06);
-        tester.platformDispatcher.platformBrightnessTestValue = dark
-            ? Brightness.dark
-            : Brightness.light;
-        addTearDown(tester.view.reset);
-        addTearDown(tester.platformDispatcher.clearAllTestValues);
+        usePhone(tester, phone, text: fonts.isEmpty ? 1 : 1.06, dark: dark);
 
         final saved = FlutterError.onError;
         var current = '';
@@ -327,30 +386,7 @@ void stressAll({
                 mode: FileMode.append,
               );
             }
-            Prefs.current = Prefs.memory();
-            await Prefs.current.setOnboarded();
-            await Prefs.current.setLanguage(lang);
-            // The longest name the cat can be given (20 letters).
-            await Prefs.current.setCatName('Mochi Marshmallow II');
-            final s = DayStore.memory();
-            DayStore.current = s;
-            await seed(s);
-            await tester.pumpWidget(
-              MaterialApp(
-                key: UniqueKey(),
-                theme: tinyTheme(Brightness.light),
-                darkTheme: tinyTheme(Brightness.dark),
-                home: AppShell(store: s, ledger: ledger),
-              ),
-            );
-            await tester.pumpAndSettle();
-            final nav = tester.state<NavigatorState>(
-              find.byType(Navigator).first,
-            );
-            await open(tester, nav.context, s, ledger);
-            await tester.pump();
-            await tester.pump(const Duration(milliseconds: 400));
-            await tester.pump(const Duration(milliseconds: 400));
+            await openScreen(tester, lang: lang, ledger: ledger, open: open);
             // Scroll every list to its end, so what's below the fold is laid out too.
             for (final sc in find.byType(Scrollable).evaluate().toList()) {
               final st = (sc as StatefulElement).state as ScrollableState;
@@ -361,11 +397,7 @@ void stressAll({
                 await tester.pump();
               }
             }
-            if (FocusSession.current.started) {
-              await FocusSession.current.finish(early: true);
-            }
-            await tester.pumpWidget(const SizedBox());
-            await tester.pump(const Duration(seconds: 1));
+            await closeScreen(tester);
           }
         } finally {
           FlutterError.onError = saved;

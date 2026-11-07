@@ -173,7 +173,7 @@ class _ChatScreenState extends State<ChatScreen> {
                         child: Text(
                           tr('Online', '在线'),
                           overflow: TextOverflow.ellipsis,
-                          style: t.bodySmall?.copyWith(color: Palette.muted),
+                          style: t.bodySmall?.copyWith(color: context.muted),
                         ),
                       ),
                     ],
@@ -429,7 +429,7 @@ class _TypingState extends State<_Typing> with SingleTickerProviderStateMixin {
           height: 7,
           margin: const EdgeInsets.symmetric(horizontal: 2.5),
           decoration: BoxDecoration(
-            color: Palette.muted.withValues(alpha: 0.35 + 0.65 * wave),
+            color: context.muted.withValues(alpha: 0.35 + 0.65 * wave),
             shape: BoxShape.circle,
           ),
         );
@@ -665,7 +665,7 @@ class ConsentSheet extends StatelessWidget {
               color: Theme.of(context).cardTheme.color,
               shape: BoxShape.circle,
             ),
-            child: Icon(i, size: 17, color: Palette.sage),
+            child: Icon(i, size: 17, color: context.green),
           ),
           const SizedBox(width: 12),
           Expanded(child: Text(s, style: t.bodyLarge)),
@@ -676,7 +676,7 @@ class ConsentSheet extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         children: [
-          const Icon(Icons.check, size: 16, color: Palette.sage),
+          Icon(Icons.check, size: 16, color: context.green),
           const SizedBox(width: 8),
           Expanded(child: Text(s, style: t.bodyMedium)),
         ],
@@ -710,7 +710,7 @@ class ConsentSheet extends StatelessWidget {
                       vertical: 6,
                     ),
                     decoration: BoxDecoration(
-                      color: Palette.sand,
+                      color: context.sand,
                       borderRadius: BorderRadius.circular(18),
                     ),
                     child: Column(
@@ -756,7 +756,7 @@ class ConsentSheet extends StatelessWidget {
                       onPressed: () => Navigator.of(context).pop(false),
                       child: Text(
                         tr('Not now', '暂不开启'),
-                        style: const TextStyle(color: Palette.muted),
+                        style: TextStyle(color: context.muted),
                       ),
                     ),
                   ),
@@ -797,7 +797,7 @@ class CheckInsSheet extends StatelessWidget {
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color: Palette.sand,
+                    color: context.sand,
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Row(
@@ -817,8 +817,8 @@ class CheckInsSheet extends StatelessWidget {
                       Container(
                         width: 5,
                         height: 5,
-                        decoration: const BoxDecoration(
-                          color: Palette.sage,
+                        decoration: BoxDecoration(
+                          color: context.green,
                           shape: BoxShape.circle,
                         ),
                       ),
@@ -826,7 +826,7 @@ class CheckInsSheet extends StatelessWidget {
                       Flexible(
                         child: Text(
                           tr('On this phone', '仅在本机'),
-                          style: t.bodySmall?.copyWith(color: Palette.muted),
+                          style: t.bodySmall?.copyWith(color: context.muted),
                         ),
                       ),
                     ],
@@ -842,7 +842,7 @@ class CheckInsSheet extends StatelessWidget {
                       key: Key('checkin-new-$k'),
                       onPressed: () => _add(context, k),
                       style: TextButton.styleFrom(
-                        foregroundColor: Palette.muted,
+                        foregroundColor: context.muted,
                       ),
                       iconAlignment: IconAlignment.end,
                       icon: const Icon(Icons.add, size: 18),
@@ -983,7 +983,7 @@ class _MemorySheetState extends State<MemorySheet> {
                             Text(
                               tr('No need to say them again, and you can ask me to forget any time.', '不必每次重说，也可以随时让我忘记。'),
                               style: t.bodySmall?.copyWith(
-                                color: Palette.muted,
+                                color: context.muted,
                               ),
                             ),
                           ],
@@ -997,7 +997,7 @@ class _MemorySheetState extends State<MemorySheet> {
                     decoration: InputDecoration(
                       hintText: tr('Search memories', '搜索记忆'),
                       filled: true,
-                      fillColor: Palette.sand,
+                      fillColor: context.sand,
                       isDense: true,
                       contentPadding: const EdgeInsets.symmetric(
                         horizontal: 14,
@@ -1008,7 +1008,7 @@ class _MemorySheetState extends State<MemorySheet> {
                         padding: const EdgeInsets.only(right: 14),
                         child: Text(
                           '${s.memories.length}',
-                          style: t.bodySmall?.copyWith(color: Palette.muted),
+                          style: t.bodySmall?.copyWith(color: context.muted),
                         ),
                       ),
                       suffixIconConstraints: const BoxConstraints(),
@@ -1034,7 +1034,7 @@ class _MemorySheetState extends State<MemorySheet> {
                           const SizedBox(height: 6),
                           Text(
                             tr('Tell me what you like, or tap “Add” in the top right.', '告诉我你的偏好，或者点右上角“新增”。'),
-                            style: t.bodyMedium?.copyWith(color: Palette.muted),
+                            style: t.bodyMedium?.copyWith(color: context.muted),
                           ),
                         ],
                       ),
@@ -1105,7 +1105,7 @@ class NotebookSheet extends StatelessWidget {
                         ),
                         Text(
                           tr('A little at a time, as I think of it.', '想到一点，就写下一点。'),
-                          style: t.bodySmall?.copyWith(color: Palette.muted),
+                          style: t.bodySmall?.copyWith(color: context.muted),
                         ),
                       ],
                     ),
@@ -1114,9 +1114,9 @@ class NotebookSheet extends StatelessWidget {
               ),
               const SizedBox(height: 64),
               if (pages.isEmpty) ...[
-                const Icon(
+                Icon(
                   Icons.favorite_border,
-                  color: Palette.sage,
+                  color: context.green,
                   size: 30,
                 ),
                 const SizedBox(height: 12),
@@ -1130,7 +1130,7 @@ class NotebookSheet extends StatelessWidget {
                   tr('Chat with me for a bit, and the next day I’ll write down the little things worth keeping.', '我们聊上几句，第二天我会把想留住的小事写在这里。'),
                   textAlign: TextAlign.center,
                   style: t.bodyMedium?.copyWith(
-                    color: Palette.muted,
+                    color: context.muted,
                     height: 1.5,
                   ),
                 ),
@@ -1144,7 +1144,7 @@ class NotebookSheet extends StatelessWidget {
                       children: [
                         Text(
                           longDay(p.at),
-                          style: t.labelLarge?.copyWith(color: Palette.sage),
+                          style: t.labelLarge?.copyWith(color: context.green),
                         ),
                         const SizedBox(height: 6),
                         Text(

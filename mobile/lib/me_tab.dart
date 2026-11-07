@@ -204,7 +204,7 @@ class _MeTabState extends State<MeTab> {
                             Text(
                               tr('Plan life slowly, together', '一起把生活慢慢安排好'),
                               style: t.bodySmall?.copyWith(
-                                color: Palette.muted,
+                                color: context.muted,
                               ),
                             ),
                           ],
@@ -491,12 +491,12 @@ class _Row extends StatelessWidget {
         if (value != null)
           Text(
             value!,
-            style: const TextStyle(color: Palette.muted, fontSize: 15),
+            style: TextStyle(color: context.muted, fontSize: 15),
           ),
         const SizedBox(width: 6),
         Icon(
           Icons.arrow_forward_ios_rounded,
-          color: Palette.muted.withValues(alpha: 0.7),
+          color: context.muted.withValues(alpha: 0.7),
           size: 12,
         ),
       ],
@@ -565,9 +565,10 @@ class _CompanionSheetState extends State<CompanionSheet> {
             decoration: InputDecoration(
               counterText: '',
               isDense: true,
+              // At least 44 points tall, so it's easy to tap.
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 16,
-                vertical: 8,
+                vertical: 13,
               ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(22),
@@ -715,7 +716,7 @@ class _HelpSheet extends StatelessWidget {
             const Divider(indent: 16, endIndent: 16),
             ListTile(
               key: const Key('open-feedback'),
-              leading: const Icon(Icons.edit_note_rounded, color: Palette.sage),
+              leading: Icon(Icons.edit_note_rounded, color: context.green),
               title: Text(tr('Send feedback', '反馈建议')),
               subtitle: Text(tr('Something broken, or an idea? Tell us.', '遇到问题，或者有想法？告诉我们。')),
               trailing: const Icon(Icons.chevron_right),
@@ -823,7 +824,7 @@ class _FeedbackSheetState extends State<FeedbackSheet> {
                   'It opens your share sheet so you choose how to send it. Only the app version, language and phone system are added.',
                   '会打开分享面板，由你选择怎么发送。只会附上 App 版本、语言和手机系统。',
                 ),
-                style: t.bodySmall?.copyWith(color: Palette.muted),
+                style: t.bodySmall?.copyWith(color: context.muted),
               ),
             ),
           ],

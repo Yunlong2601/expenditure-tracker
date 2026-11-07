@@ -8,7 +8,8 @@ class Palette {
   static const cream = Color(0xFFFAF6EF);
   static const paper = Color(0xFFFFFFFF);
   static const sand = Color(0xFFF3EEE6);
-  static const sage = Color(0xFF4F7A4A);
+  // Dark enough for green text on the soft green chips (4.5:1).
+  static const sage = Color(0xFF456E41);
   static const sageSoft = Color(0xFFE4EEDD);
   static const ink = Color(0xFF2F2E2A);
   static const muted = Color(0xFF8A877F);
@@ -22,6 +23,27 @@ class Palette {
   static const lilac = Color(0xFFECE6F6);
 }
 
+/// Colours that change between light and dark mode.
+extension TinyColors on BuildContext {
+  bool get _dark => Theme.of(this).brightness == Brightness.dark;
+
+  /// Grey for quieter text. Light mode's is dark enough to read on sand
+  /// (4.5:1), dark mode's light enough to read on the dark cards.
+  Color get muted => _dark ? const Color(0xFFA29E96) : const Color(0xFF6B6861);
+
+  /// The soft box behind grouped rows; a dark one at night, so light text
+  /// stays readable on it.
+  Color get sand => _dark ? const Color(0xFF30312C) : Palette.sand;
+
+  /// The app's green for words and icons: the lighter one at night, since
+  /// [Palette.sage] is too dark to read on the dark cards.
+  Color get green => Theme.of(this).colorScheme.primary;
+
+  /// The soft green behind a picked day or a finished step; a deep green
+  /// at night, so the green words on it stay readable.
+  Color get greenSoft => _dark ? const Color(0xFF2F3A2C) : Palette.sageSoft;
+}
+
 ThemeData tinyTheme(Brightness b) {
   final dark = b == Brightness.dark;
   final cs = ColorScheme.fromSeed(
@@ -33,6 +55,7 @@ ThemeData tinyTheme(Brightness b) {
   ButtonStyle flash(Color c) =>
       ButtonStyle(overlayColor: WidgetStateProperty.resolveWith((s) => s.contains(WidgetState.pressed) ? c : null));
   final press = cs.primary.withValues(alpha: 0.18);
+  final muted = dark ? const Color(0xFFA29E96) : const Color(0xFF6B6861);
   return ThemeData(
     colorScheme: cs,
     useMaterial3: true,
@@ -65,11 +88,11 @@ ThemeData tinyTheme(Brightness b) {
         (s) => TextStyle(
           fontSize: 13,
           fontWeight: s.contains(WidgetState.selected) ? FontWeight.w700 : FontWeight.w500,
-          color: s.contains(WidgetState.selected) ? cs.primary : Palette.muted,
+          color: s.contains(WidgetState.selected) ? cs.primary : muted,
         ),
       ),
       iconTheme: WidgetStateProperty.resolveWith(
-        (s) => IconThemeData(size: 24, color: s.contains(WidgetState.selected) ? cs.primary : Palette.muted),
+        (s) => IconThemeData(size: 24, color: s.contains(WidgetState.selected) ? cs.primary : muted),
       ),
     ),
     // iOS-style switches: a white knob on a soft grey or green track.

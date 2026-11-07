@@ -176,7 +176,12 @@ class _HomeTabState extends State<HomeTab> {
                   child: Text(
                     _greeting(),
                     style: t.titleMedium?.copyWith(
-                      color: Palette.ink.withValues(alpha: 0.75),
+                      // The scene behind is dark at night, so light words then,
+                      // with a soft shadow where they cross the window.
+                      color: cs.onSurface.withValues(alpha: 0.8),
+                      shadows: Theme.of(context).brightness == Brightness.dark
+                          ? const [Shadow(color: Colors.black, blurRadius: 6)]
+                          : null,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -269,7 +274,7 @@ class _HomeTabState extends State<HomeTab> {
                       ),
                       Text(
                         longDay(shown),
-                        style: t.bodyMedium?.copyWith(color: Palette.muted),
+                        style: t.bodyMedium?.copyWith(color: context.muted),
                       ),
                       if (_schedule) ...[
                         const SizedBox(height: 10),
@@ -333,7 +338,7 @@ class _HomeTabState extends State<HomeTab> {
                                       ? tr('Nothing here yet. Tap + and add one small thing for today.', '这里还空着。点 +，给今天加一件小事。')
                                       : tr('Nothing planned for this day. Tap + to plan one.', '这天还没有安排。点 + 安排一件。'),
                                   style: t.bodyMedium?.copyWith(
-                                    color: Palette.muted,
+                                    color: context.muted,
                                   ),
                                 ),
                               ),
@@ -459,7 +464,7 @@ class TaskRow extends StatelessWidget {
             onPressed: onTick,
             icon: Icon(
               task.done ? Icons.check_circle : Icons.radio_button_unchecked,
-              color: task.done ? cs.primary : Palette.muted,
+              color: task.done ? cs.primary : context.muted,
               size: 26,
             ),
           ),
@@ -472,13 +477,13 @@ class TaskRow extends StatelessWidget {
                   style: t.titleMedium?.copyWith(
                     fontWeight: FontWeight.w600,
                     decoration: task.done ? TextDecoration.lineThrough : null,
-                    color: task.done ? Palette.muted : null,
+                    color: task.done ? context.muted : null,
                   ),
                 ),
                 if (task.isStack)
                   Text(
                     tr('${task.title} · ${task.stepsDone} of ${task.steps.length}', '${task.title} · ${task.stepsDone}/${task.steps.length}'),
-                    style: t.bodySmall?.copyWith(color: Palette.muted),
+                    style: t.bodySmall?.copyWith(color: context.muted),
                   ),
               ],
             ),
@@ -487,23 +492,23 @@ class TaskRow extends StatelessWidget {
             Icon(
               Icons.lock_outline,
               size: 16,
-              color: Palette.muted,
+              color: context.muted,
               semanticLabel: tr('Private', '不公开'),
             ),
           if (task.isStack)
-            const Icon(Icons.layers_outlined, size: 18, color: Palette.muted),
+            Icon(Icons.layers_outlined, size: 18, color: context.muted),
           if (task.repeat != Repeat.none)
             Icon(
               Icons.repeat,
               size: 16,
-              color: Palette.muted,
+              color: context.muted,
               semanticLabel: task.repeat.label,
             ),
           if (task.remind && task.minutes != null)
             Icon(
               Icons.notifications_none,
               size: 16,
-              color: Palette.muted,
+              color: context.muted,
               semanticLabel: tr('Reminder on', '会提醒'),
             ),
           TextButton(
@@ -671,7 +676,7 @@ class _TaskSheetState extends State<TaskSheet> {
                   const SizedBox(height: 8),
                   Row(
                     children: [
-                      const Icon(Icons.schedule, color: Palette.muted),
+                      Icon(Icons.schedule, color: context.muted),
                       const SizedBox(width: 8),
                       Flexible(
                         child: TextButton(
@@ -734,7 +739,7 @@ class _TaskSheetState extends State<TaskSheet> {
                   const SizedBox(height: 4),
                   Text(
                     tr('Repeat', '重复'),
-                    style: tt.labelLarge?.copyWith(color: Palette.muted),
+                    style: tt.labelLarge?.copyWith(color: context.muted),
                   ),
                   const SizedBox(height: 6),
                   Wrap(
@@ -803,7 +808,8 @@ class HeadTab extends StatelessWidget {
         borderRadius: BorderRadius.circular(10),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 4),
+          // 48 points tall with the line, big enough to tap.
+          padding: const EdgeInsets.symmetric(vertical: 4.5),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -812,7 +818,7 @@ class HeadTab extends StatelessWidget {
                 label,
                 style: t.headlineSmall?.copyWith(
                   fontWeight: on ? FontWeight.w800 : FontWeight.w600,
-                  color: on ? null : Palette.muted,
+                  color: on ? null : context.muted,
                 ),
               ),
               const SizedBox(height: 4),
@@ -891,7 +897,7 @@ class _TaskSearchSheetState extends State<TaskSearchSheet> {
                   child: Text(
                     tr('Every task is here, done or planned.', '做完的、计划好的，每件事都能搜到。'),
                     textAlign: TextAlign.center,
-                    style: t.bodyMedium?.copyWith(color: Palette.muted),
+                    style: t.bodyMedium?.copyWith(color: context.muted),
                   ),
                 )
               : found.isEmpty
@@ -900,7 +906,7 @@ class _TaskSearchSheetState extends State<TaskSearchSheet> {
                   child: Text(
                     tr('Nothing found for “${_q.text.trim()}”', '没有找到「${_q.text.trim()}」'),
                     textAlign: TextAlign.center,
-                    style: t.bodyMedium?.copyWith(color: Palette.muted),
+                    style: t.bodyMedium?.copyWith(color: context.muted),
                   ),
                 )
               : ListView(
@@ -915,7 +921,7 @@ class _TaskSearchSheetState extends State<TaskSearchSheet> {
                               : x.done
                               ? Icons.check_circle
                               : Icons.radio_button_unchecked,
-                          color: x.done ? Palette.sage : Palette.muted,
+                          color: x.done ? context.green : context.muted,
                         ),
                         title: Text(x.title),
                         subtitle: Text(
@@ -924,7 +930,7 @@ class _TaskSearchSheetState extends State<TaskSearchSheet> {
                               : dayMonthWeekday(x.day),
                         ),
                         trailing: x.private
-                            ? const Icon(Icons.lock_outline, size: 16, color: Palette.muted)
+                            ? Icon(Icons.lock_outline, size: 16, color: context.muted)
                             : null,
                         onTap: () => _open(x),
                       ),
@@ -978,7 +984,7 @@ class WeekStrip extends StatelessWidget {
                     children: [
                       Text(
                         weekdayHeads[i],
-                        style: t.labelSmall?.copyWith(color: Palette.muted),
+                        style: t.labelSmall?.copyWith(color: context.muted),
                       ),
                       const SizedBox(height: 4),
                       Container(
@@ -1022,7 +1028,7 @@ class WeekStrip extends StatelessWidget {
                           margin: const EdgeInsets.only(top: 3),
                           decoration: BoxDecoration(
                             color: marks.contains(i)
-                                ? Palette.sage.withValues(alpha: 0.7)
+                                ? context.green.withValues(alpha: 0.7)
                                 : Colors.transparent,
                             shape: BoxShape.circle,
                           ),
@@ -1094,8 +1100,8 @@ class _MoodSheetState extends State<MoodSheet> {
                       ),
                     ),
                     Text(
-                      tr('${s.moodsOn(today).length} entries', '${s.moodsOn(today).length} 条记录'),
-                      style: t.bodyMedium?.copyWith(color: Palette.muted),
+                      tr(count(s.moodsOn(today).length, 'entry', 'entries'), '${s.moodsOn(today).length} 条记录'),
+                      style: t.bodyMedium?.copyWith(color: context.muted),
                     ),
                   ],
                 ),
@@ -1109,7 +1115,7 @@ class _MoodSheetState extends State<MoodSheet> {
                         child: Container(
                           padding: const EdgeInsets.fromLTRB(2, 8, 2, 10),
                           decoration: BoxDecoration(
-                            color: sameDay(d, today) ? Palette.sageSoft : null,
+                            color: sameDay(d, today) ? context.greenSoft : null,
                             borderRadius: BorderRadius.circular(14),
                           ),
                           child: Column(
@@ -1122,8 +1128,8 @@ class _MoodSheetState extends State<MoodSheet> {
                                       : '${d.day}',
                                   style: t.labelMedium?.copyWith(
                                     color: sameDay(d, today)
-                                        ? Palette.sage
-                                        : Palette.muted,
+                                        ? context.green
+                                        : context.muted,
                                     fontWeight: sameDay(d, today)
                                         ? FontWeight.w700
                                         : null,
@@ -1142,7 +1148,7 @@ class _MoodSheetState extends State<MoodSheet> {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Palette.sand,
+                    color: context.sand,
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Column(
@@ -1191,7 +1197,7 @@ class _MoodSheetState extends State<MoodSheet> {
                                             child: Text(
                                               zh ? m.zh : m.label,
                                               style: t.labelSmall?.copyWith(
-                                                color: Palette.muted,
+                                                color: context.muted,
                                               ),
                                             ),
                                           ),
@@ -1246,7 +1252,7 @@ class MoodFace extends StatelessWidget {
       shape: BoxShape.circle,
       // A faint ring, or a green one when picked.
       border: Border.all(
-        color: selected ? Palette.sage : Palette.ink.withValues(alpha: 0.08),
+        color: selected ? context.green : Palette.ink.withValues(alpha: 0.08),
         width: selected ? 2.5 : 1,
       ),
     ),
@@ -1331,7 +1337,7 @@ class MoodDot extends StatelessWidget {
     return SizedBox.square(
       dimension: size,
       child: CustomPaint(
-        painter: DashedRing(Palette.muted.withValues(alpha: 0.45), width: 1.2),
+        painter: DashedRing(context.muted.withValues(alpha: 0.45), width: 1.2),
       ),
     );
   }
@@ -1423,7 +1429,7 @@ Future<void> editCountdown(
                     padding: const EdgeInsets.only(top: 6),
                     child: Text(
                       tr('This day has passed, so it counts the days since.', '这天已经过去，会数已经过了多少天。'),
-                      style: Theme.of(ctx).textTheme.bodySmall?.copyWith(color: Palette.muted),
+                      style: Theme.of(ctx).textTheme.bodySmall?.copyWith(color: context.muted),
                     ),
                   ),
                 SwitchListTile(

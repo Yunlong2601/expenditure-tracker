@@ -106,3 +106,7 @@ String fullDate(DateTime d) =>
 /// "09:30".
 String hhmm(DateTime d) =>
     '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
+
+/// "1 day", "3 days": a count with the English word in the right form.
+String count(int n, String one, [String? many]) =>
+    '$n ${n == 1 ? one : many ?? '${one}s'}';

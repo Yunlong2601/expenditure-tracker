@@ -207,7 +207,7 @@ class _StudyScreenState extends State<StudyScreen> {
                                                     ))
                                             : tr('Paused', '已暂停'),
                                         style: t.bodyMedium?.copyWith(
-                                          color: Palette.muted,
+                                          color: context.muted,
                                         ),
                                       ),
                                     ],
@@ -234,7 +234,7 @@ class _StudyScreenState extends State<StudyScreen> {
                                     ),
                               key: const Key('study-left'),
                               style: t.bodyMedium?.copyWith(
-                                color: Palette.muted,
+                                color: context.muted,
                               ),
                             ),
                             if (_f.rule == StudyRule.lock) ...[
@@ -363,7 +363,7 @@ class _LockCard extends StatelessWidget {
       children: [
         Icon(
           locked ? Icons.lock : Icons.lock_open,
-          color: locked ? Theme.of(context).colorScheme.primary : Palette.muted,
+          color: locked ? Theme.of(context).colorScheme.primary : context.muted,
         ),
         const SizedBox(width: 10),
         Expanded(
@@ -434,7 +434,7 @@ class LockHelp extends StatelessWidget {
               'The iPhone’s Guided Access keeps you in one app until the passcode is entered. You set it up once.',
               'iPhone 的“引导式访问”会把你留在一个应用里，直到输入密码。只需设置一次。',
             ),
-            style: t.bodyMedium?.copyWith(color: Palette.muted),
+            style: t.bodyMedium?.copyWith(color: context.muted),
           ),
           const SizedBox(height: 14),
           for (final (i, s) in steps.indexed)
@@ -457,7 +457,7 @@ class LockHelp extends StatelessWidget {
               'On Android, use App pinning in Settings, under Security.',
               '安卓手机可在“设置”的“安全”里使用“固定应用”。',
             ),
-            style: t.bodySmall?.copyWith(color: Palette.muted),
+            style: t.bodySmall?.copyWith(color: context.muted),
           ),
         ],
       ),
@@ -515,7 +515,7 @@ class _Summary extends StatelessWidget {
                 '连按三下侧边按钮并输入密码，就能解锁手机。',
               ),
               textAlign: TextAlign.center,
-              style: t.bodyMedium?.copyWith(color: Palette.muted),
+              style: t.bodyMedium?.copyWith(color: context.muted),
             ),
           ],
         ],
@@ -560,7 +560,7 @@ class StudyLog extends StatelessWidget {
             value,
             style: t.titleLarge?.copyWith(fontWeight: FontWeight.w800),
           ),
-          Text(label, style: t.bodySmall?.copyWith(color: Palette.muted)),
+          Text(label, style: t.bodySmall?.copyWith(color: context.muted)),
         ],
       ),
     );
@@ -621,7 +621,7 @@ class StudyLog extends StatelessWidget {
                           value: s.value / most,
                           minHeight: 8,
                           color: cs.primary,
-                          backgroundColor: Palette.sageSoft,
+                          backgroundColor: context.greenSoft,
                         ),
                       ),
                     ),
@@ -645,7 +645,7 @@ class StudyLog extends StatelessWidget {
               padding: const EdgeInsets.symmetric(vertical: 8),
               child: Text(
                 tr('Your study sessions will show here.', '你的专注记录会显示在这里。'),
-                style: t.bodyMedium?.copyWith(color: Palette.muted),
+                style: t.bodyMedium?.copyWith(color: context.muted),
               ),
             ),
           for (final e in recent)
@@ -657,7 +657,7 @@ class StudyLog extends StatelessWidget {
                   Icon(
                     e.quit ? Icons.cancel_outlined : Icons.check_circle_outline,
                     size: 20,
-                    color: e.quit ? Palette.muted : cs.primary,
+                    color: e.quit ? context.muted : cs.primary,
                   ),
                   const SizedBox(width: 10),
                   Expanded(
@@ -675,7 +675,7 @@ class StudyLog extends StatelessWidget {
                             if (e.left > 0)
                               tr('left ${e.left}×', '离开 ${e.left} 次'),
                           ].join(' · '),
-                          style: t.bodySmall?.copyWith(color: Palette.muted),
+                          style: t.bodySmall?.copyWith(color: context.muted),
                         ),
                       ],
                     ),
@@ -686,7 +686,7 @@ class StudyLog extends StatelessWidget {
                         : tr('${_minutes(e)} min', '${_minutes(e)} 分钟'),
                     style: t.bodyMedium?.copyWith(
                       fontWeight: FontWeight.w600,
-                      color: e.quit ? Palette.muted : null,
+                      color: e.quit ? context.muted : null,
                     ),
                   ),
                 ],
