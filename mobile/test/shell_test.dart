@@ -104,6 +104,13 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Pet'), findsOneWidget);
     expect(find.text('Account & security'), findsOneWidget);
+    // Same as phone forgets the pick; the test phone is in English.
+    await tester.tap(find.byKey(const Key('row-language')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('lang-system')));
+    await tester.pumpAndSettle();
+    expect(Prefs.current.language, isNull);
+    expect(find.text('Same as phone'), findsWidgets);
   });
 
   testWidgets('the + on the picked calendar day plans that day', (

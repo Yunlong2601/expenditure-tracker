@@ -1,9 +1,19 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/widgets.dart';
 
 import 'prefs.dart';
 
-/// Chinese only when picked in Me → Language. English is the default.
-bool get zh => Prefs.current.language == 'zh';
+/// The phone's own language code, such as "en" or "zh". Tests can swap it.
+String Function() phoneLanguage = () => ui.PlatformDispatcher.instance.locale.languageCode;
+
+/// Chinese when picked in Me → Language, or, until a language is picked,
+/// when the phone itself is set to Chinese. Otherwise English.
+bool get zh => switch (Prefs.current.language) {
+  'zh' => true,
+  'en' => false,
+  _ => phoneLanguage() == 'zh',
+};
 
 /// The text in the app's language.
 String tr(String en, String zh_) => zh ? zh_ : en;

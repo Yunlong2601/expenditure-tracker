@@ -106,6 +106,12 @@ class Prefs {
   String? get focusSound => _values['focus_sound'] as String?;
   Future<void> setFocusSound(String? v) => _set('focus_sound', v);
 
+  /// What happens when she leaves the app while studying: 0 the clock pauses
+  /// and the cat nudges her back, 1 the session ends if she stays away, 2 the
+  /// same, and the phone is locked to the app with Guided Access.
+  int get studyRule => (_values['study_rule'] as num?)?.toInt() ?? 0;
+  Future<void> setStudyRule(int v) => _set('study_rule', v == 0 ? null : v);
+
   /// Quiet mode: no sounds or check-ins at all.
   bool get quiet => _values['quiet'] == true;
   Future<void> setQuiet(bool v) => _set('quiet', v ? true : null);

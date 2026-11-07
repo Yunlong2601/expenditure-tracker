@@ -23,6 +23,7 @@ import Vision
       Feel.register(registrar: registrar)
       Remind.register(messenger: registrar.messenger())
       Share.register(messenger: registrar.messenger())
+      Study.register(messenger: registrar.messenger())
     }
   }
 }
@@ -267,6 +268,56 @@ enum Remind {
           }
           DispatchQueue.main.async { result(nil) }
         }
+      default:
+        result(FlutterMethodNotImplemented)
+      }
+    }
+  }
+}
+
+/// Study mode: keeps the screen on, sees whether Guided Access holds the
+/// phone on the app, and lines up the cat's call to come back after she
+/// leaves the app in the middle of a session.
+enum Study {
+  private static let ids = (0..<4).map { "study-\($0)" }
+
+  static func register(messenger: FlutterBinaryMessenger) {
+    let channel = FlutterMethodChannel(name: "spendsnap/study", binaryMessenger: messenger)
+    let center = UNUserNotificationCenter.current()
+    channel.setMethodCallHandler { call, result in
+      switch call.method {
+      case "awake":
+        UIApplication.shared.isIdleTimerDisabled = call.arguments as? Bool ?? false
+        result(nil)
+      case "locked":
+        result(UIAccessibility.isGuidedAccessEnabled)
+      case "lock":
+        // Only school or family-managed phones let an app start Guided
+        // Access itself; on others this answers false and she triple-clicks.
+        let on = call.arguments as? Bool ?? false
+        if on == UIAccessibility.isGuidedAccessEnabled { return result(true) }
+        UIAccessibility.requestGuidedAccessSession(enabled: on) { ok in
+          DispatchQueue.main.async { result(ok) }
+        }
+      case "callBack":
+        let items = call.arguments as? [[String: Any]] ?? []
+        center.removePendingNotificationRequests(withIdentifiers: ids)
+        for (i, item) in items.prefix(ids.count).enumerated() {
+          guard let seconds = (item["seconds"] as? NSNumber)?.doubleValue,
+            let body = item["body"] as? String
+          else { continue }
+          let content = UNMutableNotificationContent()
+          content.title = "Tiny Habits Cat"
+          content.body = body
+          content.sound = .default
+          let trigger = UNTimeIntervalNotificationTrigger(timeInterval: max(1, seconds), repeats: false)
+          center.add(UNNotificationRequest(identifier: ids[i], content: content, trigger: trigger))
+        }
+        result(nil)
+      case "cancelCallBack":
+        center.removePendingNotificationRequests(withIdentifiers: ids)
+        center.removeDeliveredNotifications(withIdentifiers: ids)
+        result(nil)
       default:
         result(FlutterMethodNotImplemented)
       }

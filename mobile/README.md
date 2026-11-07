@@ -41,6 +41,29 @@ often.
 - **Dashboard**: done, not done, done rate and day streak, bars for the week,
   and focus totals for the day and the last seven days.
 
+## Study mode
+
+Start studying opens a full-screen view with the clock and the cat, and keeps
+the screen on. Pick a subject (Study, Homework, Reading, Revision, or a task)
+and what happens if you leave the app:
+
+- **Nudge me**: the clock pauses while you're away and the cat sends a
+  notification to call you back.
+- **Strict**: like Forest, leave for more than 15 seconds and the session ends
+  and doesn't count.
+- **Lock me in**: Strict, plus the iPhone's own Guided Access, which keeps the
+  phone on this app until a passcode is entered. The app shows how to turn it
+  on once in Settings; then a triple-click of the side button locks it.
+
+Pulling down Control Center or a notification doesn't count as leaving.
+Study time is tracked per subject, with today, the last 7 days, how often you
+left, and a list of recent sessions. Blocking other apps by name, as Opal
+does, needs Apple's Screen Time permission (the Family Controls entitlement),
+which Apple has to approve for TestFlight or the App Store.
+
+The app follows the phone's language and light or dark mode until you pick
+others in Me.
+
 ## Chat with the cat
 
 Say "remind me at 8 to read", "add buy milk" or "每天晚上九点提醒我刷牙" and the

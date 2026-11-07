@@ -256,26 +256,43 @@ enum Mood {
 
 /// A dated thing with a kind and text: moods, timeline entries, notes, chat lines.
 class Entry {
-  Entry({String? id, required this.at, required this.text, this.kind})
-    : id = id ?? _id();
+  Entry({
+    String? id,
+    required this.at,
+    required this.text,
+    this.kind,
+    this.left = 0,
+    this.quit = false,
+  }) : id = id ?? _id();
   final String id;
   final DateTime at;
   String text;
 
-  /// Mood name for moods, "me" or "cat" for chat lines.
+  /// Mood name for moods, "me" or "cat" for chat lines, and the subject or
+  /// task of a focus session.
   final String? kind;
+
+  /// Focus sessions only: how many times she left the app during it.
+  final int left;
+
+  /// Focus sessions only: it ended early because she left the app.
+  final bool quit;
 
   factory Entry.fromJson(Map<String, dynamic> j) => Entry(
     id: j['id'] as String,
     at: DateTime.parse(j['at'] as String),
     text: j['text'] as String,
     kind: j['kind'] as String?,
+    left: (j['left'] as num?)?.toInt() ?? 0,
+    quit: j['quit'] == true,
   );
   Map<String, dynamic> toJson() => {
     'id': id,
     'at': at.toIso8601String(),
     'text': text,
     if (kind != null) 'kind': kind,
+    if (left > 0) 'left': left,
+    if (quit) 'quit': true,
   };
 }
 
@@ -770,8 +787,12 @@ class DayStore extends ChangeNotifier {
     String text, {
     DateTime? at,
     String? kind,
+    int left = 0,
+    bool quit = false,
   }) async {
-    list.add(Entry(at: at ?? DateTime.now(), text: text, kind: kind));
+    list.add(
+      Entry(at: at ?? DateTime.now(), text: text, kind: kind, left: left, quit: quit),
+    );
     await save();
   }
 
@@ -780,13 +801,13 @@ class DayStore extends ChangeNotifier {
     await save();
   }
 
-  int focusMinutesOn(DateTime day) => focus
-      .where((e) => sameDay(e.at, day))
-      .fold(0, (n, e) => n + (int.tryParse(e.text) ?? 0));
+  int focusMinutesOn(DateTime day) =>
+      focusOn(day).fold(0, (n, e) => n + (int.tryParse(e.text) ?? 0));
 
-  /// Finished focus sessions on [day].
+  /// Finished focus sessions on [day]. Sessions that ended because she left
+  /// the app are kept in [focus] for her history, but don't count here.
   List<Entry> focusOn(DateTime day) =>
-      focus.where((e) => sameDay(e.at, day)).toList();
+      focus.where((e) => sameDay(e.at, day) && !e.quit).toList();
 
   /// Minutes focused in the seven days that end on [day].
   int focusMinutesWeek(DateTime day) => [

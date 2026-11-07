@@ -9,6 +9,8 @@ import 'feel.dart';
 import 'kitty.dart';
 import 'l10n.dart';
 import 'prefs.dart';
+import 'study.dart';
+import 'study_screen.dart';
 import 'theme.dart';
 
 /// Records (IMG_6782), opened by swiping in from the right on Home:
@@ -121,7 +123,13 @@ class _RecordsScreenState extends State<RecordsScreen> {
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
               child: switch (_tab) {
                 0 => _Timeline(store: widget.store),
-                1 => FocusTimer(store: widget.store),
+                1 => Column(
+                  children: [
+                    FocusTimer(store: widget.store),
+                    const SizedBox(height: 16),
+                    StudyLog(store: widget.store),
+                  ],
+                ),
                 _ => _Notes(store: widget.store),
               },
             ),
@@ -363,6 +371,10 @@ String focusSoundLabel(String? name) => switch (name) {
 /// switching to Timeline, Notes or Home doesn't lose it, and it records the
 /// session when time is up even if the view is gone. A timer counts down
 /// from [length] minutes; a stopwatch counts up until she taps Done.
+///
+/// It also keeps watch while she studies: [appLeft] and [appBack] follow the
+/// app going into the background and coming back, and the [rule] she picked
+/// says what leaving does.
 class FocusSession extends ChangeNotifier {
   FocusSession._();
   static final current = FocusSession._();
@@ -372,6 +384,23 @@ class FocusSession extends ChangeNotifier {
 
   /// The task this session is for, if it was started from one.
   String? task;
+
+  /// The subject picked on the Focus page; it stays for the next session.
+  String subject = 'study';
+
+  /// What the session is saved and shown as: the task, or the subject.
+  String get label => task ?? subject;
+
+  /// Times she left the app in this session, and how long she was away.
+  int leftCount = 0;
+  Duration away = Duration.zero;
+  DateTime? _leftAt;
+
+  /// What the cat says about the last time she left, for the study view.
+  String? note;
+
+  /// The session that finished last, for the study view's summary.
+  ({int minutes, String label, int left, bool quit})? last;
 
   Duration _left = const Duration(minutes: 25);
   Duration _counted = Duration.zero;
@@ -385,7 +414,11 @@ class FocusSession extends ChangeNotifier {
   /// Started and not yet finished, running or paused.
   bool get started =>
       running ||
+      _leftAt != null ||
       (stopwatch ? _counted > Duration.zero : _left != Duration(minutes: length));
+
+  /// Away from the app right now, with the clock held until she is back.
+  bool get isAway => _leftAt != null;
 
   Duration get left {
     final e = _endsAt;
@@ -429,6 +462,22 @@ class FocusSession extends ChangeNotifier {
     notifyListeners();
   }
 
+  void setSubject(String key) {
+    if (started) return;
+    subject = key;
+    task = null;
+    notifyListeners();
+  }
+
+  /// What leaving the app does, from Prefs.
+  StudyRule get rule =>
+      StudyRule.values[Prefs.current.studyRule.clamp(0, StudyRule.values.length - 1)];
+  Future<void> setRule(StudyRule r) async {
+    if (started) return;
+    await Prefs.current.setStudyRule(r.index);
+    notifyListeners();
+  }
+
   /// The calm sound, from Prefs. Changing it while running switches at once.
   String? get sound => Prefs.current.focusSound;
   Future<void> setSound(String? name) async {
@@ -437,8 +486,18 @@ class FocusSession extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// No session going: the next start begins a new one.
+  bool _fresh = true;
+
   void start(DayStore store) {
     _store = store;
+    if (_fresh) {
+      _fresh = false;
+      leftCount = 0;
+      away = Duration.zero;
+      note = null;
+      last = null;
+    }
     if (stopwatch) {
       _since = DateTime.now();
     } else {
@@ -462,28 +521,111 @@ class FocusSession extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// The app went into the background while the clock was running: hold the
+  /// clock, and line up the cat's call to come back.
+  void appLeft([DateTime? now]) {
+    if (!running || _leftAt != null) return;
+    _leftAt = now ?? DateTime.now();
+    leftCount++;
+    pause();
+    final name = Prefs.current.catName;
+    final what = subjectLabel(label);
+    StudyGuard.callBack(
+      rule == StudyRule.nudge
+          ? [
+              (
+                seconds: 5,
+                body: tr(
+                  '$name paused your $what. Come back and finish it!',
+                  '$name帮你暂停了「$what」，快回来完成它吧！',
+                ),
+              ),
+            ]
+          : [
+              (
+                seconds: 3,
+                body: tr(
+                  'Come back within 15 seconds to keep your $what going!',
+                  '15 秒内回来，「$what」就能继续！',
+                ),
+              ),
+              (
+                seconds: studyGrace.inSeconds + 1,
+                body: tr(
+                  'Your $what ended because you left. $name is waiting to try again.',
+                  '你离开了，「$what」已结束。$name在等你再来一次。',
+                ),
+              ),
+            ],
+    );
+  }
+
+  /// The app is back in front. A short trip carries on where she left off;
+  /// in Strict and Lock me in, a long one ends the session.
+  Future<void> appBack([DateTime? now]) async {
+    final l = _leftAt;
+    if (l == null) return;
+    _leftAt = null;
+    StudyGuard.cancelCallBack();
+    final d = (now ?? DateTime.now()).difference(l);
+    away += d;
+    if (rule != StudyRule.nudge && d > studyGrace) {
+      note = tr(
+        'You were away for ${awayText(d)}, so this session ended.',
+        '你离开了 ${awayText(d)}，这次专注结束了。',
+      );
+      await finish(early: true, quit: true);
+      return;
+    }
+    note = tr(
+      'Welcome back! You were away for ${awayText(d)}.',
+      '欢迎回来！你离开了 ${awayText(d)}。',
+    );
+    final s = _store;
+    if (s != null) start(s);
+  }
+
   /// Records the minutes focused (all of them when time ran out) and resets.
-  Future<void> finish({bool early = false}) async {
+  /// A session that ended because she left is kept, marked [quit], and its
+  /// minutes don't count towards her totals.
+  Future<void> finish({bool early = false, bool quit = false}) async {
     final minutes = stopwatch
         ? elapsed.inMinutes
         : (early ? elapsed.inMinutes : length);
-    final label = task;
+    final name = label;
+    final times = leftCount;
     _end?.cancel();
     _endsAt = null;
     _since = null;
+    _leftAt = null;
     _counted = Duration.zero;
     _left = Duration(minutes: length);
     task = null;
+    leftCount = 0;
+    _fresh = true;
+    last = (minutes: minutes, label: name, left: times, quit: quit);
     Feel.loop(null);
+    if (rule == StudyRule.lock) StudyGuard.lock(false);
     notifyListeners();
     final s = _store;
-    if (minutes > 0 && s != null) {
-      await s.add(s.focus, '$minutes', kind: label);
-      Feel.logged();
-      KittyLayer.cheer();
+    if (s != null && (minutes > 0 || quit)) {
+      await s.add(s.focus, '$minutes', kind: name, left: times, quit: quit);
+      if (quit) {
+        Feel.oops();
+      } else {
+        Feel.logged();
+        KittyLayer.cheer();
+      }
     }
   }
 }
+
+String _two(int n) => n.toString().padLeft(2, '0');
+
+/// "25:00", or "1:05:09" past an hour.
+String focusClock(Duration d) => d.inHours > 0
+    ? '${d.inHours}:${_two(d.inMinutes % 60)}:${_two(d.inSeconds % 60)}'
+    : '${_two(d.inMinutes)}:${_two(d.inSeconds % 60)}';
 
 /// A focus timer: 15, 25, 45 or any minutes, or a stopwatch that counts
 /// up; a calm sound if she likes; the cat keeps her company, and finished
@@ -560,17 +702,12 @@ class _FocusTimerState extends State<FocusTimer> {
     if (v != null && v > 0) _f.setLength(v);
   }
 
-  String _two(int n) => n.toString().padLeft(2, '0');
-
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
     final cs = Theme.of(context).colorScheme;
     final shown = _f.stopwatch ? _f.elapsed : _f.left;
-    final hours = shown.inHours;
-    final clockText = hours > 0
-        ? '$hours:${_two(shown.inMinutes % 60)}:${_two(shown.inSeconds % 60)}'
-        : '${_two(shown.inMinutes)}:${_two(shown.inSeconds % 60)}';
+    final clockText = focusClock(shown);
     final progress = _f.stopwatch
         ? (shown.inSeconds % 60) / 60
         : 1 - _f.left.inSeconds / Duration(minutes: _f.length).inSeconds;
@@ -618,8 +755,23 @@ class _FocusTimerState extends State<FocusTimer> {
                 ),
               ],
             ),
+          const SizedBox(height: 10),
+          if (_f.task == null)
+            Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              alignment: WrapAlignment.center,
+              children: [
+                for (final k in studySubjects)
+                  ChoiceChip(
+                    key: Key('subject-$k'),
+                    label: Text(subjectLabel(k)),
+                    selected: _f.subject == k,
+                    onSelected: locked ? null : (_) => _f.setSubject(k),
+                  ),
+              ],
+            ),
           if (_f.task != null) ...[
-            const SizedBox(height: 10),
             InputChip(
               key: const Key('focus-task'),
               avatar: const Icon(Icons.task_alt, size: 18),
@@ -636,7 +788,7 @@ class _FocusTimerState extends State<FocusTimer> {
               children: [
                 CustomPaint(
                   size: const Size.square(210),
-                  painter: _Ring(progress, cs.primary),
+                  painter: FocusRing(progress, cs.primary),
                 ),
                 Column(
                   mainAxisSize: MainAxisSize.min,
@@ -682,6 +834,54 @@ class _FocusTimerState extends State<FocusTimer> {
             ],
           ),
           const SizedBox(height: 16),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              tr('If I leave the app', '如果我离开应用'),
+              style: t.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+            ),
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: SegmentedButton<StudyRule>(
+              showSelectedIcon: false,
+              segments: [
+                for (final r in StudyRule.values)
+                  ButtonSegment(
+                    value: r,
+                    label: Text(r.label, key: Key('rule-${r.name}')),
+                  ),
+              ],
+              selected: {_f.rule},
+              onSelectionChanged: locked
+                  ? null
+                  : (v) {
+                      Feel.tap();
+                      _f.setRule(v.first);
+                    },
+            ),
+          ),
+          const SizedBox(height: 6),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              _f.rule.about,
+              key: const Key('rule-about'),
+              style: t.bodySmall?.copyWith(color: Palette.muted),
+            ),
+          ),
+          if (_f.rule == StudyRule.lock)
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton(
+                key: const Key('rule-lock-help'),
+                style: TextButton.styleFrom(padding: EdgeInsets.zero),
+                onPressed: () => showTinySheet<void>(context, (_) => const LockHelp()),
+                child: Text(tr('How to set up Guided Access', '如何设置“引导式访问”')),
+              ),
+            ),
+          const SizedBox(height: 16),
           Row(
             children: [
               Expanded(
@@ -689,12 +889,12 @@ class _FocusTimerState extends State<FocusTimer> {
                   key: const Key('focus-start'),
                   onPressed: () {
                     Feel.tap();
-                    _f.running ? _f.pause() : _f.start(widget.store);
+                    StudyScreen.open(context, widget.store);
                   },
                   child: Text(
                     _f.running
-                        ? tr('Pause', '暂停')
-                        : (_f.started ? tr('Keep going', '继续') : tr('Start focus', '开始专注')),
+                        ? tr('Back to studying', '回到学习')
+                        : (_f.started ? tr('Keep going', '继续') : tr('Start studying', '开始学习')),
                   ),
                 ),
               ),
@@ -722,8 +922,9 @@ class _FocusTimerState extends State<FocusTimer> {
   }
 }
 
-class _Ring extends CustomPainter {
-  _Ring(this.progress, this.color);
+/// The ring round the focus clock, filling as time goes.
+class FocusRing extends CustomPainter {
+  FocusRing(this.progress, this.color);
   final double progress;
   final Color color;
 
@@ -745,7 +946,7 @@ class _Ring extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_Ring old) => old.progress != progress;
+  bool shouldRepaint(FocusRing old) => old.progress != progress;
 }
 
 class _Notes extends StatelessWidget {

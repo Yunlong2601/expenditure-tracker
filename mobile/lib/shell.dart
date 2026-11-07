@@ -45,7 +45,7 @@ class AppShell extends StatefulWidget {
   State<AppShell> createState() => _AppShellState();
 }
 
-class _AppShellState extends State<AppShell> {
+class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   late var _tab = widget.initialTab;
   bool _alertsQueued = false;
 
@@ -53,13 +53,30 @@ class _AppShellState extends State<AppShell> {
   void initState() {
     super.initState();
     widget.store.addListener(_queueAlerts);
+    WidgetsBinding.instance.addObserver(this);
     _queueAlerts();
   }
 
   @override
   void dispose() {
     widget.store.removeListener(_queueAlerts);
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  /// Study mode keeps watch: going to another app (or locking the phone)
+  /// while the focus clock runs counts as leaving. Pulling down Control
+  /// Center or a notification only makes the app inactive, and doesn't.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    switch (state) {
+      case AppLifecycleState.hidden || AppLifecycleState.paused:
+        FocusSession.current.appLeft();
+      case AppLifecycleState.resumed:
+        FocusSession.current.appBack();
+      case _:
+        break;
+    }
   }
 
   /// Task and countdown reminders follow every change, once per batch.

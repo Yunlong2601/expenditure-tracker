@@ -59,11 +59,15 @@ class _MeTabState extends State<MeTab> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            for (final (k, label) in [('en', 'English'), ('zh', '中文')])
+            for (final (k, label) in [
+              ('system', tr('Same as phone', '跟随系统')),
+              ('en', 'English'),
+              ('zh', '中文'),
+            ])
               ListTile(
                 key: Key('lang-$k'),
                 title: Text(label),
-                trailing: (zh ? 'zh' : 'en') == k
+                trailing: (_p.language ?? 'system') == k
                     ? const Icon(Icons.check)
                     : null,
                 onTap: () => Navigator.of(ctx).pop(k),
@@ -72,8 +76,8 @@ class _MeTabState extends State<MeTab> {
         ),
       ),
     );
-    if (v == null || v == (zh ? 'zh' : 'en')) return;
-    await _p.setLanguage(v);
+    if (v == null || v == (_p.language ?? 'system')) return;
+    await _p.setLanguage(v == 'system' ? null : v);
     widget.onThemeChanged();
     widget.onLanguageChanged?.call();
     Remind.syncCheckIns(DayStore.current);
@@ -306,7 +310,9 @@ class _MeTabState extends State<MeTab> {
               bg: Palette.mint,
               key: const Key('row-language'),
               label: tr('Language', '语言'),
-              value: zh ? '中文' : 'English',
+              value: _p.language == null
+                  ? tr('Same as phone', '跟随系统')
+                  : (zh ? '中文' : 'English'),
               onTap: _pickLanguage,
             ),
           ],

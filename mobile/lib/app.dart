@@ -43,7 +43,28 @@ class SpendSnapApp extends StatefulWidget {
   State<SpendSnapApp> createState() => _SpendSnapAppState();
 }
 
-class _SpendSnapAppState extends State<SpendSnapApp> {
+class _SpendSnapAppState extends State<SpendSnapApp> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  /// The phone's language changed: follow it, unless one was picked in Me.
+  @override
+  void didChangeLocales(List<Locale>? locales) {
+    if (Prefs.current.language != null) return;
+    setState(() {});
+    redrawAll();
+    Remind.syncCheckIns(DayStore.current);
+  }
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -56,7 +77,7 @@ class _SpendSnapAppState extends State<SpendSnapApp> {
         'dark' => ThemeMode.dark,
         _ => ThemeMode.system,
       },
-      // English unless Chinese is picked in Me → Language.
+      // The phone's language, or the one picked in Me → Language.
       locale: Locale(zh ? 'zh' : 'en'),
       supportedLocales: const [Locale('en'), Locale('zh')],
       localizationsDelegates: GlobalMaterialLocalizations.delegates,
