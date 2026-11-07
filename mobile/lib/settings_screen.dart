@@ -55,7 +55,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(tr('Restore this backup?', '恢复这个备份？')),
-        content: Text(tr('It has $n expenses. Everything on this phone now will be replaced by it.', '里面有 $n 笔账。手机上现在的所有数据都会被它替换。')),
+        content: Text(tr('It has ${count(n, 'expense')}. Everything on this phone now will be replaced by it.', '里面有 $n 笔账。手机上现在的所有数据都会被它替换。')),
         actions: [
           TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: Text(tr('Cancel', '取消'))),
           FilledButton(
@@ -76,7 +76,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     Feel.logged();
     if (!mounted) return;
     setState(() {});
-    _say(tr('Restored $n expenses.', '已恢复 $n 笔账。'));
+    _say(tr('Restored ${count(n, 'expense')}.', '已恢复 $n 笔账。'));
   }
 
   String _time(BuildContext context) {
@@ -184,8 +184,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
             Text(
               tr(
                 'Receipts are read by your iPhone itself, even in flight mode. Expenses and receipt photos are '
-                    'saved only on this phone and included in your iPhone backup. Nothing is sent anywhere.',
-                '小票由 iPhone 自己识别，飞行模式也能用。账目和小票照片只存在这台手机上，并包含在 iPhone 备份里。不会发送到任何地方。',
+                    'saved only on this phone and included in your iPhone backup, and are never sent anywhere. '
+                    'Chatting with the cat, if you turn it on, sends only what it showed you when you agreed.',
+                '小票由 iPhone 自己识别，飞行模式也能用。账目和小票照片只存在这台手机上，并包含在 iPhone 备份里，不会发送到任何地方。'
+                    '如果你打开和小猫聊天，只会发送你同意时它列出的那些内容。',
               ),
               style: t.bodyMedium,
             ),

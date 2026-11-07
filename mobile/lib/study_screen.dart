@@ -182,7 +182,7 @@ class _StudyScreenState extends State<StudyScreen> {
                                 children: [
                                   CustomPaint(
                                     size: const Size.square(236),
-                                    painter: FocusRing(progress, cs.primary),
+                                    painter: FocusRing(progress, cs.primary, track: context.greenSoft),
                                   ),
                                   Column(
                                     mainAxisSize: MainAxisSize.min,

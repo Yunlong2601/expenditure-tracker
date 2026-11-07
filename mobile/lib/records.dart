@@ -794,7 +794,7 @@ class _FocusTimerState extends State<FocusTimer> {
               children: [
                 CustomPaint(
                   size: const Size.square(210),
-                  painter: FocusRing(progress, cs.primary),
+                  painter: FocusRing(progress, cs.primary, track: context.greenSoft),
                 ),
                 Column(
                   mainAxisSize: MainAxisSize.min,
@@ -930,9 +930,12 @@ class _FocusTimerState extends State<FocusTimer> {
 
 /// The ring round the focus clock, filling as time goes.
 class FocusRing extends CustomPainter {
-  FocusRing(this.progress, this.color);
+  FocusRing(this.progress, this.color, {this.track = Palette.sageSoft});
   final double progress;
   final Color color;
+
+  /// The empty part of the ring; pass the dark one at night.
+  final Color track;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -941,7 +944,7 @@ class FocusRing extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeWidth = 12
       ..strokeCap = StrokeCap.round;
-    canvas.drawArc(r, 0, math.pi * 2, false, p..color = Palette.sageSoft);
+    canvas.drawArc(r, 0, math.pi * 2, false, p..color = track);
     canvas.drawArc(
       r,
       -math.pi / 2,
@@ -952,7 +955,8 @@ class FocusRing extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(FocusRing old) => old.progress != progress;
+  bool shouldRepaint(FocusRing old) =>
+      old.progress != progress || old.color != color || old.track != track;
 }
 
 class _Notes extends StatelessWidget {
