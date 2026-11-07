@@ -27,6 +27,10 @@ void main() {
   ) async {
     await tester.pumpWidget(_app(store));
     expect(find.text('Hi, I’m Mochi'), findsOneWidget);
+    // A screen reader reads the card, not the list under it.
+    expect(find.bySemanticsLabel(RegExp('^Hi, I’m Mochi')), findsOneWidget);
+    expect(find.bySemanticsLabel(RegExp('^Open Chat')), findsNothing);
+    expect(find.bySemanticsLabel(RegExp('^Search tasks')), findsNothing);
     await tester.tap(find.byKey(const Key('onboard-next')));
     await tester.pumpAndSettle();
     expect(find.text('Swipe to find us'), findsOneWidget);
@@ -36,6 +40,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(Prefs.current.onboarded, isTrue);
     expect(find.text(DayStore.gettingStartedSteps.first), findsOneWidget);
+    expect(find.bySemanticsLabel(RegExp('^Open Chat')), findsOneWidget);
   });
 
   testWidgets('+ adds a task for today and the circle ticks it', (
@@ -100,6 +105,15 @@ void main() {
     expect(find.text('账号与安全'), findsOneWidget);
     await tester.tap(find.byKey(const Key('row-language')));
     await tester.pumpAndSettle();
+    // A screen reader hears which one is on, not just a tick.
+    expect(
+      tester.getSemantics(find.byKey(const Key('lang-zh'))),
+      containsSemantics(isSelected: true, isButton: true, label: '中文'),
+    );
+    expect(
+      tester.getSemantics(find.byKey(const Key('lang-en'))),
+      containsSemantics(isSelected: false),
+    );
     await tester.tap(find.byKey(const Key('lang-en')));
     await tester.pumpAndSettle();
     expect(find.text('Pet'), findsOneWidget);

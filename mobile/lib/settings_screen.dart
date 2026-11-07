@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 
 import 'allowance.dart';
+import 'brain.dart';
 import 'day.dart';
 import 'feel.dart';
 import 'format.dart';
@@ -183,12 +184,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const SizedBox(height: 8),
             Text(
               tr(
-                'Receipts are read by your iPhone itself, even in flight mode. Expenses and receipt photos are '
-                    'saved only on this phone and included in your iPhone backup, and are never sent anywhere. '
-                    'Chatting with the cat, if you turn it on, sends only what it showed you when you agreed.',
-                '小票由 iPhone 自己识别，飞行模式也能用。账目和小票照片只存在这台手机上，并包含在 iPhone 备份里，不会发送到任何地方。'
-                    '如果你打开和小猫聊天，只会发送你同意时它列出的那些内容。',
-              ),
+                    'Receipts are read by your iPhone itself, even in flight mode. Expenses and receipt photos are '
+                    'saved only on this phone and included in your iPhone backup, and are never sent anywhere.',
+                    '小票由 iPhone 自己识别，飞行模式也能用。账目和小票照片只存在这台手机上，并包含在 iPhone 备份里，不会发送到任何地方。',
+                  ) +
+                  // Matches what the chat's consent sheet says for this build.
+                  (CatBrain.current == null
+                      ? ''
+                      : tr(
+                          ' Chatting with the cat, if you turn it on, sends only what it showed you when you agreed.',
+                          '如果你打开和小猫聊天，只会发送你同意时它列出的那些内容。',
+                        )),
               style: t.bodyMedium,
             ),
             if (widget.ledger != null) ...[

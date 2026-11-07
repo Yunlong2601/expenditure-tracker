@@ -194,6 +194,7 @@ class _ChatScreenState extends State<ChatScreen> {
           const SizedBox(width: 8),
           PopupMenuButton<String>(
             key: const Key('chat-menu'),
+            tooltip: tr('Check-ins, memory and notebook', '约定、记忆和小本子'),
             style: round,
             icon: const Icon(Icons.more_horiz),
             onSelected: _menu,

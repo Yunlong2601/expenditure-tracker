@@ -13,6 +13,7 @@ import 'package:spendsnap/companion.dart';
 import 'package:spendsnap/records.dart';
 
 import 'stress/contrast.dart';
+import 'stress/edge_taps.dart';
 import 'stress/stress.dart';
 
 void main() {
@@ -37,18 +38,24 @@ void main() {
   // An iPhone SE for Apple's 44-point taps, names and contrast, light and
   // dark; a common Android size (412 x 915) for Android's 48-point taps.
   const android = (name: 'Android phone', size: Size(412, 915), text: 1.0);
+  const iOSEdge = EdgeTapTargetGuideline(Size(44, 44));
+  const androidEdge = EdgeTapTargetGuideline(Size(48, 48));
   final runs = [
     (
       phone: phones[1],
       dark: false,
-      checks: [iOSTapTargetGuideline, labeledTapTargetGuideline],
+      checks: [iOSTapTargetGuideline, iOSEdge, labeledTapTargetGuideline],
     ),
     (
       phone: phones[1],
       dark: true,
-      checks: [iOSTapTargetGuideline, labeledTapTargetGuideline],
+      checks: [iOSTapTargetGuideline, iOSEdge, labeledTapTargetGuideline],
     ),
-    (phone: android, dark: false, checks: [androidTapTargetGuideline]),
+    (
+      phone: android,
+      dark: false,
+      checks: [androidTapTargetGuideline, androidEdge],
+    ),
   ];
 
   for (final run in runs) {

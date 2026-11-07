@@ -51,7 +51,7 @@ void main() {
   /// The ⋯ menu on the step card with this title.
   Finder menuOf(String step) => find.descendant(
     of: find.ancestor(of: find.text(step), matching: find.byType(Row)).last,
-    matching: find.byIcon(Icons.more_horiz),
+    matching: find.byTooltip('Step options'),
   );
 
   Future<void> save(WidgetTester tester) async {
@@ -119,7 +119,7 @@ void main() {
     );
     await open(tester, task: t);
     expect(find.text('Homework'), findsOneWidget);
-    await tester.tap(find.byIcon(Icons.more_horiz).first);
+    await tester.tap(find.byTooltip('All steps'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Mark all done'));
     await tester.pumpAndSettle();
@@ -129,7 +129,7 @@ void main() {
     expect(t.doneAt, isNotNull);
 
     await open(tester, task: t);
-    await tester.tap(find.byIcon(Icons.more_horiz).first);
+    await tester.tap(find.byTooltip('All steps'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Start over'));
     await tester.pumpAndSettle();
@@ -182,7 +182,7 @@ void main() {
   testWidgets('closing without saving changes nothing', (tester) async {
     final t = await store.addTask('Room', steps: [StackStep('Bed')]);
     await open(tester, task: t);
-    await tester.tap(find.byIcon(Icons.more_horiz).at(1));
+    await tester.tap(find.byTooltip('Step options'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Mark done'));
     await tester.pumpAndSettle();

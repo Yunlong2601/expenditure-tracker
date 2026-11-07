@@ -476,7 +476,12 @@ class _Summary extends StatelessWidget {
     final t = Theme.of(context).textTheme;
     final what = subjectLabel(done.label);
     final n = done.left;
-    final text = done.quit
+    final text = done.quit && done.minutes == 0
+        ? tr(
+            'You left the app, so this one doesn’t count. Shall we try again?',
+            '你离开了应用，这次不计入。要再来一次吗？',
+          )
+        : done.quit
         ? tr(
             'You left the app, so these ${done.minutes} min don’t count. Shall we try again?',
             '你离开了应用，这 ${done.minutes} 分钟不计入。要再来一次吗？',

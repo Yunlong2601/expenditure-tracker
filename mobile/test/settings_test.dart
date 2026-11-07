@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:spendsnap/brain.dart';
 import 'package:spendsnap/day.dart';
 import 'package:spendsnap/ledger.dart';
 import 'package:spendsnap/prefs.dart';
@@ -152,6 +153,25 @@ void main() {
       expect(find.byKey(Key(k)), findsNothing);
     }
     expect(find.textContaining('never sent anywhere'), findsOneWidget);
+  });
+
+  testWidgets('the privacy note matches what the chat sends in this build', (
+    tester,
+  ) async {
+    // Chat on the phone only: nothing about sending.
+    await show(tester);
+    expect(find.textContaining('Chatting with the cat'), findsNothing);
+
+    // With the online brain built in, it says what's sent, as the chat's
+    // own consent sheet does.
+    CatBrain.current = CatBrain(Uri.parse('https://cat.example/chat'));
+    addTearDown(() => CatBrain.current = null);
+    await tester.pumpWidget(const SizedBox());
+    await show(tester);
+    expect(
+      find.textContaining('sends only what it showed you'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('export copies, and the month picture opens', (tester) async {

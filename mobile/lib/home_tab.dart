@@ -419,12 +419,15 @@ class _HomeTabState extends State<HomeTab> {
           ),
           if (!Prefs.current.onboarded)
             Positioned.fill(
-              child: Onboarding(
-                onDone: (start) async {
-                  await Prefs.current.setOnboarded();
-                  if (start) await _s.addGettingStarted();
-                  if (mounted) setState(() {});
-                },
+              // VoiceOver reads only the welcome card, not the list it covers.
+              child: BlockSemantics(
+                child: Onboarding(
+                  onDone: (start) async {
+                    await Prefs.current.setOnboarded();
+                    if (start) await _s.addGettingStarted();
+                    if (mounted) setState(() {});
+                  },
+                ),
               ),
             ),
         ],

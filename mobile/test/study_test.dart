@@ -248,6 +248,39 @@ void main() {
     expect(calls.where((c) => c.method == 'awake').last.arguments, isFalse);
   });
 
+  testWidgets('strict: staying away ends it, and under a minute says so '
+      'without "0 min"', (tester) async {
+    await Prefs.current.setStudyRule(1);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: tinyTheme(Brightness.light),
+        home: RecordsScreen(store: store, tab: 1),
+      ),
+    );
+    await tester.ensureVisible(find.byKey(const Key('focus-start')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('focus-start')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 600));
+    expect(f.running, isTrue);
+
+    final t0 = DateTime.now();
+    f.appLeft(t0);
+    await tester.runAsync(() => f.appBack(t0.add(const Duration(seconds: 20))));
+    await tester.pumpAndSettle();
+    expect(f.running, isFalse);
+    expect(find.byKey(const Key('study-summary')), findsOneWidget);
+    expect(
+      find.text(
+        'You left the app, so this one doesn’t count. Shall we try again?',
+      ),
+      findsOneWidget,
+    );
+    expect(find.textContaining('0 min'), findsNothing);
+    await tester.tap(find.byKey(const Key('study-finish')));
+    await tester.pumpAndSettle();
+  });
+
   testWidgets('the study log shows today, the week, subjects and sessions', (
     tester,
   ) async {

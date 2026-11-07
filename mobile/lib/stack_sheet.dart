@@ -152,6 +152,7 @@ class _StackSheetState extends State<StackSheet> {
                     ),
                   ),
                   PopupMenuButton<String>(
+                    tooltip: tr('All steps', '所有步骤'),
                     icon: const Icon(Icons.more_horiz),
                     onSelected: (v) => setState(() {
                       for (final s in _steps) {
@@ -355,6 +356,7 @@ class _StepCard extends StatelessWidget {
                 ),
               ),
               PopupMenuButton<String>(
+                tooltip: tr('Step options', '这一步的选项'),
                 icon: Icon(Icons.more_horiz, color: context.muted),
                 onSelected: onMenu,
                 itemBuilder: (_) => [

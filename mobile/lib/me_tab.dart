@@ -66,6 +66,8 @@ class _MeTabState extends State<MeTab> {
             ])
               ListTile(
                 key: Key('lang-$k'),
+                // Selected, so VoiceOver says which one is on, not just the tick.
+                selected: (_p.language ?? 'system') == k,
                 title: Text(label),
                 trailing: (_p.language ?? 'system') == k
                     ? const Icon(Icons.check)
@@ -97,6 +99,8 @@ class _MeTabState extends State<MeTab> {
               ('dark', tr('Dark', '深色')),
             ])
               ListTile(
+                key: Key('theme-$k'),
+                selected: (_p.themeMode ?? 'system') == k,
                 title: Text(label),
                 trailing: (_p.themeMode ?? 'system') == k
                     ? const Icon(Icons.check)
@@ -139,6 +143,7 @@ class _MeTabState extends State<MeTab> {
               for (final (i, label) in options.indexed)
                 ListTile(
                   key: Key('pick-$i'),
+                  selected: i == current,
                   title: Text(label),
                   trailing: i == current ? const Icon(Icons.check) : null,
                   onTap: () => Navigator.of(ctx).pop(i),

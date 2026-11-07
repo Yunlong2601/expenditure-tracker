@@ -271,7 +271,14 @@ class EdgeTab extends StatelessWidget {
       label: tr('Open $label', '打开$label'),
       child: GestureDetector(
         onTap: onTap,
-        child: Container(
+        behavior: HitTestBehavior.opaque,
+        // The tab looks 28 points wide, but a finger gets 48: Apple asks for
+        // 44 and Android for 48.
+        child: SizedBox(
+          width: 48,
+          child: Align(
+            alignment: left ? Alignment.centerLeft : Alignment.centerRight,
+            child: Container(
           width: 28,
           padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
@@ -302,6 +309,8 @@ class EdgeTab extends StatelessWidget {
                 ),
               ),
             ],
+          ),
+            ),
           ),
         ),
       ),
