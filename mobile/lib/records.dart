@@ -80,7 +80,7 @@ class _RecordsScreenState extends State<RecordsScreen> {
                         Padding(
                           padding: const EdgeInsets.only(left: 12),
                           child: Wrap(
-                            spacing: 8,
+                            spacing: 6,
                             children: [
                               for (final (i, label) in [
                                 tr('Timeline', '时间轴'),
@@ -93,7 +93,7 @@ class _RecordsScreenState extends State<RecordsScreen> {
                                   selected: _tab == i,
                                   showCheckmark: false,
                                   labelPadding: const EdgeInsets.symmetric(
-                                    horizontal: 6,
+                                    horizontal: 2,
                                   ),
                                   // White with a thin edge, soft green when
                                   // open, as in the wireframe.
@@ -255,16 +255,13 @@ class _Timeline extends StatelessWidget {
               ] else
                 for (final (i, e) in today.indexed)
                   _TimelineRow(
-                    time: hhmm(e.at),
+                    time: clockAt(context, e.at),
                     text: e.text,
                     last: i == today.length - 1,
                     onDelete: () => store.remove(store.timeline, e),
                   ),
               const SizedBox(height: 6),
-              Wrap(
-                alignment: WrapAlignment.center,
-                spacing: 8,
-                runSpacing: 8,
+              ChipRow(
                 children: [
                   for (final c in chips)
                     ActionChip(
@@ -302,13 +299,18 @@ class _TimelineRow extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // Wide enough for "10:30 PM"; bigger text shrinks to fit.
           SizedBox(
-            width: 48,
+            width: 64,
             child: Padding(
               padding: const EdgeInsets.only(top: 12),
-              child: Text(
-                time,
-                style: t.bodyMedium?.copyWith(color: context.muted),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: AlignmentDirectional.topStart,
+                child: Text(
+                  time,
+                  style: t.bodyMedium?.copyWith(color: context.muted),
+                ),
               ),
             ),
           ),
@@ -727,6 +729,8 @@ class _FocusTimerState extends State<FocusTimer> {
       child: Column(
         children: [
           SegmentedButton<bool>(
+            // Edge to edge, like the chips and the rule below it.
+            expandedInsets: EdgeInsets.zero,
             showSelectedIcon: false,
             segments: [
               ButtonSegment(
@@ -743,9 +747,7 @@ class _FocusTimerState extends State<FocusTimer> {
           ),
           const SizedBox(height: 12),
           if (!_f.stopwatch)
-            Wrap(
-              spacing: 8,
-              alignment: WrapAlignment.center,
+            ChipRow(
               children: [
                 for (final m in const [15, 25, 45])
                   ChoiceChip(
@@ -765,10 +767,7 @@ class _FocusTimerState extends State<FocusTimer> {
             ),
           const SizedBox(height: 10),
           if (_f.task == null)
-            Wrap(
-              spacing: 8,
-              runSpacing: 4,
-              alignment: WrapAlignment.center,
+            ChipRow(
               children: [
                 for (final k in studySubjects)
                   ChoiceChip(
@@ -822,9 +821,8 @@ class _FocusTimerState extends State<FocusTimer> {
               Icon(Icons.music_note_outlined, size: 18, color: context.muted),
               const SizedBox(width: 6),
               Expanded(
-                child: Wrap(
+                child: ChipRow(
                   spacing: 6,
-                  runSpacing: 4,
                   children: [
                     for (final name in [null, ...focusSounds])
                       ChoiceChip(
@@ -1013,7 +1011,7 @@ class _Notes extends StatelessWidget {
                     Text(n.text, style: t.bodyLarge),
                     const SizedBox(height: 6),
                     Text(
-                      '${dayMonth(n.at)} ${hhmm(n.at)}',
+                      '${dayMonth(n.at)} ${clockAt(context, n.at)}',
                       style: t.bodySmall?.copyWith(color: context.muted),
                     ),
                   ],

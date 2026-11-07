@@ -180,7 +180,7 @@ class _SummaryCard extends StatelessWidget {
                   Icon(iconFor(c.category), size: 20, color: on),
                   const SizedBox(width: 8),
                   SizedBox(
-                    width: 96,
+                    width: 88,
                     child: Text(
                       catLabel(c.category),
                       maxLines: 1,
@@ -200,9 +200,16 @@ class _SummaryCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  Text(
-                    money(c.amount, 'SGD'),
-                    style: TextStyle(color: on, fontWeight: FontWeight.w600),
+                  // Shrinks with very big text rather than squeezing the bar out.
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 100),
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        money(c.amount, 'SGD'),
+                        style: TextStyle(color: on, fontWeight: FontWeight.w600),
+                      ),
+                    ),
                   ),
                 ],
               ),

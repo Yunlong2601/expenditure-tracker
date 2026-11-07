@@ -141,7 +141,7 @@ class _DashboardTabState extends State<DashboardTab> {
               ),
               title: Text(c.title),
               subtitle: Text(
-                '${fullDate(c.next())} ${weekdayShort(c.next())}'
+                '${dateWithWeekday(c.next())}'
                 '${c.yearly ? tr(' · every year', ' · 每年') : ''}',
               ),
               trailing: Text(
@@ -331,7 +331,8 @@ class _DashboardTabState extends State<DashboardTab> {
                   Container(
                     margin: const EdgeInsets.only(right: 64),
                     width: double.infinity,
-                    padding: const EdgeInsets.all(14),
+                    // Room on the right for the cat peeking over the corner.
+                    padding: const EdgeInsets.fromLTRB(14, 14, 30, 14),
                     decoration: BoxDecoration(
                       color: context.greenSoft,
                       borderRadius: BorderRadius.circular(14),
@@ -1047,7 +1048,7 @@ class CompletedSheet extends StatelessWidget {
                             ),
                             title: Text(x.title),
                             trailing: Text(
-                              hhmm(x.doneAt!),
+                              clockAt(context, x.doneAt!),
                               style: t.bodySmall,
                             ),
                           ),
@@ -1148,7 +1149,7 @@ class DaySheet extends StatelessWidget {
                           Chip(
                             avatar: MoodFace(mood: mood, size: 22),
                             label: Text(
-                              '${zh ? mood.zh : mood.label} · ${hhmm(m.at)}',
+                              '${zh ? mood.zh : mood.label} · ${clockAt(context, m.at)}',
                             ),
                           ),
                     ],
@@ -1162,7 +1163,7 @@ class DaySheet extends StatelessWidget {
                     head(tr('Timeline', '时间轴')),
                     for (final e in lines)
                       Text(
-                        '${hhmm(e.at)}  ${e.text}',
+                        '${clockAt(context, e.at)}  ${e.text}',
                         style: t.bodyLarge,
                       ),
                   ],

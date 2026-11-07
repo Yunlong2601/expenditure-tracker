@@ -176,17 +176,18 @@ class _MeTabState extends State<MeTab> {
                   height: top + 158,
                 ),
               ),
+              // Up to the cat's ear, not under it.
               Positioned(
                 left: 0,
                 top: 10,
-                right: 150,
+                right: 120,
                 child: InkWell(
                   key: const Key('edit-cat'),
                   borderRadius: BorderRadius.circular(20),
                   onTap: _editCat,
                   child: Row(
                     children: [
-                      const CatAvatar(size: 64),
+                      const CatAvatar(size: 56),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Column(
@@ -206,10 +207,16 @@ class _MeTabState extends State<MeTab> {
                                 const Icon(Icons.expand_more),
                               ],
                             ),
-                            Text(
-                              tr('Plan life slowly, together', '一起把生活慢慢安排好'),
-                              style: t.bodySmall?.copyWith(
-                                color: context.muted,
+                            // One line: a little smaller rather than broken
+                            // in two beside the cat.
+                            FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: AlignmentDirectional.centerStart,
+                              child: Text(
+                                tr('Plan life slowly, together', '一起把生活慢慢安排好'),
+                                style: t.bodySmall?.copyWith(
+                                  color: context.muted,
+                                ),
                               ),
                             ),
                           ],
@@ -224,8 +231,11 @@ class _MeTabState extends State<MeTab> {
         ),
         Panel(
           padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 6),
+          // Lined up along the top, so a name on two lines doesn't push its
+          // icon out of line with the others.
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _Tile(
                 key: const Key('tile-notify'),

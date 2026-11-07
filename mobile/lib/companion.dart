@@ -287,10 +287,15 @@ class EdgeTab extends StatelessWidget {
   const EdgeTab({
     super.key,
     required this.label,
+    required this.icon,
     required this.left,
     required this.onTap,
   });
   final String label;
+
+  /// Shown instead of the label: words turned on their side are hard to
+  /// read, Chinese most of all. Screen readers and a long press say [label].
+  final IconData icon;
   final bool left;
   final VoidCallback onTap;
 
@@ -300,47 +305,41 @@ class EdgeTab extends StatelessWidget {
     return Semantics(
       button: true,
       label: tr('Open $label', '打开$label'),
-      child: GestureDetector(
-        onTap: onTap,
-        behavior: HitTestBehavior.opaque,
-        // The tab looks 28 points wide, but a finger gets 48: Apple asks for
-        // 44 and Android for 48.
-        child: SizedBox(
-          width: 48,
-          child: Align(
-            alignment: left ? Alignment.centerLeft : Alignment.centerRight,
-            child: Container(
-          width: 28,
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          decoration: BoxDecoration(
-            color: cs.surface.withValues(alpha: 0.9),
-            borderRadius: BorderRadius.horizontal(
-              left: left ? Radius.zero : const Radius.circular(12),
-              right: left ? const Radius.circular(12) : Radius.zero,
-            ),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                left ? Icons.chevron_right : Icons.chevron_left,
-                size: 16,
-                color: cs.primary,
-              ),
-              const SizedBox(height: 6),
-              RotatedBox(
-                quarterTurns: left ? 3 : 1,
-                child: Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: cs.primary,
-                    fontWeight: FontWeight.w600,
+      child: Tooltip(
+        message: label,
+        excludeFromSemantics: true,
+        child: GestureDetector(
+          onTap: onTap,
+          behavior: HitTestBehavior.opaque,
+          // The tab looks 30 points wide, but a finger gets 48: Apple asks
+          // for 44 and Android for 48.
+          child: SizedBox(
+            width: 48,
+            child: Align(
+              alignment: left ? Alignment.centerLeft : Alignment.centerRight,
+              child: Container(
+                width: 30,
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                decoration: BoxDecoration(
+                  color: cs.surface.withValues(alpha: 0.9),
+                  borderRadius: BorderRadius.horizontal(
+                    left: left ? Radius.zero : const Radius.circular(12),
+                    right: left ? const Radius.circular(12) : Radius.zero,
                   ),
                 ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(icon, size: 18, color: cs.primary),
+                    const SizedBox(height: 2),
+                    Icon(
+                      left ? Icons.chevron_right : Icons.chevron_left,
+                      size: 16,
+                      color: cs.primary,
+                    ),
+                  ],
+                ),
               ),
-            ],
-          ),
             ),
           ),
         ),

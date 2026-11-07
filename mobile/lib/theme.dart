@@ -56,7 +56,7 @@ ThemeData tinyTheme(Brightness b) {
       ButtonStyle(overlayColor: WidgetStateProperty.resolveWith((s) => s.contains(WidgetState.pressed) ? c : null));
   final press = cs.primary.withValues(alpha: 0.18);
   final muted = dark ? const Color(0xFFA29E96) : const Color(0xFF6B6861);
-  return ThemeData(
+  final base = ThemeData(
     colorScheme: cs,
     useMaterial3: true,
     scaffoldBackgroundColor: cs.surface,
@@ -129,6 +129,35 @@ ThemeData tinyTheme(Brightness b) {
     outlinedButtonTheme: OutlinedButtonThemeData(style: flash(press)),
     textButtonTheme: TextButtonThemeData(style: flash(press)),
     iconButtonTheme: IconButtonThemeData(style: flash(press)),
+  );
+  return base.copyWith(
+    textTheme: _type(base.textTheme),
+    primaryTextTheme: _type(base.primaryTextTheme),
+  );
+}
+
+/// Type as on iPhone: no extra space between letters (Material's defaults
+/// spread them out), big headings a touch tighter, and the small sizes one
+/// step up so grey hints stay easy to read.
+TextTheme _type(TextTheme t) {
+  TextStyle? s(TextStyle? x, {double? size, double spacing = 0}) =>
+      x?.copyWith(letterSpacing: spacing, fontSize: size ?? x.fontSize);
+  return t.copyWith(
+    displayLarge: s(t.displayLarge, spacing: -0.5),
+    displayMedium: s(t.displayMedium, spacing: -0.5),
+    displaySmall: s(t.displaySmall, spacing: -0.4),
+    headlineLarge: s(t.headlineLarge, spacing: -0.4),
+    headlineMedium: s(t.headlineMedium, spacing: -0.3),
+    headlineSmall: s(t.headlineSmall, spacing: -0.2),
+    titleLarge: s(t.titleLarge, spacing: -0.2),
+    titleMedium: s(t.titleMedium),
+    titleSmall: s(t.titleSmall),
+    bodyLarge: s(t.bodyLarge),
+    bodyMedium: s(t.bodyMedium, size: 15),
+    bodySmall: s(t.bodySmall, size: 13),
+    labelLarge: s(t.labelLarge),
+    labelMedium: s(t.labelMedium, size: 13),
+    labelSmall: s(t.labelSmall, size: 12),
   );
 }
 
@@ -252,4 +281,69 @@ class Panel extends StatelessWidget {
       child: Padding(padding: padding, child: child),
     ),
   );
+}
+
+/// Chips on one line, left-aligned, that scroll sideways when they don't
+/// all fit, so no chip is left alone on a line of its own. The edge with
+/// more chips past it fades out, so a cut chip reads as "scroll for more".
+class ChipRow extends StatefulWidget {
+  const ChipRow({super.key, required this.children, this.spacing = 8});
+  final List<Widget> children;
+  final double spacing;
+
+  @override
+  State<ChipRow> createState() => _ChipRowState();
+}
+
+class _ChipRowState extends State<ChipRow> {
+  var _before = false, _after = false;
+
+  // Its size known (first layout) or its place changed (scrolled).
+  bool _seen(Notification n) {
+    final m = switch (n) {
+      ScrollMetricsNotification(:final metrics) => metrics,
+      ScrollNotification(:final metrics) => metrics,
+      _ => null,
+    };
+    if (m == null) return false;
+    final before = m.extentBefore > 1, after = m.extentAfter > 1;
+    if (before != _before || after != _after) {
+      setState(() {
+        _before = before;
+        _after = after;
+      });
+    }
+    return false;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      child: NotificationListener<Notification>(
+        onNotification: _seen,
+        // Always masked (fully shown when nothing is past an edge), so the
+        // row keeps its place when a fade comes or goes.
+        child: ShaderMask(
+          blendMode: BlendMode.dstIn,
+          shaderCallback: (r) {
+            final f = r.width > 0 ? (28 / r.width).clamp(0.0, 0.5) : 0.0;
+            return LinearGradient(
+              colors: [
+                _before ? Colors.transparent : Colors.black,
+                Colors.black,
+                Colors.black,
+                _after ? Colors.transparent : Colors.black,
+              ],
+              stops: [0, f, 1 - f, 1],
+            ).createShader(r);
+          },
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(spacing: widget.spacing, children: widget.children),
+          ),
+        ),
+      ),
+    );
+  }
 }

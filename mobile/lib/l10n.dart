@@ -1,5 +1,6 @@
 import 'dart:ui' as ui;
 
+import 'package:flutter/material.dart' show TimeOfDay;
 import 'package:flutter/widgets.dart';
 
 import 'prefs.dart';
@@ -79,10 +80,17 @@ String monthLong(DateTime d) => zh ? '${d.month}月' : _monthsLongEn[d.month - 1
 String dayMonth(DateTime d) =>
     zh ? '${d.month}月${d.day}日' : '${d.day} ${_monthsEn[d.month - 1]}';
 
-/// "5 Nov, Thu" or "11月5日 周四".
+/// "Thu, 5 Nov" or "11月5日 周四": the weekday where each language puts it.
 String dayMonthWeekday(DateTime d) => zh
     ? '${dayMonth(d)} ${weekdayShort(d)}'
-    : '${dayMonth(d)}, ${weekdayShort(d)}';
+    : '${weekdayShort(d)}, ${dayMonth(d)}';
+
+/// [dayMonthWeekday] with the year when it isn't this year: "Thu, 5 Nov
+/// 2027" or "2027年11月5日 周四".
+String dateWithWeekday(DateTime d, {DateTime? now}) {
+  if (d.year == (now ?? DateTime.now()).year) return dayMonthWeekday(d);
+  return zh ? '${d.year}年${dayMonthWeekday(d)}' : '${dayMonthWeekday(d)} ${d.year}';
+}
 
 /// "Thursday, 5 Nov" or "11月5日 周四".
 String longDay(DateTime d) {
@@ -102,6 +110,11 @@ String longDay(DateTime d) {
 /// "5 Nov 2026" or "2026年11月5日".
 String fullDate(DateTime d) =>
     zh ? '${d.year}年${dayMonth(d)}' : '${dayMonth(d)} ${d.year}';
+
+/// The time as the phone shows it: "9:30 AM", or "09:30" with the 24-hour
+/// clock on, the same as task times.
+String clockAt(BuildContext context, DateTime d) =>
+    TimeOfDay.fromDateTime(d).format(context);
 
 /// "09:30".
 String hhmm(DateTime d) =>

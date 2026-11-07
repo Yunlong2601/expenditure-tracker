@@ -157,7 +157,7 @@ void main() {
 
     // Rename the second and write a note on it.
     await name(tester, 'Desk', 'Tidy desk');
-    await tester.tap(find.text(' Note').at(1));
+    await tester.tap(find.text('Note').at(1));
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextFormField), 'Pens in the cup');
     await tester.pump();

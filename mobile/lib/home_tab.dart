@@ -176,16 +176,26 @@ class _HomeTabState extends State<HomeTab> {
                   left: 20,
                   right: 20,
                   top: MediaQuery.paddingOf(context).top + 12,
-                  child: Text(
-                    _greeting(),
-                    style: t.titleMedium?.copyWith(
-                      // The scene behind is dark at night, so light words then,
-                      // with a soft shadow where they cross the window.
-                      color: cs.onSurface.withValues(alpha: 0.8),
-                      shadows: Theme.of(context).brightness == Brightness.dark
-                          ? const [Shadow(color: Colors.black, blurRadius: 6)]
-                          : null,
-                      fontWeight: FontWeight.w600,
+                  // On a soft label of its own, so the words never sit on
+                  // the window or the wall behind.
+                  child: Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 7,
+                      ),
+                      decoration: BoxDecoration(
+                        color: cs.surface.withValues(alpha: 0.88),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Text(
+                        _greeting(),
+                        style: t.titleMedium?.copyWith(
+                          color: cs.onSurface,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -204,9 +214,7 @@ class _HomeTabState extends State<HomeTab> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       if (countdowns.isNotEmpty) ...[
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
+                        ChipRow(
                           children: [
                             for (final c in countdowns)
                               Chip(
@@ -217,7 +225,7 @@ class _HomeTabState extends State<HomeTab> {
                                 label: Text(
                                   c.daysLeft() == 0
                                       ? tr('${c.title} is today!', '${c.title} 就是今天！')
-                                      : tr('${c.title} in ${c.daysLeft()}d', '${c.title} 还有 ${c.daysLeft()} 天'),
+                                      : tr('${c.title} in ${count(c.daysLeft(), 'day')}', '${c.title} 还有 ${c.daysLeft()} 天'),
                                 ),
                               ),
                           ],
@@ -413,6 +421,7 @@ class _HomeTabState extends State<HomeTab> {
             child: EdgeTab(
               key: const Key('edge-chat'),
               label: tr('Chat', '聊天'),
+              icon: Icons.chat_bubble_outline_rounded,
               left: true,
               onTap: widget.onChat,
             ),
@@ -423,6 +432,7 @@ class _HomeTabState extends State<HomeTab> {
             child: EdgeTab(
               key: const Key('edge-records'),
               label: tr('Records', '记录'),
+              icon: Icons.edit_note_rounded,
               left: false,
               onTap: widget.onRecords,
             ),
@@ -766,9 +776,7 @@ class _TaskSheetState extends State<TaskSheet> {
                     style: tt.labelLarge?.copyWith(color: context.muted),
                   ),
                   const SizedBox(height: 6),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 4,
+                  ChipRow(
                     children: [
                       for (final r in Repeat.values)
                         ChoiceChip(
@@ -1153,6 +1161,19 @@ class _MoodSheetState extends State<MoodSheet> {
                               ),
                               child: Column(
                                 children: [
+                                  // The weekday over the date, as on the
+                                  // Dashboard's week.
+                                  Text(
+                                    weekdayHeads[d.weekday - 1],
+                                    style: t.labelSmall?.copyWith(
+                                      // Green on today's tile, where grey
+                                      // is too faint at night.
+                                      color: sameDay(d, today)
+                                          ? context.green
+                                          : context.muted,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
                                   FittedBox(
                                     fit: BoxFit.scaleDown,
                                     child: Text(

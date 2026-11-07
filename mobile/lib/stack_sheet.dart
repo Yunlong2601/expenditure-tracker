@@ -277,8 +277,10 @@ class _StepCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(18),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 14, 4, 10),
+          padding: const EdgeInsets.fromLTRB(16, 14, 4, 2),
+          // The box and the menu line up with the step's first line.
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
                 width: 28,
@@ -311,36 +313,45 @@ class _StepCard extends StatelessWidget {
                             : null,
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      step.done ? tr('Done', '已完成') : tr('To-do', '待办'),
-                      style: t.bodySmall?.copyWith(color: context.muted),
-                    ),
-                    InkWell(
-                      onTap: onToggleNote,
-                      // Big enough to tap (48 points), though the words are small.
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(
-                          minHeight: 48,
-                          minWidth: 48,
+                    // Done or to-do, then the note, on one line when they fit.
+                    Wrap(
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        Text(
+                          step.done ? tr('Done', '已完成') : tr('To-do', '待办'),
+                          style: t.bodySmall?.copyWith(color: context.muted),
                         ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              noteOpen ? Icons.expand_less : Icons.expand_more,
-                              size: 14,
-                              color: context.muted,
-                            ),
-                            Text(
-                              tr(' Note', ' 备注'),
-                              style: t.bodySmall?.copyWith(
-                                color: context.muted,
-                              ),
-                            ),
-                          ],
+                        Text(
+                          '  ·  ',
+                          style: t.bodySmall?.copyWith(color: context.muted),
                         ),
-                      ),
+                        InkWell(
+                          onTap: onToggleNote,
+                          // Big enough to tap (48 points), though the words are small.
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(
+                              minHeight: 48,
+                              minWidth: 48,
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  tr('Note', '备注'),
+                                  style: t.bodySmall?.copyWith(
+                                    color: context.muted,
+                                  ),
+                                ),
+                                Icon(
+                                  noteOpen ? Icons.expand_less : Icons.expand_more,
+                                  size: 16,
+                                  color: context.muted,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                     if (noteOpen)
                       TextFormField(
@@ -355,20 +366,24 @@ class _StepCard extends StatelessWidget {
                   ],
                 ),
               ),
-              PopupMenuButton<String>(
-                tooltip: tr('Step options', '这一步的选项'),
-                icon: Icon(Icons.more_horiz, color: context.muted),
-                onSelected: onMenu,
-                itemBuilder: (_) => [
-                  PopupMenuItem(
-                    value: 'toggle',
-                    child: Text(step.done ? tr('Mark to-do', '改回待办') : tr('Mark done', '标为完成')),
-                  ),
-                  PopupMenuItem(
-                    value: 'delete',
-                    child: Text(tr('Delete step', '删除这一步')),
-                  ),
-                ],
+              // Raised so its dots sit on the first line too.
+              Transform.translate(
+                offset: const Offset(0, -10),
+                child: PopupMenuButton<String>(
+                  tooltip: tr('Step options', '这一步的选项'),
+                  icon: Icon(Icons.more_horiz, color: context.muted),
+                  onSelected: onMenu,
+                  itemBuilder: (_) => [
+                    PopupMenuItem(
+                      value: 'toggle',
+                      child: Text(step.done ? tr('Mark to-do', '改回待办') : tr('Mark done', '标为完成')),
+                    ),
+                    PopupMenuItem(
+                      value: 'delete',
+                      child: Text(tr('Delete step', '删除这一步')),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),

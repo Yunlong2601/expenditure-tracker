@@ -687,7 +687,7 @@ class StudyLog extends StatelessWidget {
                         ),
                         Text(
                           [
-                            '${dayMonth(e.at)} ${hhmm(e.at)}',
+                            '${dayMonth(e.at)} ${clockAt(context, e.at)}',
                             if (e.left > 0)
                               tr('left ${e.left}×', '离开 ${e.left} 次'),
                           ].join(' · '),
