@@ -56,7 +56,13 @@ void main() {
     picker = FakePicker();
     Prefs.current = Prefs.memory();
   });
-  tearDown(() async => dir.delete(recursive: true));
+  tearDown(() async {
+    // A save can still be writing on a slow machine; let it finish first.
+    // A save started in test time (like Undo's) may never resume, so don't
+    // wait on it forever.
+    await ledger.idle.timeout(const Duration(seconds: 3), onTimeout: () {});
+    await dir.delete(recursive: true);
+  });
 
   Widget wrap(ReceiptReader reader) => MaterialApp(
     home: HomeScreen(ledger: ledger, reader: reader, picker: picker),
@@ -68,6 +74,9 @@ void main() {
     await t.runAsync(() async {
       await t.tap(f);
       await Future<void>.delayed(const Duration(milliseconds: 200));
+      // A slow disk can take longer: wait for every save to finish too.
+      await ledger.idle.timeout(const Duration(seconds: 5), onTimeout: () {});
+      await Future<void>.delayed(Duration.zero);
     });
     await t.pumpAndSettle();
   }

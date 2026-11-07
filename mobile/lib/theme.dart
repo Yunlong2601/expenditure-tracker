@@ -1,0 +1,227 @@
+import 'package:flutter/material.dart';
+
+import 'l10n.dart';
+
+/// Tiny Habits Cat colours: warm cream paper, sage green and soft ink.
+class Palette {
+  Palette._();
+  static const cream = Color(0xFFFAF6EF);
+  static const paper = Color(0xFFFFFFFF);
+  static const sand = Color(0xFFF3EEE6);
+  // Dark enough for green text on the soft green chips (4.5:1).
+  static const sage = Color(0xFF456E41);
+  static const sageSoft = Color(0xFFE4EEDD);
+  static const ink = Color(0xFF2F2E2A);
+  static const muted = Color(0xFF8A877F);
+  static const line = Color(0xFFEDE7DC);
+
+  // Soft tile colours for the round icons on Me and the task card.
+  static const mint = Color(0xFFE3F0E1);
+  static const rose = Color(0xFFFBE3E3);
+  static const peach = Color(0xFFFCEBD9);
+  static const sky = Color(0xFFE2ECF7);
+  static const lilac = Color(0xFFECE6F6);
+}
+
+/// Colours that change between light and dark mode.
+extension TinyColors on BuildContext {
+  bool get _dark => Theme.of(this).brightness == Brightness.dark;
+
+  /// Grey for quieter text. Light mode's is dark enough to read on sand
+  /// (4.5:1), dark mode's light enough to read on the dark cards.
+  Color get muted => _dark ? const Color(0xFFA29E96) : const Color(0xFF6B6861);
+
+  /// The soft box behind grouped rows; a dark one at night, so light text
+  /// stays readable on it.
+  Color get sand => _dark ? const Color(0xFF30312C) : Palette.sand;
+
+  /// The app's green for words and icons: the lighter one at night, since
+  /// [Palette.sage] is too dark to read on the dark cards.
+  Color get green => Theme.of(this).colorScheme.primary;
+
+  /// The soft green behind a picked day or a finished step; a deep green
+  /// at night, so the green words on it stay readable.
+  Color get greenSoft => _dark ? const Color(0xFF2F3A2C) : Palette.sageSoft;
+}
+
+ThemeData tinyTheme(Brightness b) {
+  final dark = b == Brightness.dark;
+  final cs = ColorScheme.fromSeed(
+    seedColor: Palette.sage,
+    brightness: b,
+    primary: dark ? const Color(0xFF9CC293) : Palette.sage,
+    surface: dark ? const Color(0xFF1E1F1C) : Palette.cream,
+  );
+  ButtonStyle flash(Color c) =>
+      ButtonStyle(overlayColor: WidgetStateProperty.resolveWith((s) => s.contains(WidgetState.pressed) ? c : null));
+  final press = cs.primary.withValues(alpha: 0.18);
+  final muted = dark ? const Color(0xFFA29E96) : const Color(0xFF6B6861);
+  return ThemeData(
+    colorScheme: cs,
+    useMaterial3: true,
+    scaffoldBackgroundColor: cs.surface,
+    splashColor: press,
+    highlightColor: cs.primary.withValues(alpha: 0.08),
+    appBarTheme: AppBarTheme(backgroundColor: cs.surface, surfaceTintColor: Colors.transparent, centerTitle: false),
+    cardTheme: CardThemeData(
+      color: dark ? const Color(0xFF2A2B27) : Palette.paper,
+      elevation: 0,
+      margin: EdgeInsets.zero,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+    ),
+    bottomSheetTheme: BottomSheetThemeData(
+      backgroundColor: dark ? const Color(0xFF242521) : Palette.paper,
+      showDragHandle: true,
+      dragHandleColor: dark ? const Color(0xFF4A4A44) : const Color(0xFFE6E1D8),
+      dragHandleSize: const Size(36, 4),
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
+    ),
+    // The tab bar from the wireframes: thin grey icons, a soft green pill and
+    // a green label on the open tab.
+    navigationBarTheme: NavigationBarThemeData(
+      backgroundColor: Colors.transparent,
+      indicatorColor: dark ? const Color(0xFF2F3A2C) : Palette.sageSoft,
+      surfaceTintColor: Colors.transparent,
+      elevation: 0,
+      height: 70,
+      labelTextStyle: WidgetStateProperty.resolveWith(
+        (s) => TextStyle(
+          fontSize: 13,
+          fontWeight: s.contains(WidgetState.selected) ? FontWeight.w700 : FontWeight.w500,
+          color: s.contains(WidgetState.selected) ? cs.primary : muted,
+        ),
+      ),
+      iconTheme: WidgetStateProperty.resolveWith(
+        (s) => IconThemeData(size: 24, color: s.contains(WidgetState.selected) ? cs.primary : muted),
+      ),
+    ),
+    // iOS-style switches: a white knob on a soft grey or green track.
+    switchTheme: SwitchThemeData(
+      thumbColor: const WidgetStatePropertyAll(Colors.white),
+      trackColor: WidgetStateProperty.resolveWith(
+        (s) => s.contains(WidgetState.selected)
+            ? cs.primary
+            : (dark ? const Color(0xFF3A3B36) : const Color(0xFFE9E5DE)),
+      ),
+      trackOutlineColor: const WidgetStatePropertyAll(Colors.transparent),
+      // An empty icon keeps the knob full size when off, as on iPhone.
+      thumbIcon: const WidgetStatePropertyAll(Icon(null)),
+    ),
+    // Back buttons are the thin chevron from the wireframes.
+    actionIconTheme: ActionIconThemeData(
+      backButtonIconBuilder: (_) => const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+    ),
+    chipTheme: ChipThemeData(
+      backgroundColor: dark ? const Color(0xFF2F3A2C) : Palette.sageSoft,
+      side: BorderSide.none,
+      shape: const StadiumBorder(),
+      labelStyle: TextStyle(color: cs.primary, fontWeight: FontWeight.w600),
+    ),
+    filledButtonTheme: FilledButtonThemeData(
+      style: flash(Colors.white.withValues(alpha: 0.28)).merge(
+        FilledButton.styleFrom(
+          minimumSize: const Size(64, 52),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          textStyle: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+        ),
+      ),
+    ),
+    outlinedButtonTheme: OutlinedButtonThemeData(style: flash(press)),
+    textButtonTheme: TextButtonThemeData(style: flash(press)),
+    iconButtonTheme: IconButtonThemeData(style: flash(press)),
+  );
+}
+
+/// The soft green pill used for Save, New and Record in sheet headers.
+class PillButton extends StatelessWidget {
+  const PillButton({super.key, required this.label, required this.onPressed, this.dense = false});
+  final String label;
+  final VoidCallback? onPressed;
+
+  /// A smaller pill, like Today on the Dashboard's week card.
+  final bool dense;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return TextButton(
+      onPressed: onPressed,
+      style: TextButton.styleFrom(
+        backgroundColor: cs.primary.withValues(alpha: 0.12),
+        foregroundColor: cs.primary,
+        // Still the soft green pill when there's nothing to save yet.
+        disabledBackgroundColor: cs.primary.withValues(alpha: 0.08),
+        disabledForegroundColor: cs.primary.withValues(alpha: 0.5),
+        padding: dense
+            ? const EdgeInsets.symmetric(horizontal: 10, vertical: 4)
+            : const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+        minimumSize: dense ? const Size(0, 30) : null,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(dense ? 12 : 16)),
+        textStyle: TextStyle(fontSize: dense ? 14 : 16, fontWeight: FontWeight.w700),
+      ),
+      child: Text(label),
+    );
+  }
+}
+
+/// Sheet header from the wireframes: round close button, title, optional pill.
+class SheetHeader extends StatelessWidget {
+  const SheetHeader({super.key, required this.title, this.action, this.onAction});
+  final String title;
+  final String? action;
+  final VoidCallback? onAction;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      child: Row(
+        children: [
+          IconButton.filledTonal(
+            tooltip: tr('Close', '关闭'),
+            style: IconButton.styleFrom(backgroundColor: cs.onSurface.withValues(alpha: 0.05)),
+            icon: const Icon(Icons.close),
+            onPressed: () => Navigator.of(context).maybePop(),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(title, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontSize: 20, fontWeight: FontWeight.w700)),
+          ),
+          if (action != null) PillButton(key: Key('sheet-$action'), label: action!, onPressed: onAction),
+        ],
+      ),
+    );
+  }
+}
+
+/// Opens a rounded bottom sheet that can grow tall, as every wireframe sheet does.
+Future<T?> showTinySheet<T>(BuildContext context, WidgetBuilder builder, {bool tall = false}) =>
+    showModalBottomSheet<T>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(ctx).bottom),
+        child: tall
+            ? SizedBox(height: MediaQuery.sizeOf(ctx).height * 0.86, child: builder(ctx))
+            : builder(ctx),
+      ),
+    );
+
+/// A white rounded card with the wireframes' padding.
+class Panel extends StatelessWidget {
+  const Panel({super.key, required this.child, this.padding = const EdgeInsets.all(18), this.onTap});
+  final Widget child;
+  final EdgeInsets padding;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) => Card(
+    clipBehavior: Clip.antiAlias,
+    child: InkWell(
+      onTap: onTap,
+      child: Padding(padding: padding, child: child),
+    ),
+  );
+}

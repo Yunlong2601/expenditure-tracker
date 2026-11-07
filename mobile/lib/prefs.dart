@@ -80,4 +80,47 @@ class Prefs {
   /// The home screen shows the whole month, else the allowance period.
   bool get showMonth => _values['show_month'] == true || allowance == null;
   Future<void> setShowMonth(bool v) => _set('show_month', v ? true : null);
+
+  /// Saw the three welcome cards.
+  bool get onboarded => _values['onboarded'] == true;
+  Future<void> setOnboarded() => _set('onboarded', true);
+
+  /// What she calls the cat.
+  String get catName => (_values['cat_name'] as String?) ?? 'Mochi';
+  Future<void> setCatName(String v) => _set('cat_name', v.trim().isEmpty ? null : v.trim());
+
+  /// Agreed to chat with the cat.
+  bool get chatOn => _values['chat_on'] == true;
+  Future<void> setChatOn(bool v) => _set('chat_on', v ? true : null);
+
+  /// Agreed that chat may go to the online AI. Asked again on its own, so
+  /// agreeing to on-phone chat never counts for the AI.
+  bool get chatAi => _values['chat_ai'] == true;
+  Future<void> setChatAi(bool v) => _set('chat_ai', v ? true : null);
+
+  /// How often the cat speaks up: 0 quiet, 1 sometimes, 2 often.
+  int get chatty => (_values['chatty'] as num?)?.toInt() ?? 1;
+  Future<void> setChatty(int v) => _set('chatty', v == 1 ? null : v);
+
+  /// The calm sound under a focus session: rain, waves, fire, or none.
+  String? get focusSound => _values['focus_sound'] as String?;
+  Future<void> setFocusSound(String? v) => _set('focus_sound', v);
+
+  /// What happens when she leaves the app while studying: 0 the clock pauses
+  /// and the cat nudges her back, 1 the session ends if she stays away, 2 the
+  /// same, and the phone is locked to the app with Guided Access.
+  int get studyRule => (_values['study_rule'] as num?)?.toInt() ?? 0;
+  Future<void> setStudyRule(int v) => _set('study_rule', v == 0 ? null : v);
+
+  /// Quiet mode: no sounds or check-ins at all.
+  bool get quiet => _values['quiet'] == true;
+  Future<void> setQuiet(bool v) => _set('quiet', v ? true : null);
+
+  /// 'light', 'dark' or null to follow the phone.
+  String? get themeMode => _values['theme'] as String?;
+  Future<void> setThemeMode(String? v) => _set('theme', v);
+
+  /// 'zh', 'en' or null to follow the phone.
+  String? get language => _values['language'] as String?;
+  Future<void> setLanguage(String? v) => _set('language', v);
 }

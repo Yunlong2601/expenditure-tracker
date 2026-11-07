@@ -1,4 +1,4 @@
-import AudioToolbox
+import AVFoundation
 import Flutter
 import UIKit
 import UniformTypeIdentifiers
@@ -23,6 +23,7 @@ import Vision
       Feel.register(registrar: registrar)
       Remind.register(messenger: registrar.messenger())
       Share.register(messenger: registrar.messenger())
+      Study.register(messenger: registrar.messenger())
     }
   }
 }
@@ -106,9 +107,12 @@ enum ReceiptText {
 }
 
 /// Plays the app's short interface sounds and the system success/warning
-/// haptics. System sounds follow the silent switch and the ringer volume.
+/// haptics. Sounds use the media volume, mix with her music, and stay quiet
+/// when the silent switch is on.
 enum Feel {
-  private static var sounds: [String: SystemSoundID] = [:]
+  /// A few players per sound, so quick taps in a row each get their pop.
+  private static var players: [String: [AVAudioPlayer]] = [:]
+  private static var sessionReady = false
 
   static func register(registrar: FlutterPluginRegistrar) {
     let channel = FlutterMethodChannel(name: "spendsnap/feel", binaryMessenger: registrar.messenger())
@@ -116,6 +120,11 @@ enum Feel {
       switch call.method {
       case "play":
         if let asset = call.arguments as? String { play(registrar.lookupKey(forAsset: asset)) }
+      case "loop":
+        if let asset = call.arguments as? String { loop(registrar.lookupKey(forAsset: asset)) }
+      case "stopLoop":
+        looping?.stop()
+        looping = nil
       case "success":
         UINotificationFeedbackGenerator().notificationOccurred(.success)
       case "warning":
@@ -127,14 +136,45 @@ enum Feel {
     }
   }
 
+  /// The calm sound playing under a focus session, if any.
+  private static var looping: AVAudioPlayer?
+
+  private static func readySession() {
+    if sessionReady { return }
+    // Ambient: obeys the silent switch and doesn't stop her music.
+    try? AVAudioSession.sharedInstance().setCategory(.ambient, options: [.mixWithOthers])
+    try? AVAudioSession.sharedInstance().setActive(true)
+    sessionReady = true
+  }
+
+  /// Plays a sound over and over, softly, until "stopLoop".
+  private static func loop(_ key: String) {
+    readySession()
+    looping?.stop()
+    looping = nil
+    guard let path = Bundle.main.path(forResource: key, ofType: nil),
+      let player = try? AVAudioPlayer(contentsOf: URL(fileURLWithPath: path))
+    else { return }
+    player.numberOfLoops = -1
+    player.volume = 0.6
+    player.play()
+    looping = player
+  }
+
   private static func play(_ key: String) {
-    if sounds[key] == nil, let path = Bundle.main.path(forResource: key, ofType: nil) {
-      var id: SystemSoundID = 0
-      if AudioServicesCreateSystemSoundID(URL(fileURLWithPath: path) as CFURL, &id) == kAudioServicesNoError {
-        sounds[key] = id
+    readySession()
+    if players[key] == nil, let path = Bundle.main.path(forResource: key, ofType: nil) {
+      let url = URL(fileURLWithPath: path)
+      players[key] = (0..<3).compactMap { _ in
+        let p = try? AVAudioPlayer(contentsOf: url)
+        p?.prepareToPlay()
+        return p
       }
     }
-    if let id = sounds[key] { AudioServicesPlaySystemSound(id) }
+    guard let pool = players[key], !pool.isEmpty else { return }
+    let player = pool.first { !$0.isPlaying } ?? pool[0]
+    player.currentTime = 0
+    player.play()
   }
 }
 
@@ -163,6 +203,7 @@ enum Remind {
           let minute = a["minute"] as? Int
         else { return result(FlutterError(code: "bad_args", message: nil, details: nil)) }
         let skipToday = a["skipToday"] as? Bool ?? false
+        let texts = (a["lines"] as? [String]).flatMap { $0.isEmpty ? nil : $0 } ?? lines
         center.removePendingNotificationRequests(withIdentifiers: ids)
         let cal = Calendar.current
         let now = Date()
@@ -172,8 +213,8 @@ enum Remind {
             at > now, !(day == 0 && skipToday)
           else { continue }
           let content = UNMutableNotificationContent()
-          content.title = "Spend Snap"
-          content.body = lines[day % lines.count]
+          content.title = "Tiny Habits Cat"
+          content.body = texts[day % texts.count]
           content.sound = .default
           let when = cal.dateComponents([.year, .month, .day, .hour, .minute], from: at)
           let trigger = UNCalendarNotificationTrigger(dateMatching: when, repeats: false)
@@ -182,6 +223,100 @@ enum Remind {
         result(nil)
       case "cancel":
         center.removePendingNotificationRequests(withIdentifiers: ids)
+        result(nil)
+      case "alerts":
+        // Task and countdown reminders, each once at its time: replace them all.
+        let items = call.arguments as? [[String: Any]] ?? []
+        center.getPendingNotificationRequests { pending in
+          let old = pending.map { $0.identifier }.filter { $0.hasPrefix("alert-") }
+          center.removePendingNotificationRequests(withIdentifiers: old)
+          let cal = Calendar.current
+          for item in items {
+            guard let id = item["id"] as? String, let ms = (item["at"] as? NSNumber)?.doubleValue,
+              let body = item["body"] as? String
+            else { continue }
+            let content = UNMutableNotificationContent()
+            content.title = "Tiny Habits Cat"
+            content.body = body
+            if item["sound"] as? Bool ?? true { content.sound = .default }
+            let at = Date(timeIntervalSince1970: ms / 1000)
+            let when = cal.dateComponents([.year, .month, .day, .hour, .minute], from: at)
+            let trigger = UNCalendarNotificationTrigger(dateMatching: when, repeats: false)
+            center.add(UNNotificationRequest(identifier: "alert-\(id)", content: content, trigger: trigger))
+          }
+          DispatchQueue.main.async { result(nil) }
+        }
+      case "checkins":
+        // The cat's daily check-ins: replace every one with the new list.
+        let items = call.arguments as? [[String: Any]] ?? []
+        center.getPendingNotificationRequests { pending in
+          let old = pending.map { $0.identifier }.filter { $0.hasPrefix("checkin-") }
+          center.removePendingNotificationRequests(withIdentifiers: old)
+          for item in items {
+            guard let id = item["id"] as? String, let hour = item["hour"] as? Int,
+              let minute = item["minute"] as? Int, let body = item["body"] as? String
+            else { continue }
+            let content = UNMutableNotificationContent()
+            content.title = "Tiny Habits Cat"
+            content.body = body
+            content.sound = .default
+            var when = DateComponents()
+            when.hour = hour
+            when.minute = minute
+            let trigger = UNCalendarNotificationTrigger(dateMatching: when, repeats: true)
+            center.add(UNNotificationRequest(identifier: "checkin-\(id)", content: content, trigger: trigger))
+          }
+          DispatchQueue.main.async { result(nil) }
+        }
+      default:
+        result(FlutterMethodNotImplemented)
+      }
+    }
+  }
+}
+
+/// Study mode: keeps the screen on, sees whether Guided Access holds the
+/// phone on the app, and lines up the cat's call to come back after she
+/// leaves the app in the middle of a session.
+enum Study {
+  private static let ids = (0..<4).map { "study-\($0)" }
+
+  static func register(messenger: FlutterBinaryMessenger) {
+    let channel = FlutterMethodChannel(name: "spendsnap/study", binaryMessenger: messenger)
+    let center = UNUserNotificationCenter.current()
+    channel.setMethodCallHandler { call, result in
+      switch call.method {
+      case "awake":
+        UIApplication.shared.isIdleTimerDisabled = call.arguments as? Bool ?? false
+        result(nil)
+      case "locked":
+        result(UIAccessibility.isGuidedAccessEnabled)
+      case "lock":
+        // Only school or family-managed phones let an app start Guided
+        // Access itself; on others this answers false and she triple-clicks.
+        let on = call.arguments as? Bool ?? false
+        if on == UIAccessibility.isGuidedAccessEnabled { return result(true) }
+        UIAccessibility.requestGuidedAccessSession(enabled: on) { ok in
+          DispatchQueue.main.async { result(ok) }
+        }
+      case "callBack":
+        let items = call.arguments as? [[String: Any]] ?? []
+        center.removePendingNotificationRequests(withIdentifiers: ids)
+        for (i, item) in items.prefix(ids.count).enumerated() {
+          guard let seconds = (item["seconds"] as? NSNumber)?.doubleValue,
+            let body = item["body"] as? String
+          else { continue }
+          let content = UNMutableNotificationContent()
+          content.title = "Tiny Habits Cat"
+          content.body = body
+          content.sound = .default
+          let trigger = UNTimeIntervalNotificationTrigger(timeInterval: max(1, seconds), repeats: false)
+          center.add(UNNotificationRequest(identifier: ids[i], content: content, trigger: trigger))
+        }
+        result(nil)
+      case "cancelCallBack":
+        center.removePendingNotificationRequests(withIdentifiers: ids)
+        center.removeDeliveredNotifications(withIdentifiers: ids)
         result(nil)
       default:
         result(FlutterMethodNotImplemented)

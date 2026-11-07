@@ -5,6 +5,7 @@ import 'categories.dart';
 import 'draft.dart';
 import 'feel.dart';
 import 'format.dart';
+import 'l10n.dart';
 import 'split.dart';
 
 /// For cash at the canteen: type the amount, tap a category, done.
@@ -51,7 +52,7 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
   bool _needAmount() {
     if (_value > 0) return false;
     Feel.oops();
-    setState(() => _error = 'Type the amount first');
+    setState(() => _error = tr('Type the amount first', '先输入金额'));
     return true;
   }
 
@@ -89,7 +90,7 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
       child: ActionChip(
         key: Key('cat-$name'),
         avatar: Icon(icon, size: 20),
-        label: Text(name),
+        label: Text(catLabel(name)),
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
         onPressed: () {
           HapticFeedback.selectionClick();
@@ -105,11 +106,11 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             SegmentedButton<bool>(
-              segments: const [
-                ButtonSegment(value: false, label: Text('I spent'), icon: Icon(Icons.shopping_bag_outlined)),
+              segments: [
+                ButtonSegment(value: false, label: Text(tr('I spent', '我花了')), icon: Icon(Icons.shopping_bag_outlined)),
                 ButtonSegment(
                   value: true,
-                  label: Text('I got money', key: Key('mode-in')),
+                  label: Text(tr('I got money', '我收到钱'), key: Key('mode-in')),
                   icon: Icon(Icons.savings_outlined),
                 ),
               ],
@@ -120,7 +121,7 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
               },
             ),
             const SizedBox(height: 16),
-            Text(_in ? 'How much did you get?' : 'How much?', style: t.titleLarge),
+            Text(_in ? tr('How much did you get?', '收到多少？') : tr('How much?', '花了多少？'), style: t.titleLarge),
             const SizedBox(height: 12),
             Wrap(
               spacing: 8,
@@ -139,14 +140,14 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
                   ),
                 PopupMenuButton<String>(
                   key: const Key('cur-more'),
-                  tooltip: 'More currencies',
+                  tooltip: tr('More currencies', '更多币种'),
                   onSelected: (c) => setState(() => _currency = c),
                   itemBuilder: (_) => [
                     for (final c in currencies)
                       if (!_main.contains(c))
                         PopupMenuItem(value: c, child: Text('$c  ${money(0, c).split('0').first}')),
                   ],
-                  child: const Chip(avatar: Icon(Icons.public, size: 18), label: Text('More')),
+                  child: Chip(avatar: Icon(Icons.public, size: 18), label: Text(tr('More', '更多'))),
                 ),
               ],
             ),
@@ -173,7 +174,7 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
                   key: const Key('split-bill'),
                   showCheckmark: false,
                   avatar: const Icon(Icons.groups_outlined, size: 20),
-                  label: Text(_split == null ? 'Split bill with friends' : 'Split ${_split!.$1} ways'),
+                  label: Text(_split == null ? tr('Split bill with friends', '和朋友分摊') : tr('Split ${_split!.$1} ways', '${_split!.$1} 人分摊')),
                   selected: _split != null,
                   onSelected: (on) async {
                     if (!on) return setState(() => _split = null);
@@ -185,7 +186,7 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
               ),
             ],
             const SizedBox(height: 16),
-            Text(_in ? 'Where from?' : 'Tap what it was for', style: t.titleMedium),
+            Text(_in ? tr('Where from?', '从哪来的？') : tr('Tap what it was for', '点一下花在什么上'), style: t.titleMedium),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
@@ -203,7 +204,7 @@ class _QuickAddSheetState extends State<QuickAddSheet> {
                     child: ActionChip(
                       key: const Key('cat-new'),
                       avatar: const Icon(Icons.add, size: 20),
-                      label: const Text('New…'),
+                      label: Text(tr('New…', '新建…')),
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
                       onPressed: _newCategory,
                     ),
@@ -235,21 +236,21 @@ class _NameDialogState extends State<_NameDialog> {
 
   @override
   Widget build(BuildContext context) => AlertDialog(
-    title: const Text('New category'),
+    title: Text(tr('New category', '新分类')),
     content: TextField(
       key: const Key('new-category'),
       controller: _name,
       autofocus: true,
       textCapitalization: TextCapitalization.sentences,
-      decoration: const InputDecoration(hintText: 'e.g. Concert, Bus card top-up'),
+      decoration: InputDecoration(hintText: tr('e.g. Concert, Bus card top-up', '比如：演唱会、公交卡充值')),
       onSubmitted: (v) => Navigator.of(context).pop(v),
     ),
     actions: [
-      TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
+      TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(tr('Cancel', '取消'))),
       FilledButton(
         key: const Key('new-category-save'),
         onPressed: () => Navigator.of(context).pop(_name.text),
-        child: const Text('Save'),
+        child: Text(tr('Save', '保存')),
       ),
     ],
   );

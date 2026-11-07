@@ -1,13 +1,15 @@
 name: spendsnap
-description: "Log expenses from receipts and payment screenshots, read and stored on the phone."
+description: "Tiny Habits Cat: tasks, calendar, mood, focus, countdowns and expenses with a cat companion, all on the phone."
 publish_to: 'none'
-version: 0.1.0+1
+version: 0.2.0+5
 
 environment:
   sdk: ^3.13.0
 
 dependencies:
   flutter:
+    sdk: flutter
+  flutter_localizations:
     sdk: flutter
   image_picker: ^1.2.4
   intl: ^0.20.3

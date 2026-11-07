@@ -1,5 +1,7 @@
 import 'package:intl/intl.dart';
 
+import 'l10n.dart';
+
 const _symbols = {
   'SGD': r'S$',
   'CNY': '¥',
@@ -25,9 +27,9 @@ String shortDate(DateTime d, {DateTime? now}) {
   final today = DateUtils.dateOnly(now ?? DateTime.now());
   final day = DateUtils.dateOnly(d);
   final diff = today.difference(day).inDays;
-  if (diff == 0) return 'Today';
-  if (diff == 1) return 'Yesterday';
-  return DateFormat('d MMM').format(d);
+  if (diff == 0) return tr('Today', '今天');
+  if (diff == 1) return tr('Yesterday', '昨天');
+  return dayMonth(d);
 }
 
 String isoDate(DateTime d) => DateFormat('yyyy-MM-dd').format(d);
