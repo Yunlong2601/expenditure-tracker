@@ -387,31 +387,41 @@ class _Tile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
-    return Semantics(
-      button: true,
-      label: '$label, $value',
-      excludeSemantics: true,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(6),
-          child: Column(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: bg,
-                  borderRadius: BorderRadius.circular(14),
+    // Four share the row evenly, so a long name or big text wraps instead
+    // of running off the side.
+    return Expanded(
+      child: Semantics(
+        button: true,
+        label: '$label, $value',
+        excludeSemantics: true,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(6),
+            child: Column(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: bg,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Icon(icon, color: fg, size: 22),
                 ),
-                child: Icon(icon, color: fg, size: 22),
-              ),
-              const SizedBox(height: 8),
-              // The state is read out and shown when tapped, as in the
-              // wireframe, which shows only the name.
-              Text(label, style: t.labelMedium?.copyWith(fontSize: 13)),
-            ],
+                const SizedBox(height: 8),
+                // The state is read out and shown when tapped, as in the
+                // wireframe, which shows only the name.
+                Text(
+                  label,
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: t.labelMedium?.copyWith(fontSize: 13),
+                ),
+              ],
+            ),
           ),
         ),
       ),

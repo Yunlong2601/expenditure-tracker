@@ -218,20 +218,31 @@ class _HomeTabState extends State<HomeTab> {
                       ],
                       Row(
                         children: [
-                          HeadTab(
-                            key: const Key('tab-today'),
-                            label: tr('Today', '今天'),
-                            on: !_schedule,
-                            onTap: () => _show(false),
+                          // On a small phone with big text the headings
+                          // shrink a little instead of pushing the buttons off.
+                          Expanded(
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.centerLeft,
+                              child: Row(
+                                children: [
+                                  HeadTab(
+                                    key: const Key('tab-today'),
+                                    label: tr('Today', '今天'),
+                                    on: !_schedule,
+                                    onTap: () => _show(false),
+                                  ),
+                                  const SizedBox(width: 18),
+                                  HeadTab(
+                                    key: const Key('tab-schedule'),
+                                    label: tr('Schedule', '日程'),
+                                    on: _schedule,
+                                    onTap: () => _show(true),
+                                  ),
+                                ],
+                              ),
+                            ),
                           ),
-                          const SizedBox(width: 18),
-                          HeadTab(
-                            key: const Key('tab-schedule'),
-                            label: tr('Schedule', '日程'),
-                            on: _schedule,
-                            onTap: () => _show(true),
-                          ),
-                          const Spacer(),
                           IconButton(
                             key: const Key('search-tasks'),
                             tooltip: tr('Search tasks', '搜索任务'),
@@ -662,25 +673,27 @@ class _TaskSheetState extends State<TaskSheet> {
                     children: [
                       const Icon(Icons.schedule, color: Palette.muted),
                       const SizedBox(width: 8),
-                      TextButton(
-                        key: const Key('task-time'),
-                        onPressed: () async {
-                          final p = await showTimePicker(
-                            context: context,
-                            initialTime: TimeOfDay.now(),
-                          );
-                          if (p != null) {
-                            setState(() {
-                              // A first time turns the reminder on.
-                              if (_minutes == null) _remind = true;
-                              _minutes = p.hour * 60 + p.minute;
-                            });
-                          }
-                        },
-                        child: Text(
-                          _minutes == null
-                              ? tr('Set a time', '设个时间')
-                              : clock(context, _minutes!),
+                      Flexible(
+                        child: TextButton(
+                          key: const Key('task-time'),
+                          onPressed: () async {
+                            final p = await showTimePicker(
+                              context: context,
+                              initialTime: TimeOfDay.now(),
+                            );
+                            if (p != null) {
+                              setState(() {
+                                // A first time turns the reminder on.
+                                if (_minutes == null) _remind = true;
+                                _minutes = p.hour * 60 + p.minute;
+                              });
+                            }
+                          },
+                          child: Text(
+                            _minutes == null
+                                ? tr('Set a time', '设个时间')
+                                : clock(context, _minutes!),
+                          ),
                         ),
                       ),
                       if (_minutes != null)
@@ -738,7 +751,9 @@ class _TaskSheetState extends State<TaskSheet> {
                     ],
                   ),
                   if (t != null)
-                    Row(
+                    // Side by side when they fit, one under the other when not.
+                    Wrap(
+                      alignment: WrapAlignment.spaceBetween,
                       children: [
                         TextButton.icon(
                           key: const Key('task-focus'),
@@ -746,7 +761,6 @@ class _TaskSheetState extends State<TaskSheet> {
                           icon: const Icon(Icons.timer_outlined),
                           label: Text(tr('Focus on this', '专注做这件')),
                         ),
-                        const Spacer(),
                         TextButton.icon(
                           key: const Key('task-delete'),
                           onPressed: () => _delete(t),
@@ -1086,33 +1100,40 @@ class _MoodSheetState extends State<MoodSheet> {
                   ],
                 ),
                 const SizedBox(height: 14),
+                // Seven equal slots, so the week fits the smallest phone.
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     for (final d in days)
                       // Today sits in a soft green tile, as in IMG_6792.
-                      Container(
-                        padding: const EdgeInsets.fromLTRB(8, 8, 8, 10),
-                        decoration: BoxDecoration(
-                          color: sameDay(d, today) ? Palette.sageSoft : null,
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: Column(
-                          children: [
-                            Text(
-                              sameDay(d, today) ? tr('Today', '今') : '${d.day}',
-                              style: t.labelMedium?.copyWith(
-                                color: sameDay(d, today)
-                                    ? Palette.sage
-                                    : Palette.muted,
-                                fontWeight: sameDay(d, today)
-                                    ? FontWeight.w700
-                                    : null,
+                      Expanded(
+                        child: Container(
+                          padding: const EdgeInsets.fromLTRB(2, 8, 2, 10),
+                          decoration: BoxDecoration(
+                            color: sameDay(d, today) ? Palette.sageSoft : null,
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: Column(
+                            children: [
+                              FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Text(
+                                  sameDay(d, today)
+                                      ? tr('Today', '今')
+                                      : '${d.day}',
+                                  style: t.labelMedium?.copyWith(
+                                    color: sameDay(d, today)
+                                        ? Palette.sage
+                                        : Palette.muted,
+                                    fontWeight: sameDay(d, today)
+                                        ? FontWeight.w700
+                                        : null,
+                                  ),
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 8),
-                            MoodDot(mood: s.moodOf(d)),
-                          ],
+                              const SizedBox(height: 8),
+                              MoodDot(mood: s.moodOf(d)),
+                            ],
+                          ),
                         ),
                       ),
                   ],
@@ -1134,38 +1155,54 @@ class _MoodSheetState extends State<MoodSheet> {
                         ),
                       ),
                       const SizedBox(height: 12),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          for (final m in Mood.values)
-                            InkWell(
-                              key: Key('mood-${m.name}'),
-                              borderRadius: BorderRadius.circular(16),
-                              onTap: () {
-                                Feel.tap();
-                                setState(() => _picked = m);
-                              },
-                              child: Padding(
-                                padding: const EdgeInsets.all(4),
-                                child: Column(
-                                  children: [
-                                    MoodFace(
-                                      mood: m,
-                                      size: 36,
-                                      selected: _picked == m,
-                                    ),
-                                    const SizedBox(height: 6),
-                                    Text(
-                                      zh ? m.zh : m.label,
-                                      style: t.labelSmall?.copyWith(
-                                        color: Palette.muted,
+                      // Six in a row when they fit, two rows of three when not.
+                      LayoutBuilder(
+                        builder: (context, box) {
+                          final big = MediaQuery.textScalerOf(context).scale(1);
+                          final perRow =
+                              box.maxWidth / Mood.values.length >= 50 * big
+                              ? Mood.values.length
+                              : 3;
+                          return Wrap(
+                            runSpacing: 8,
+                            children: [
+                              for (final m in Mood.values)
+                                SizedBox(
+                                  width: box.maxWidth / perRow,
+                                  child: InkWell(
+                                    key: Key('mood-${m.name}'),
+                                    borderRadius: BorderRadius.circular(16),
+                                    onTap: () {
+                                      Feel.tap();
+                                      setState(() => _picked = m);
+                                    },
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(4),
+                                      child: Column(
+                                        children: [
+                                          MoodFace(
+                                            mood: m,
+                                            size: 36,
+                                            selected: _picked == m,
+                                          ),
+                                          const SizedBox(height: 6),
+                                          FittedBox(
+                                            fit: BoxFit.scaleDown,
+                                            child: Text(
+                                              zh ? m.zh : m.label,
+                                              style: t.labelSmall?.copyWith(
+                                                color: Palette.muted,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ),
-                                  ],
+                                  ),
                                 ),
-                              ),
-                            ),
-                        ],
+                            ],
+                          );
+                        },
                       ),
                     ],
                   ),

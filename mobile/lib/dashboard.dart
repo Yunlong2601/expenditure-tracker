@@ -183,8 +183,9 @@ class _DashboardTabState extends State<DashboardTab> {
       key: const Key('dashboard-list'),
       padding: EdgeInsets.fromLTRB(16, top + 12, 16, 32),
       children: [
-        SizedBox(
-          height: 200,
+        // At least the art's height; taller when big text needs the room.
+        ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 200),
           child: Stack(
             clipBehavior: Clip.none,
             children: [
@@ -960,7 +961,12 @@ class CompletedSheet extends StatelessWidget {
                               ),
                             ),
                             const SizedBox(width: 6),
-                            Text(tr('done', '件完成'), style: t.titleMedium),
+                            Flexible(
+                              child: Text(
+                                tr('done', '件完成'),
+                                style: t.titleMedium,
+                              ),
+                            ),
                           ],
                         ),
                         Text(

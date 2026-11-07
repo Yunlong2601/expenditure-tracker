@@ -417,7 +417,8 @@ class LockHelp extends StatelessWidget {
         '完成后再连按三下，输入密码即可退出。',
       ),
     ];
-    return Padding(
+    // Scrolls when the steps don't fit, on a small phone with big text.
+    return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
       child: Column(
         mainAxisSize: MainAxisSize.min,

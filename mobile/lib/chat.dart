@@ -147,31 +147,39 @@ class _ChatScreenState extends State<ChatScreen> {
           children: [
             const CatAvatar(size: 44),
             const SizedBox(width: 10),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  name,
-                  style: t.titleLarge?.copyWith(fontWeight: FontWeight.w700),
-                ),
-                Row(
-                  children: [
-                    Container(
-                      width: 7,
-                      height: 7,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF6DBB6A),
-                        shape: BoxShape.circle,
+            // A long name is cut short rather than pushing the buttons off.
+            Flexible(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: t.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+                  ),
+                  Row(
+                    children: [
+                      Container(
+                        width: 7,
+                        height: 7,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF6DBB6A),
+                          shape: BoxShape.circle,
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 5),
-                    Text(
-                      tr('Online', '在线'),
-                      style: t.bodySmall?.copyWith(color: Palette.muted),
-                    ),
-                  ],
-                ),
-              ],
+                      const SizedBox(width: 5),
+                      Flexible(
+                        child: Text(
+                          tr('Online', '在线'),
+                          overflow: TextOverflow.ellipsis,
+                          style: t.bodySmall?.copyWith(color: Palette.muted),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -794,7 +802,7 @@ class CheckInsSheet extends StatelessWidget {
                   ),
                   child: Row(
                     children: [
-                      Text(tr('Pause check-ins', '暂停约定')),
+                      Flexible(child: Text(tr('Pause check-ins', '暂停约定'))),
                       const SizedBox(width: 8),
                       Switch.adaptive(
                         key: const Key('pause-checkins'),
@@ -815,9 +823,11 @@ class CheckInsSheet extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: 5),
-                      Text(
-                        tr('On this phone', '仅在本机'),
-                        style: t.bodySmall?.copyWith(color: Palette.muted),
+                      Flexible(
+                        child: Text(
+                          tr('On this phone', '仅在本机'),
+                          style: t.bodySmall?.copyWith(color: Palette.muted),
+                        ),
                       ),
                     ],
                   ),
@@ -1083,20 +1093,22 @@ class NotebookSheet extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 12),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        tr('What’s on $name’s mind', '$name 的心里话'),
-                        style: t.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w700,
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          tr('What’s on $name’s mind', '$name 的心里话'),
+                          style: t.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
-                      ),
-                      Text(
-                        tr('A little at a time, as I think of it.', '想到一点，就写下一点。'),
-                        style: t.bodySmall?.copyWith(color: Palette.muted),
-                      ),
-                    ],
+                        Text(
+                          tr('A little at a time, as I think of it.', '想到一点，就写下一点。'),
+                          style: t.bodySmall?.copyWith(color: Palette.muted),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),

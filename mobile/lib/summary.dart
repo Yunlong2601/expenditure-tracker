@@ -60,7 +60,13 @@ class _SummaryScreenState extends State<SummaryScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 IconButton(tooltip: tr('Previous month', '上个月'), onPressed: () => _go(-1), icon: const Icon(Icons.chevron_left)),
-                Text(zh ? monthYear(_month) : DateFormat('MMMM yyyy').format(_month), style: Theme.of(context).textTheme.titleMedium),
+                Flexible(
+                  child: Text(
+                    zh ? monthYear(_month) : DateFormat('MMMM yyyy').format(_month),
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ),
                 IconButton(
                   tooltip: tr('Next month', '下个月'),
                   onPressed: isThisMonth ? null : () => _go(1),
@@ -226,7 +232,7 @@ class _SummaryCard extends StatelessWidget {
             children: [
               paw(on.withValues(alpha: 0.6)),
               const SizedBox(width: 6),
-              Text('Tiny Habits Cat', style: t.labelLarge?.copyWith(color: on.withValues(alpha: 0.8))),
+              Flexible(child: Text('Tiny Habits Cat', style: t.labelLarge?.copyWith(color: on.withValues(alpha: 0.8)))),
             ],
           ),
         ],
