@@ -226,9 +226,9 @@ enum Remind {
         result(nil)
       case "openSettings":
         // The app's page in Settings, or straight to its notifications
-        // where iOS can (15.4 and later), to turn on what she said no to.
+        // where iOS can (16 and later), to turn on what she said no to.
         var page = UIApplication.openSettingsURLString
-        if call.arguments as? String == "notifications", #available(iOS 15.4, *) {
+        if call.arguments as? String == "notifications", #available(iOS 16.0, *) {
           page = UIApplication.openNotificationSettingsURLString
         }
         if let url = URL(string: page) { UIApplication.shared.open(url) }
