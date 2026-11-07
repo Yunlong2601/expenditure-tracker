@@ -797,20 +797,27 @@ class _FocusTimerState extends State<FocusTimer> {
                   size: const Size.square(210),
                   painter: FocusRing(progress, cs.primary, track: context.greenSoft),
                 ),
-                Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const CatAvatar(size: 60),
-                    const SizedBox(height: 8),
-                    Text(
-                      clockText,
-                      key: const Key('focus-clock'),
-                      style: t.displaySmall?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        fontFeatures: const [FontFeature.tabularFigures()],
-                      ),
+                // Big text shrinks to fit inside the ring.
+                Padding(
+                  padding: const EdgeInsets.all(28),
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const CatAvatar(size: 60),
+                        const SizedBox(height: 8),
+                        Text(
+                          clockText,
+                          key: const Key('focus-clock'),
+                          style: t.displaySmall?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            fontFeatures: const [FontFeature.tabularFigures()],
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ],
             ),

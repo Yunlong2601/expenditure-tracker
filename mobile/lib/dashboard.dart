@@ -131,33 +131,47 @@ class _DashboardTabState extends State<DashboardTab> {
               style: t.bodyMedium?.copyWith(color: context.muted),
             ),
           for (final c in [..._s.upcoming(), ..._s.past()])
-            ListTile(
-              key: Key('countdown-${c.id}'),
-              contentPadding: EdgeInsets.zero,
-              onTap: () => editCountdown(context, _s, c),
-              leading: Icon(
-                c.yearly ? Icons.cake_outlined : (c.isPast() ? Icons.history : Icons.hourglass_bottom),
-                color: c.isPast() ? _sinceColor : context.green,
-              ),
-              title: Text(c.title),
-              subtitle: Text(
-                '${dateWithWeekday(c.next())}'
-                '${c.yearly ? tr(' · every year', ' · 每年') : ''}',
-              ),
-              trailing: Text(
-                c.isPast()
-                    ? tr('${count(c.daysSince(), 'day')} since', '已经 ${c.daysSince()} 天')
-                    : c.daysLeft() == 0
-                    ? tr('Today', '就是今天')
-                    : tr(count(c.daysLeft(), 'day'), '${c.daysLeft()} 天'),
-                style: t.titleMedium?.copyWith(
-                  color: c.isPast() ? _sinceColor : context.green,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
+            _countdownTile(t, c),
         ],
       ),
+    );
+  }
+
+  Widget _countdownTile(TextTheme t, Countdown c) {
+    final date = Text(
+      '${dateWithWeekday(c.next())}'
+      '${c.yearly ? tr(' · every year', ' · 每年') : ''}',
+    );
+    final days = Text(
+      c.isPast()
+          ? tr('${count(c.daysSince(), 'day')} since', '已经 ${c.daysSince()} 天')
+          : c.daysLeft() == 0
+          ? tr('Today', '就是今天')
+          : tr(count(c.daysLeft(), 'day'), '${c.daysLeft()} 天'),
+      style: t.titleMedium?.copyWith(
+        color: c.isPast() ? _sinceColor : context.green,
+        fontWeight: FontWeight.w700,
+      ),
+    );
+    // With big text the day count goes under the date, so it can't push
+    // the name off the row.
+    final big = bigText(context);
+    return ListTile(
+      key: Key('countdown-${c.id}'),
+      contentPadding: EdgeInsets.zero,
+      onTap: () => editCountdown(context, _s, c),
+      leading: Icon(
+        c.yearly ? Icons.cake_outlined : (c.isPast() ? Icons.history : Icons.hourglass_bottom),
+        color: c.isPast() ? _sinceColor : context.green,
+      ),
+      title: Text(c.title),
+      subtitle: big
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [date, days],
+            )
+          : date,
+      trailing: big ? null : days,
     );
   }
 
@@ -371,28 +385,32 @@ class _DashboardTabState extends State<DashboardTab> {
         Panel(
           child: Column(
             children: [
-              Row(
-                children: [
-                  Text(
-                    tr('Tasks', '任务'),
-                    style: t.titleLarge?.copyWith(fontWeight: FontWeight.w700),
-                  ),
-                  const Spacer(),
-                  TextButton(
-                    key: const Key('open-completed'),
-                    onPressed: () => showTinySheet<void>(
-                      context,
-                      (_) => CompletedSheet(store: _s, day: _picked),
-                      tall: true,
+              // With big text the button moves under the title.
+              SizedBox(
+                width: double.infinity,
+                child: Wrap(
+                  alignment: WrapAlignment.spaceBetween,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    Text(
+                      tr('Tasks', '任务'),
+                      style: t.titleLarge?.copyWith(fontWeight: FontWeight.w700),
                     ),
-                    child: Text(tr('Completed ›', '完成记录 ›')),
-                  ),
-                ],
+                    TextButton(
+                      key: const Key('open-completed'),
+                      onPressed: () => showTinySheet<void>(
+                        context,
+                        (_) => CompletedSheet(store: _s, day: _picked),
+                        tall: true,
+                      ),
+                      child: Text(tr('Completed ›', '完成记录 ›')),
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(height: 6),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
+              _Stats(
+                [
                   _Stat(
                     icon: Icons.check_circle,
                     color: const Color(0xFF6FAE6A),
@@ -525,9 +543,8 @@ class _DashboardTabState extends State<DashboardTab> {
             ],
           ),
           const SizedBox(height: 6),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
+          _Stats(
+            [
               _Stat(
                 icon: Icons.timer_outlined,
                 color: const Color(0xFF7FB58A),
@@ -679,7 +696,37 @@ class _Stat extends StatelessWidget {
           value,
           style: t.titleMedium?.copyWith(fontWeight: FontWeight.w700),
         ),
-        Text(label, style: t.labelSmall?.copyWith(color: context.muted)),
+        Text(
+          label,
+          textAlign: TextAlign.center,
+          style: t.labelSmall?.copyWith(color: context.muted),
+        ),
+      ],
+    );
+  }
+}
+
+/// Stats side by side in equal columns, or two to a row when the text is
+/// big, so their labels never run past the card.
+class _Stats extends StatelessWidget {
+  const _Stats(this.stats);
+  final List<_Stat> stats;
+
+  @override
+  Widget build(BuildContext context) {
+    final perRow = bigText(context) ? 2 : stats.length;
+    return Column(
+      children: [
+        for (var i = 0; i < stats.length; i += perRow)
+          Padding(
+            padding: EdgeInsets.only(top: i == 0 ? 0 : 12),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (final s in stats.skip(i).take(perRow)) Expanded(child: s),
+              ],
+            ),
+          ),
       ],
     );
   }

@@ -410,14 +410,25 @@ void stressAll({
             );
           }
           await openScreen(tester, lang: lang, ledger: ledger, open: open);
-          // Scroll every list to its end, so what's below the fold is laid out too.
+          // A screen whose layout already failed can leave lists half laid
+          // out, and walking them would throw before the problems are shown.
+          if (problems.any((p) => p.startsWith('$current: '))) {
+            await closeScreen(tester);
+            continue;
+          }
+          // Scroll every list to its end a screen at a time, so each row of
+          // a long list is laid out on the way, not only its top and bottom.
           for (final sc in find.byType(Scrollable).evaluate().toList()) {
             // Scrolling one list can take another (one inside it) away.
             if (!sc.mounted) continue;
             final st = (sc as StatefulElement).state as ScrollableState;
-            final p = st.position;
-            if (p.maxScrollExtent > 0 && p.maxScrollExtent.isFinite) {
-              p.jumpTo(p.maxScrollExtent);
+            for (var step = 0; step < 40 && sc.mounted; step++) {
+              final p = st.position;
+              final end = p.maxScrollExtent;
+              if (!end.isFinite || p.pixels >= end) break;
+              p.jumpTo(
+                (p.pixels + p.viewportDimension * 0.8).clamp(0.0, end),
+              );
               await tester.pump();
             }
           }

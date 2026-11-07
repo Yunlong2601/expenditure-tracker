@@ -44,6 +44,11 @@ extension TinyColors on BuildContext {
   Color get greenSoft => _dark ? const Color(0xFF2F3A2C) : Palette.sageSoft;
 }
 
+/// True when the phone's text is at 150% or more, where a row that puts a
+/// title and a label side by side should stack them instead.
+bool bigText(BuildContext context) =>
+    MediaQuery.textScalerOf(context).scale(20) >= 30;
+
 ThemeData tinyTheme(Brightness b) {
   final dark = b == Brightness.dark;
   final cs = ColorScheme.fromSeed(
@@ -213,7 +218,7 @@ class SheetHeader extends StatelessWidget {
     final pill = action == null ? null : PillButton(key: Key('sheet-$action'), label: action!, onPressed: onAction);
     // With very big text the title gets its own line under the buttons, as
     // iOS does with large titles, so neither is squeezed.
-    if (MediaQuery.textScalerOf(context).scale(20) >= 30) {
+    if (bigText(context)) {
       return Padding(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
         child: Column(
