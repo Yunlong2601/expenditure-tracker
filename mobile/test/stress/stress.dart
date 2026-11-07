@@ -1,7 +1,8 @@
 // Every screen and sheet, on small and large iPhones, at normal and the
 // largest standard text size. Any layout error (text or a row that doesn't
 // fit) fails the test and names the screen. stress_test.dart runs it in
-// English and light mode, stress_zh_test.dart in Chinese and dark mode.
+// English and light mode, stress_zh_test.dart in Chinese and dark mode, and
+// the stress_big tests with text at 200%.
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -44,10 +45,12 @@ const phones = <Phone>[
 ];
 
 /// --dart-define=STRESS=Pet tab,Chat runs only those screens;
-/// STRESS_PHONES=0,2 only those phones; STRESS_LOG=path writes progress there.
+/// STRESS_PHONES=0,2 only those phones; STRESS_LOG=path writes progress there;
+/// STRESS_TEXT=3.1 sets every phone's text size (3.1 is iOS's largest).
 const only = String.fromEnvironment('STRESS');
 const onlyPhones = String.fromEnvironment('STRESS_PHONES');
 const log = String.fromEnvironment('STRESS_LOG');
+const textSize = String.fromEnvironment('STRESS_TEXT');
 
 /// The test font draws every letter as a square, about twice as wide as a
 /// real one, so English would overflow everywhere. Load real fonts instead:
@@ -310,16 +313,19 @@ Future<void> closeScreen(WidgetTester tester) async {
   await tester.pump(const Duration(seconds: 1));
 }
 
-/// Sets the phone's size, text size and light or dark.
+/// Sets the phone's size, text size and light or dark. [size] is the text
+/// size picked on the phone, when it isn't [phone]'s own.
 void usePhone(
   WidgetTester tester,
   Phone phone, {
   double text = 1,
+  double? size,
   bool dark = false,
 }) {
   tester.view.devicePixelRatio = 3;
   tester.view.physicalSize = phone.size * 3;
-  tester.platformDispatcher.textScaleFactorTestValue = phone.text * text;
+  tester.platformDispatcher.textScaleFactorTestValue =
+      (size ?? phone.text) * text;
   tester.platformDispatcher.platformBrightnessTestValue = dark
       ? Brightness.dark
       : Brightness.light;
@@ -327,11 +333,16 @@ void usePhone(
   addTearDown(tester.platformDispatcher.clearAllTestValues);
 }
 
+/// [text] sets every phone's text size, and [on] picks phones by their
+/// place in [phones].
 void stressAll({
   required String lang,
   required bool dark,
   required List<String> fonts,
+  double? text,
+  List<int>? on,
 }) {
+  final size = text ?? double.tryParse(textSize);
   late Directory dir;
 
   setUpAll(() async {
@@ -351,59 +362,71 @@ void stressAll({
     if (dir.existsSync()) dir.deleteSync(recursive: true);
   });
 
-  final picked = onlyPhones.isEmpty
-      ? phones
-      : [for (final i in onlyPhones.split(',')) phones[int.parse(i)]];
+  final picked = onlyPhones.isNotEmpty
+      ? [for (final i in onlyPhones.split(',')) phones[int.parse(i)]]
+      : [
+          for (final (i, p) in phones.indexed)
+            if (on == null || on.contains(i)) p,
+        ];
   for (final phone in picked) {
-    testWidgets(
-      'every screen fits: ${phone.name}, $lang${dark ? ', dark' : ''}',
-      (tester) async {
-        final problems = <String>[];
-        final ledger = await seededLedger(tester, dir);
-        // Real fonts here are about 6% narrower than the iPhone's.
-        usePhone(tester, phone, text: fonts.isEmpty ? 1 : 1.06, dark: dark);
+    final label = size == null
+        ? phone.name
+        : '${phone.name.split(',').first}, ${(size * 100).round()}% text';
+    testWidgets('every screen fits: $label, $lang${dark ? ', dark' : ''}', (
+      tester,
+    ) async {
+      final problems = <String>[];
+      final ledger = await seededLedger(tester, dir);
+      // Real fonts here are about 6% narrower than the iPhone's.
+      usePhone(
+        tester,
+        phone,
+        text: fonts.isEmpty ? 1 : 1.06,
+        size: size,
+        dark: dark,
+      );
 
-        final saved = FlutterError.onError;
-        var current = '';
-        FlutterError.onError = (d) {
-          final where = RegExp(r'lib/[a-z_]+\.dart:\d+')
-              .allMatches(d.toString())
-              .map((m) => m.group(0))
-              .toSet()
-              .take(2)
-              .join(', ');
-          problems.add(
-            '$current: ${d.exceptionAsString().split('\n').first} ($where)',
-          );
-        };
-        try {
-          for (final MapEntry(key: name, value: open) in screens.entries) {
-            if (only.isNotEmpty && !only.split(',').contains(name)) continue;
-            current = name;
-            if (log.isNotEmpty) {
-              File(log).writeAsStringSync(
-                '${DateTime.now()} ${phone.name} $lang $name\n',
-                mode: FileMode.append,
-              );
-            }
-            await openScreen(tester, lang: lang, ledger: ledger, open: open);
-            // Scroll every list to its end, so what's below the fold is laid out too.
-            for (final sc in find.byType(Scrollable).evaluate().toList()) {
-              final st = (sc as StatefulElement).state as ScrollableState;
-              if (!st.mounted) continue;
-              final p = st.position;
-              if (p.maxScrollExtent > 0 && p.maxScrollExtent.isFinite) {
-                p.jumpTo(p.maxScrollExtent);
-                await tester.pump();
-              }
-            }
-            await closeScreen(tester);
+      final saved = FlutterError.onError;
+      var current = '';
+      FlutterError.onError = (d) {
+        final where = RegExp(r'lib/[a-z_]+\.dart:\d+')
+            .allMatches(d.toString())
+            .map((m) => m.group(0))
+            .toSet()
+            .take(2)
+            .join(', ');
+        problems.add(
+          '$current: ${d.exceptionAsString().split('\n').first} ($where)',
+        );
+      };
+      try {
+        for (final MapEntry(key: name, value: open) in screens.entries) {
+          if (only.isNotEmpty && !only.split(',').contains(name)) continue;
+          current = name;
+          if (log.isNotEmpty) {
+            File(log).writeAsStringSync(
+              '${DateTime.now()} ${phone.name} $lang $name\n',
+              mode: FileMode.append,
+            );
           }
-        } finally {
-          FlutterError.onError = saved;
+          await openScreen(tester, lang: lang, ledger: ledger, open: open);
+          // Scroll every list to its end, so what's below the fold is laid out too.
+          for (final sc in find.byType(Scrollable).evaluate().toList()) {
+            // Scrolling one list can take another (one inside it) away.
+            if (!sc.mounted) continue;
+            final st = (sc as StatefulElement).state as ScrollableState;
+            final p = st.position;
+            if (p.maxScrollExtent > 0 && p.maxScrollExtent.isFinite) {
+              p.jumpTo(p.maxScrollExtent);
+              await tester.pump();
+            }
+          }
+          await closeScreen(tester);
         }
-        expect(problems, isEmpty, reason: problems.join('\n'));
-      },
-    );
+      } finally {
+        FlutterError.onError = saved;
+      }
+      expect(problems, isEmpty, reason: problems.join('\n'));
+    });
   }
 }

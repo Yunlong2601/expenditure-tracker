@@ -224,6 +224,15 @@ enum Remind {
       case "cancel":
         center.removePendingNotificationRequests(withIdentifiers: ids)
         result(nil)
+      case "openSettings":
+        // The app's page in Settings, or straight to its notifications
+        // where iOS can (15.4 and later), to turn on what she said no to.
+        var page = UIApplication.openSettingsURLString
+        if call.arguments as? String == "notifications", #available(iOS 15.4, *) {
+          page = UIApplication.openNotificationSettingsURLString
+        }
+        if let url = URL(string: page) { UIApplication.shared.open(url) }
+        result(nil)
       case "alerts":
         // Task and countdown reminders, each once at its time: replace them all.
         let items = call.arguments as? [[String: Any]] ?? []

@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'day.dart';
@@ -20,6 +21,27 @@ class Remind {
       return false;
     }
   }
+
+  /// Opens the app's page in the phone's Settings: its notifications when
+  /// [notifications], so she can turn on what she said no to before.
+  static Future<void> openSettings({bool notifications = false}) async {
+    try {
+      await _channel.invokeMethod<void>(
+        'openSettings',
+        notifications ? 'notifications' : null,
+      );
+    } on Object catch (_) {
+      // No Settings to open here (tests, other platforms).
+    }
+  }
+
+  /// The Open Settings button on a message that asks her to allow
+  /// notifications, the camera or photos.
+  static SnackBarAction settingsAction({bool notifications = false}) =>
+      SnackBarAction(
+        label: tr('Open Settings', '打开设置'),
+        onPressed: () => openSettings(notifications: notifications),
+      );
 
   /// Lines up the next week of reminders, skipping today once she has logged
   /// something today. Call after anything is saved and on launch.

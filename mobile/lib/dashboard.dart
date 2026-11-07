@@ -111,11 +111,12 @@ class _DashboardTabState extends State<DashboardTab> {
         children: [
           Row(
             children: [
-              Text(
-                tr('Countdowns', '倒数日'),
-                style: t.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+              Expanded(
+                child: Text(
+                  tr('Countdowns', '倒数日'),
+                  style: t.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+                ),
               ),
-              const Spacer(),
               TextButton.icon(
                 key: const Key('add-countdown'),
                 onPressed: () => addCountdown(context, _s),
@@ -215,78 +216,83 @@ class _DashboardTabState extends State<DashboardTab> {
                   const SizedBox(height: 14),
                   SizedBox(
                     width: 232,
-                    child: Semantics(
-                      expanded: _calendarOpen,
-                      hint: _calendarOpen
-                          ? tr('Hides the month calendar', '收起月历')
-                          : tr('Shows the month calendar', '展开月历'),
-                      child: Panel(
-                      key: const Key('calendar-toggle'),
-                      onTap: _toggleCalendar,
-                      padding: const EdgeInsets.fromLTRB(6, 6, 6, 2),
-                      child: Column(
-                        children: [
-                          Row(
+                    // The wireframe's small card: its text stops growing at
+                    // iOS's largest standard size, so the week still fits.
+                    child: MediaQuery.withClampedTextScaling(
+                      maxScaleFactor: 1.35,
+                      child: Semantics(
+                        expanded: _calendarOpen,
+                        hint: _calendarOpen
+                            ? tr('Hides the month calendar', '收起月历')
+                            : tr('Shows the month calendar', '展开月历'),
+                        child: Panel(
+                          key: const Key('calendar-toggle'),
+                          onTap: _toggleCalendar,
+                          padding: const EdgeInsets.fromLTRB(6, 6, 6, 2),
+                          child: Column(
                             children: [
-                              Expanded(
-                                child: Row(
-                                  children: [
-                                    _Chevron(
-                                      tooltip: tr('Last week', '上一周'),
-                                      icon: Icons.chevron_left,
-                                      onTap: () => _pick(
-                                        _picked.subtract(
-                                          const Duration(days: 7),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Row(
+                                      children: [
+                                        _Chevron(
+                                          tooltip: tr('Last week', '上一周'),
+                                          icon: Icons.chevron_left,
+                                          onTap: () => _pick(
+                                            _picked.subtract(
+                                              const Duration(days: 7),
+                                            ),
+                                          ),
                                         ),
-                                      ),
-                                    ),
-                                    Flexible(
-                                      child: Text(
-                                        monthYear(_picked),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: t.titleSmall?.copyWith(
-                                          fontWeight: FontWeight.w700,
+                                        Flexible(
+                                          child: Text(
+                                            monthYear(_picked),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: t.titleSmall?.copyWith(
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
                                         ),
-                                      ),
+                                        _Chevron(
+                                          tooltip: tr('Next week', '下一周'),
+                                          icon: Icons.chevron_right,
+                                          onTap: () => _pick(
+                                            _picked.add(const Duration(days: 7)),
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                    _Chevron(
-                                      tooltip: tr('Next week', '下一周'),
-                                      icon: Icons.chevron_right,
-                                      onTap: () => _pick(
-                                        _picked.add(const Duration(days: 7)),
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                                  ),
+                                  PillButton(
+                                    key: const Key('dash-today'),
+                                    label: tr('Today', '今天'),
+                                    dense: true,
+                                    onPressed: () => _pick(DateTime.now()),
+                                  ),
+                                ],
                               ),
-                              PillButton(
-                                key: const Key('dash-today'),
-                                label: tr('Today', '今天'),
-                                dense: true,
-                                onPressed: () => _pick(DateTime.now()),
+                              WeekStrip(
+                                start: _weekStart,
+                                picked: _picked,
+                                onPick: _pick,
+                              ),
+                              // A small handle that says the card opens.
+                              AnimatedRotation(
+                                key: const Key('calendar-handle'),
+                                turns: _calendarOpen ? 0.5 : 0,
+                                duration: _motion(context),
+                                child: Icon(
+                                  Icons.keyboard_arrow_down_rounded,
+                                  size: 18,
+                                  color: context.muted,
+                                ),
                               ),
                             ],
                           ),
-                          WeekStrip(
-                            start: _weekStart,
-                            picked: _picked,
-                            onPick: _pick,
-                          ),
-                          // A small handle that says the card opens.
-                          AnimatedRotation(
-                            key: const Key('calendar-handle'),
-                            turns: _calendarOpen ? 0.5 : 0,
-                            duration: _motion(context),
-                            child: Icon(
-                              Icons.keyboard_arrow_down_rounded,
-                              size: 18,
-                              color: context.muted,
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
-                    ),
                     ),
                   ),
                 ],
@@ -977,17 +983,27 @@ class CompletedSheet extends StatelessWidget {
                       ],
                     ),
                   ),
-                  PillButton(
-                    key: const Key('add-past'),
-                    label: tr('+ Add past', '+ 补记'),
-                    onPressed: () => _addPast(context),
+                  // Shrinks with very big text on a narrow phone.
+                  ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxWidth: MediaQuery.sizeOf(context).width / 2,
+                    ),
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: PillButton(
+                        key: const Key('add-past'),
+                        label: tr('+ Add past', '+ 补记'),
+                        onPressed: () => _addPast(context),
+                      ),
+                    ),
                   ),
                 ],
               ),
             ),
             Expanded(
               child: done.isEmpty
-                  ? SizedBox(
+                  ? SingleChildScrollView(
+                      child: SizedBox(
                       width: double.infinity,
                       child: Column(
                       children: [
@@ -1011,9 +1027,12 @@ class CompletedSheet extends StatelessWidget {
                         const SizedBox(height: 4),
                         Text(
                           tr('Finish one and it shows up here', '完成一件，它就会出现在这里'),
+                          textAlign: TextAlign.center,
                           style: t.bodyMedium?.copyWith(color: context.muted),
                         ),
+                        const SizedBox(height: 20),
                       ],
+                    ),
                     ),
                     )
                   : ListView(

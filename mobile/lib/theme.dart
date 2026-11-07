@@ -174,21 +174,49 @@ class SheetHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final close = IconButton.filledTonal(
+      tooltip: tr('Close', '关闭'),
+      style: IconButton.styleFrom(backgroundColor: cs.onSurface.withValues(alpha: 0.05)),
+      icon: const Icon(Icons.close),
+      onPressed: () => Navigator.of(context).maybePop(),
+    );
+    final heading = Text(title, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontSize: 20, fontWeight: FontWeight.w700));
+    final pill = action == null ? null : PillButton(key: Key('sheet-$action'), label: action!, onPressed: onAction);
+    // With very big text the title gets its own line under the buttons, as
+    // iOS does with large titles, so neither is squeezed.
+    if (MediaQuery.textScalerOf(context).scale(20) >= 30) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                close,
+                const SizedBox(width: 10),
+                if (pill != null)
+                  Expanded(
+                    child: Align(
+                      alignment: AlignmentDirectional.centerEnd,
+                      child: FittedBox(fit: BoxFit.scaleDown, child: pill),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            heading,
+          ],
+        ),
+      );
+    }
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
       child: Row(
         children: [
-          IconButton.filledTonal(
-            tooltip: tr('Close', '关闭'),
-            style: IconButton.styleFrom(backgroundColor: cs.onSurface.withValues(alpha: 0.05)),
-            icon: const Icon(Icons.close),
-            onPressed: () => Navigator.of(context).maybePop(),
-          ),
+          close,
           const SizedBox(width: 10),
-          Expanded(
-            child: Text(title, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontSize: 20, fontWeight: FontWeight.w700)),
-          ),
-          if (action != null) PillButton(key: Key('sheet-$action'), label: action!, onPressed: onAction),
+          Expanded(child: heading),
+          ?pill,
         ],
       ),
     );

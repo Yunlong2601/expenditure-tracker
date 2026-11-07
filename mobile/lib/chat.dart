@@ -895,6 +895,7 @@ class CheckInsSheet extends StatelessWidget {
               '在 iPhone 设置里允许 Tiny Habits Cat 发通知，才能收到定时约定。',
             ),
           ),
+          action: Remind.settingsAction(notifications: true),
           behavior: SnackBarBehavior.floating,
         ),
       );

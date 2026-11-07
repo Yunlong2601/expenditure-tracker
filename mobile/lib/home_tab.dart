@@ -114,7 +114,10 @@ class _HomeTabState extends State<HomeTab> {
     await _s.tick(t);
     if (!wasDone && (t.done || t.isStack)) {
       Feel.logged();
-      if (t.done) KittyLayer.cheer();
+      if (t.done) {
+        KittyLayer.cheer();
+        CatFigure.hop();
+      }
     } else {
       Feel.tap();
     }
@@ -302,11 +305,18 @@ class _HomeTabState extends State<HomeTab> {
                                     onPressed: () => _pickDay(_day.add(const Duration(days: 7))),
                                     icon: const Icon(Icons.chevron_right),
                                   ),
-                                  PillButton(
-                                    key: const Key('schedule-today'),
-                                    label: tr('Today', '今天'),
-                                    dense: true,
-                                    onPressed: () => _pickDay(DateTime.now()),
+                                  // Shrinks with very big text on a narrow phone.
+                                  ConstrainedBox(
+                                    constraints: const BoxConstraints(maxWidth: 96),
+                                    child: FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      child: PillButton(
+                                        key: const Key('schedule-today'),
+                                        label: tr('Today', '今天'),
+                                        dense: true,
+                                        onPressed: () => _pickDay(DateTime.now()),
+                                      ),
+                                    ),
                                   ),
                                   const SizedBox(width: 6),
                                 ],
@@ -677,58 +687,69 @@ class _TaskSheetState extends State<TaskSheet> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Icon(Icons.schedule, color: context.muted),
-                      const SizedBox(width: 8),
-                      Flexible(
-                        child: TextButton(
-                          key: const Key('task-time'),
-                          onPressed: () async {
-                            final p = await showTimePicker(
-                              context: context,
-                              initialTime: TimeOfDay.now(),
-                            );
-                            if (p != null) {
-                              setState(() {
-                                // A first time turns the reminder on.
-                                if (_minutes == null) _remind = true;
-                                _minutes = p.hour * 60 + p.minute;
-                              });
-                            }
-                          },
-                          child: Text(
-                            _minutes == null
-                                ? tr('Set a time', '设个时间')
-                                : clock(context, _minutes!),
+                  // The Private chip moves to its own line when big text
+                  // leaves no room beside the time.
+                  SizedBox(
+                    width: double.infinity,
+                    child: Wrap(
+                      alignment: WrapAlignment.spaceBetween,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.schedule, color: context.muted),
+                            const SizedBox(width: 8),
+                            Flexible(
+                              child: TextButton(
+                                key: const Key('task-time'),
+                                onPressed: () async {
+                                  final p = await showTimePicker(
+                                    context: context,
+                                    initialTime: TimeOfDay.now(),
+                                  );
+                                  if (p != null) {
+                                    setState(() {
+                                      // A first time turns the reminder on.
+                                      if (_minutes == null) _remind = true;
+                                      _minutes = p.hour * 60 + p.minute;
+                                    });
+                                  }
+                                },
+                                child: Text(
+                                  _minutes == null
+                                      ? tr('Set a time', '设个时间')
+                                      : clock(context, _minutes!),
+                                ),
+                              ),
+                            ),
+                            if (_minutes != null)
+                              IconButton(
+                                tooltip: tr('No time', '不定时间'),
+                                onPressed: () => setState(() => _minutes = null),
+                                icon: const Icon(Icons.close, size: 18),
+                              ),
+                          ],
+                        ),
+                        FilterChip(
+                          key: const Key('task-private'),
+                          avatar: Icon(
+                            _private ? Icons.lock_outline : Icons.public,
+                            size: 18,
                           ),
+                          showCheckmark: false,
+                          selected: _private,
+                          label: Text(
+                            _private ? tr('Private', '不公开') : tr('Public', '公开'),
+                          ),
+                          tooltip: tr(
+                            'Private tasks aren’t shared with the cat',
+                            '不公开的事不会发给小猫',
+                          ),
+                          onSelected: (v) => setState(() => _private = v),
                         ),
-                      ),
-                      if (_minutes != null)
-                        IconButton(
-                          tooltip: tr('No time', '不定时间'),
-                          onPressed: () => setState(() => _minutes = null),
-                          icon: const Icon(Icons.close, size: 18),
-                        ),
-                      const Spacer(),
-                      FilterChip(
-                        key: const Key('task-private'),
-                        avatar: Icon(
-                          _private ? Icons.lock_outline : Icons.public,
-                          size: 18,
-                        ),
-                        showCheckmark: false,
-                        selected: _private,
-                        label: Text(
-                          _private ? tr('Private', '不公开') : tr('Public', '公开'),
-                        ),
-                        tooltip: tr(
-                          'Private tasks aren’t shared with the cat',
-                          '不公开的事不会发给小猫',
-                        ),
-                        onSelected: (v) => setState(() => _private = v),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                   if (_minutes != null)
                     SwitchListTile(
@@ -970,79 +991,84 @@ class WeekStrip extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
     final cs = Theme.of(context).colorScheme;
-    return Row(
-      children: [
-        for (var i = 0; i < 7; i++)
-          Expanded(
-            child: Builder(
-              builder: (_) {
-                final d = DateTime(start.year, start.month, start.day + i);
-                final on = sameDay(d, picked);
-                final isToday = sameDay(d, DateTime.now());
-                return InkWell(
-                  key: Key('$id-day-$i'),
-                  borderRadius: BorderRadius.circular(10),
-                  onTap: () => onPick(d),
-                  child: Column(
-                    children: [
-                      Text(
-                        weekdayHeads[i],
-                        style: t.labelSmall?.copyWith(color: context.muted),
-                      ),
-                      const SizedBox(height: 4),
-                      Container(
-                        width: 26,
-                        height: 32,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: on ? cs.primary : null,
-                          borderRadius: BorderRadius.circular(10),
+    // Seven days share one row, so the day numbers stop growing at iOS's
+    // largest standard text size, as a calendar's grid does.
+    return MediaQuery.withClampedTextScaling(
+      maxScaleFactor: 1.35,
+      child: Row(
+        children: [
+          for (var i = 0; i < 7; i++)
+            Expanded(
+              child: Builder(
+                builder: (_) {
+                  final d = DateTime(start.year, start.month, start.day + i);
+                  final on = sameDay(d, picked);
+                  final isToday = sameDay(d, DateTime.now());
+                  return InkWell(
+                    key: Key('$id-day-$i'),
+                    borderRadius: BorderRadius.circular(10),
+                    onTap: () => onPick(d),
+                    child: Column(
+                      children: [
+                        Text(
+                          weekdayHeads[i],
+                          style: t.labelSmall?.copyWith(color: context.muted),
                         ),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              '${d.day}',
-                              style: t.titleMedium?.copyWith(
-                                color: on ? cs.onPrimary : cs.onSurface.withValues(alpha: 0.75),
-                                fontWeight: on ? FontWeight.w700 : FontWeight.w400,
-                                height: 1.1,
-                              ),
-                            ),
-                            // The small dot under today, as in the wireframe.
-                            Container(
-                              key: isToday ? const Key('week-today-dot') : null,
-                              width: 4,
-                              height: 4,
-                              decoration: BoxDecoration(
-                                color: isToday
-                                    ? (on ? cs.onPrimary : cs.primary)
-                                    : Colors.transparent,
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      if (marks.isNotEmpty)
+                        const SizedBox(height: 4),
                         Container(
-                          width: 4,
-                          height: 4,
-                          margin: const EdgeInsets.only(top: 3),
+                          width: 26,
+                          height: 32,
+                          alignment: Alignment.center,
                           decoration: BoxDecoration(
-                            color: marks.contains(i)
-                                ? context.green.withValues(alpha: 0.7)
-                                : Colors.transparent,
-                            shape: BoxShape.circle,
+                            color: on ? cs.primary : null,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                '${d.day}',
+                                style: t.titleMedium?.copyWith(
+                                  color: on ? cs.onPrimary : cs.onSurface.withValues(alpha: 0.75),
+                                  fontWeight: on ? FontWeight.w700 : FontWeight.w400,
+                                  height: 1.1,
+                                ),
+                              ),
+                              // The small dot under today, as in the wireframe.
+                              Container(
+                                key: isToday ? const Key('week-today-dot') : null,
+                                width: 4,
+                                height: 4,
+                                decoration: BoxDecoration(
+                                  color: isToday
+                                      ? (on ? cs.onPrimary : cs.primary)
+                                      : Colors.transparent,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                    ],
-                  ),
-                );
-              },
+                        if (marks.isNotEmpty)
+                          Container(
+                            width: 4,
+                            height: 4,
+                            margin: const EdgeInsets.only(top: 3),
+                            decoration: BoxDecoration(
+                              color: marks.contains(i)
+                                  ? context.green.withValues(alpha: 0.7)
+                                  : Colors.transparent,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                      ],
+                    ),
+                  );
+                },
+              ),
             ),
-          ),
-      ],
+        ],
+    ),
     );
   }
 }
@@ -1087,136 +1113,142 @@ class _MoodSheetState extends State<MoodSheet> {
                     if (context.mounted) Navigator.of(context).pop();
                   },
           ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+          // Scrolls when big text makes the week and the faces taller than
+          // the sheet.
+          Flexible(
+            child: SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      child: Text(
-                        '${tr('Today', '今天')} · ${dayMonthWeekday(today)}',
-                        style: t.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                    Text(
-                      tr(count(s.moodsOn(today).length, 'entry', 'entries'), '${s.moodsOn(today).length} 条记录'),
-                      style: t.bodyMedium?.copyWith(color: context.muted),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                // Seven equal slots, so the week fits the smallest phone.
-                Row(
-                  children: [
-                    for (final d in days)
-                      // Today sits in a soft green tile, as in IMG_6792.
-                      Expanded(
-                        child: Container(
-                          padding: const EdgeInsets.fromLTRB(2, 8, 2, 10),
-                          decoration: BoxDecoration(
-                            color: sameDay(d, today) ? context.greenSoft : null,
-                            borderRadius: BorderRadius.circular(14),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            '${tr('Today', '今天')} · ${dayMonthWeekday(today)}',
+                            style: t.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
-                          child: Column(
-                            children: [
-                              FittedBox(
-                                fit: BoxFit.scaleDown,
-                                child: Text(
-                                  sameDay(d, today)
-                                      ? tr('Today', '今')
-                                      : '${d.day}',
-                                  style: t.labelMedium?.copyWith(
-                                    color: sameDay(d, today)
-                                        ? context.green
-                                        : context.muted,
-                                    fontWeight: sameDay(d, today)
-                                        ? FontWeight.w700
-                                        : null,
-                                  ),
-                                ),
+                        ),
+                        Text(
+                          tr(count(s.moodsOn(today).length, 'entry', 'entries'), '${s.moodsOn(today).length} 条记录'),
+                          style: t.bodyMedium?.copyWith(color: context.muted),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    // Seven equal slots, so the week fits the smallest phone.
+                    Row(
+                      children: [
+                        for (final d in days)
+                          // Today sits in a soft green tile, as in IMG_6792.
+                          Expanded(
+                            child: Container(
+                              padding: const EdgeInsets.fromLTRB(2, 8, 2, 10),
+                              decoration: BoxDecoration(
+                                color: sameDay(d, today) ? context.greenSoft : null,
+                                borderRadius: BorderRadius.circular(14),
                               ),
-                              const SizedBox(height: 8),
-                              MoodDot(mood: s.moodOf(d)),
-                            ],
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 18),
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: context.sand,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        tr('How are you feeling right now?', '此刻心情如何？'),
-                        style: t.titleSmall?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      // Six in a row when they fit, two rows of three when not.
-                      LayoutBuilder(
-                        builder: (context, box) {
-                          final big = MediaQuery.textScalerOf(context).scale(1);
-                          final perRow =
-                              box.maxWidth / Mood.values.length >= 50 * big
-                              ? Mood.values.length
-                              : 3;
-                          return Wrap(
-                            runSpacing: 8,
-                            children: [
-                              for (final m in Mood.values)
-                                SizedBox(
-                                  width: box.maxWidth / perRow,
-                                  child: InkWell(
-                                    key: Key('mood-${m.name}'),
-                                    borderRadius: BorderRadius.circular(16),
-                                    onTap: () {
-                                      Feel.tap();
-                                      setState(() => _picked = m);
-                                    },
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(4),
-                                      child: Column(
-                                        children: [
-                                          MoodFace(
-                                            mood: m,
-                                            size: 36,
-                                            selected: _picked == m,
-                                          ),
-                                          const SizedBox(height: 6),
-                                          FittedBox(
-                                            fit: BoxFit.scaleDown,
-                                            child: Text(
-                                              zh ? m.zh : m.label,
-                                              style: t.labelSmall?.copyWith(
-                                                color: context.muted,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
+                              child: Column(
+                                children: [
+                                  FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: Text(
+                                      sameDay(d, today)
+                                          ? tr('Today', '今')
+                                          : '${d.day}',
+                                      style: t.labelMedium?.copyWith(
+                                        color: sameDay(d, today)
+                                            ? context.green
+                                            : context.muted,
+                                        fontWeight: sameDay(d, today)
+                                            ? FontWeight.w700
+                                            : null,
                                       ),
                                     ),
                                   ),
-                                ),
-                            ],
-                          );
-                        },
+                                  const SizedBox(height: 8),
+                                  MoodDot(mood: s.moodOf(d)),
+                                ],
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 18),
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: context.sand,
+                        borderRadius: BorderRadius.circular(20),
                       ),
-                    ],
-                  ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            tr('How are you feeling right now?', '此刻心情如何？'),
+                            style: t.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          // Six in a row when they fit, two rows of three when not.
+                          LayoutBuilder(
+                            builder: (context, box) {
+                              final big = MediaQuery.textScalerOf(context).scale(1);
+                              final perRow =
+                                  box.maxWidth / Mood.values.length >= 50 * big
+                                  ? Mood.values.length
+                                  : 3;
+                              return Wrap(
+                                runSpacing: 8,
+                                children: [
+                                  for (final m in Mood.values)
+                                    SizedBox(
+                                      width: box.maxWidth / perRow,
+                                      child: InkWell(
+                                        key: Key('mood-${m.name}'),
+                                        borderRadius: BorderRadius.circular(16),
+                                        onTap: () {
+                                          Feel.tap();
+                                          setState(() => _picked = m);
+                                        },
+                                        child: Padding(
+                                          padding: const EdgeInsets.all(4),
+                                          child: Column(
+                                            children: [
+                                              MoodFace(
+                                                mood: m,
+                                                size: 36,
+                                                selected: _picked == m,
+                                              ),
+                                              const SizedBox(height: 6),
+                                              FittedBox(
+                                                fit: BoxFit.scaleDown,
+                                                child: Text(
+                                                  zh ? m.zh : m.label,
+                                                  style: t.labelSmall?.copyWith(
+                                                    color: context.muted,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
         ],

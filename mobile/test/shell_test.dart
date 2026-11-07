@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:spendsnap/companion.dart';
 import 'package:spendsnap/day.dart';
+import 'package:spendsnap/kitty.dart';
 import 'package:spendsnap/prefs.dart';
 import 'package:spendsnap/records.dart';
 import 'package:spendsnap/shell.dart';
@@ -61,6 +62,65 @@ void main() {
     await tester.tap(find.byKey(Key('tick-${t.id}')));
     await tester.pumpAndSettle();
     expect(t.done, isTrue);
+  });
+
+  testWidgets('ticking a task makes the cat hop, unless motion is reduced', (
+    tester,
+  ) async {
+    await Prefs.current.setOnboarded();
+    final a = await store.addTask('Feed the fish');
+    final b = await store.addTask('Read');
+    await tester.pumpWidget(_app(store));
+    double lift() => tester
+        .widget<Transform>(
+          find
+              .descendant(
+                of: find.byType(CatFigure),
+                matching: find.byType(Transform),
+              )
+              .first,
+        )
+        .transform
+        .getTranslation()
+        .y;
+    expect(lift(), 0);
+    await tester.tap(find.byKey(Key('tick-${a.id}')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 260));
+    expect(lift(), lessThan(-10), reason: 'at the top of the hop');
+    await tester.pumpAndSettle();
+    expect(lift(), 0);
+
+    tester.platformDispatcher.accessibilityFeaturesTestValue =
+        const FakeAccessibilityFeatures(disableAnimations: true);
+    addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+    await tester.pump();
+    await tester.tap(find.byKey(Key('tick-${b.id}')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 260));
+    expect(b.done, isTrue);
+    expect(lift(), 0, reason: 'Reduce Motion: no hop');
+  });
+
+  testWidgets('empty Notes shows the cat until the first note', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: tinyTheme(Brightness.light),
+        home: RecordsScreen(store: store, tab: 2),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final cat = find.descendant(
+      of: find.byKey(const Key('notes-empty')),
+      matching: find.byWidgetPredicate(
+        (w) => w is CustomPaint && w.painter is CatPainter,
+      ),
+    );
+    expect(cat, findsOneWidget);
+    await store.add(store.notes, 'Buy a new pen');
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('notes-empty')), findsNothing);
+    expect(find.text('Buy a new pen'), findsOneWidget);
   });
 
   testWidgets('the mood diary records a mood', (tester) async {
@@ -172,13 +232,19 @@ void main() {
     tester,
   ) async {
     await Prefs.current.setOnboarded();
-    await store.addCountdown('Exam', DateTime.now().add(const Duration(days: 9)));
+    await store.addCountdown(
+      'Exam',
+      DateTime.now().add(const Duration(days: 9)),
+    );
     await tester.pumpWidget(_app(store));
     await tester.tap(find.text('Dashboard').last);
     await tester.pumpAndSettle();
     // Countdowns sit above the day's review, with the next one in view.
     final countdowns = tester.getTopLeft(find.text('Countdowns')).dy;
-    expect(countdowns, lessThan(tester.getTopLeft(find.text('Today’s review')).dy));
+    expect(
+      countdowns,
+      lessThan(tester.getTopLeft(find.text('Today’s review')).dy),
+    );
     expect(find.text('Exam'), findsOneWidget);
     // Tapping the week card opens the month calendar, and again folds it.
     final today = DateTime.now();
@@ -203,8 +269,9 @@ void main() {
     expect(store.timeline.single.text, 'Study');
   });
 
-
-  testWidgets('Schedule shows the week and + plans the picked day', (tester) async {
+  testWidgets('Schedule shows the week and + plans the picked day', (
+    tester,
+  ) async {
     await Prefs.current.setOnboarded();
     await tester.pumpWidget(_app(store));
     await tester.tap(find.byKey(const Key('tab-schedule')));
@@ -213,12 +280,19 @@ void main() {
     // Another day of this week: tomorrow, or Monday on a Sunday.
     final today = DateTime.now();
     final i = today.weekday % 7;
-    final picked = DateTime(today.year, today.month, today.day - (today.weekday - 1) + i);
+    final picked = DateTime(
+      today.year,
+      today.month,
+      today.day - (today.weekday - 1) + i,
+    );
     await tester.tap(find.byKey(Key('schedule-day-$i')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('add-task')));
     await tester.pumpAndSettle();
-    await tester.enterText(find.byKey(const Key('task-title')), 'Library books');
+    await tester.enterText(
+      find.byKey(const Key('task-title')),
+      'Library books',
+    );
     await tester.tap(find.byKey(const Key('sheet-Save')));
     await tester.pumpAndSettle();
     expect(store.tasks.single.day, dayOf(picked));
@@ -229,12 +303,17 @@ void main() {
     expect(find.text('Library books'), findsNothing);
   });
 
-  testWidgets('a task set to repeat every day comes back tomorrow', (tester) async {
+  testWidgets('a task set to repeat every day comes back tomorrow', (
+    tester,
+  ) async {
     await Prefs.current.setOnboarded();
     await tester.pumpWidget(_app(store));
     await tester.tap(find.byKey(const Key('add-task')));
     await tester.pumpAndSettle();
-    await tester.enterText(find.byKey(const Key('task-title')), 'Feed the fish');
+    await tester.enterText(
+      find.byKey(const Key('task-title')),
+      'Feed the fish',
+    );
     await tester.tap(find.byKey(const Key('repeat-daily')));
     await tester.pump();
     await tester.tap(find.byKey(const Key('sheet-Save')));
@@ -247,7 +326,10 @@ void main() {
 
   testWidgets('search finds a task and opens it', (tester) async {
     await Prefs.current.setOnboarded();
-    final old = await store.addTask('Return the milk crate', day: DateTime(2026, 1, 3));
+    final old = await store.addTask(
+      'Return the milk crate',
+      day: DateTime(2026, 1, 3),
+    );
     await store.addTask('Gym');
     await tester.pumpWidget(_app(store));
     await tester.tap(find.byKey(const Key('search-tasks')));
@@ -261,17 +343,25 @@ void main() {
     expect(find.text('Edit'), findsOneWidget);
   });
 
-  testWidgets('a countdown can be edited, and a past day counts days since', (tester) async {
+  testWidgets('a countdown can be edited, and a past day counts days since', (
+    tester,
+  ) async {
     await Prefs.current.setOnboarded();
     final now = DateTime.now();
-    final met = await store.addCountdown('Met Mochi', DateTime(now.year, now.month, now.day - 30));
+    final met = await store.addCountdown(
+      'Met Mochi',
+      DateTime(now.year, now.month, now.day - 30),
+    );
     await tester.pumpWidget(_app(store));
     await tester.tap(find.text('Dashboard').last);
     await tester.pumpAndSettle();
     expect(find.text('30 days since'), findsOneWidget);
     await tester.tap(find.byKey(Key('countdown-${met.id}')));
     await tester.pumpAndSettle();
-    await tester.enterText(find.byKey(const Key('countdown-name')), 'Mochi day');
+    await tester.enterText(
+      find.byKey(const Key('countdown-name')),
+      'Mochi day',
+    );
     await tester.tap(find.byKey(const Key('countdown-yearly')));
     await tester.pump();
     await tester.tap(find.byKey(const Key('countdown-save')));
@@ -281,7 +371,9 @@ void main() {
     expect(met.isPast(), isFalse, reason: 'a yearly day comes round again');
   });
 
-  testWidgets('the Dashboard shows what is not done, the rate and the week', (tester) async {
+  testWidgets('the Dashboard shows what is not done, the rate and the week', (
+    tester,
+  ) async {
     await Prefs.current.setOnboarded();
     final a = await store.addTask('One');
     await store.addTask('Two');
@@ -298,13 +390,18 @@ void main() {
       find.byKey(const Key('focus-card')),
       200,
       scrollable: find
-          .descendant(of: find.byKey(const Key('dashboard-list')), matching: find.byType(Scrollable))
+          .descendant(
+            of: find.byKey(const Key('dashboard-list')),
+            matching: find.byType(Scrollable),
+          )
           .first,
     );
     expect(find.text('Sessions'), findsOneWidget);
   });
 
-  testWidgets('focus: a stopwatch, any length, and a task to focus on', (tester) async {
+  testWidgets('focus: a stopwatch, any length, and a task to focus on', (
+    tester,
+  ) async {
     await Prefs.current.setOnboarded();
     final f = FocusSession.current;
     addTearDown(() {

@@ -151,7 +151,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 if (v && !await Remind.ask()) {
                   if (!context.mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(tr('Allow notifications for Tiny Habits Cat in iPhone Settings first.', '请先在 iPhone 设置里允许 Tiny Habits Cat 发通知。'))),
+                    SnackBar(
+                      content: Text(tr('Allow notifications for Tiny Habits Cat in iPhone Settings first.', '请先在 iPhone 设置里允许 Tiny Habits Cat 发通知。')),
+                      action: Remind.settingsAction(notifications: true),
+                    ),
                   );
                   return;
                 }

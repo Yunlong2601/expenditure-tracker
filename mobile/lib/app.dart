@@ -81,7 +81,12 @@ class _SpendSnapAppState extends State<SpendSnapApp> with WidgetsBindingObserver
       locale: Locale(zh ? 'zh' : 'en'),
       supportedLocales: const [Locale('en'), Locale('zh')],
       localizationsDelegates: GlobalMaterialLocalizations.delegates,
-      builder: (_, child) => KittyLayer(child: child!),
+      // Text grows with the phone's setting up to 200%, as WCAG asks; past
+      // that (iOS goes to about 310%) the cat scenes and cards lose their shape.
+      builder: (_, child) => MediaQuery.withClampedTextScaling(
+        maxScaleFactor: 2,
+        child: KittyLayer(child: child!),
+      ),
       home: _Root(
         ledgerDir: widget.ledgerDir,
         reader: widget.reader ?? OfflineReader(),

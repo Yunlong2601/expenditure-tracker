@@ -66,10 +66,12 @@ class _RecordsScreenState extends State<RecordsScreen> {
                         Row(
                           children: [
                             const BackButton(),
-                            Text(
-                              tr('Records', '记录'),
-                              style: t.headlineMedium?.copyWith(
-                                fontWeight: FontWeight.w800,
+                            Flexible(
+                              child: Text(
+                                tr('Records', '记录'),
+                                style: t.headlineMedium?.copyWith(
+                                  fontWeight: FontWeight.w800,
+                                ),
                               ),
                             ),
                           ],
@@ -977,11 +979,24 @@ class _Notes extends StatelessWidget {
         const SizedBox(height: 12),
         if (notes.isEmpty)
           Padding(
-            padding: const EdgeInsets.all(32),
-            child: Text(
-              tr('No notes yet. Ideas, lists, little thoughts: they all fit here.', '还没有笔记。想法、清单、小心思，都可以放在这里。'),
-              textAlign: TextAlign.center,
-              style: t.bodyMedium?.copyWith(color: context.muted),
+            padding: const EdgeInsets.fromLTRB(32, 20, 32, 32),
+            child: Column(
+              key: const Key('notes-empty'),
+              children: [
+                // The cat waits with its star for the first note.
+                const ExcludeSemantics(
+                  child: SizedBox.square(
+                    dimension: 110,
+                    child: CustomPaint(painter: CatPainter(star: true)),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  tr('No notes yet. Ideas, lists, little thoughts: they all fit here.', '还没有笔记。想法、清单、小心思，都可以放在这里。'),
+                  textAlign: TextAlign.center,
+                  style: t.bodyMedium?.copyWith(color: context.muted),
+                ),
+              ],
             ),
           ),
         for (final n in notes)

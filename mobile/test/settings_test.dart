@@ -15,6 +15,7 @@ void main() {
   late Directory dir;
   late DayStore store;
   late List<MethodCall> shared;
+  late List<MethodCall> reminded;
   late bool allowNotify;
   String? picked;
   var reminderChanged = 0;
@@ -25,6 +26,7 @@ void main() {
     store = DayStore.memory();
     DayStore.current = store;
     shared = [];
+    reminded = [];
     allowNotify = true;
     picked = null;
     reminderChanged = 0;
@@ -32,6 +34,7 @@ void main() {
     m.setMockMethodCallHandler(const MethodChannel('spendsnap/remind'), (
       c,
     ) async {
+      reminded.add(c);
       return c.method == 'ask' ? allowNotify : null;
     });
     m.setMockMethodCallHandler(const MethodChannel('spendsnap/share'), (
@@ -99,6 +102,13 @@ void main() {
     await tester.pumpAndSettle();
     expect(Prefs.current.reminderOn, isFalse);
     expect(find.textContaining('Allow notifications'), findsOneWidget);
+    // The message takes her straight to the app's notifications in Settings.
+    await tester.tap(find.text('Open Settings'));
+    await tester.pumpAndSettle();
+    expect(
+      reminded.last,
+      isMethodCall('openSettings', arguments: 'notifications'),
+    );
 
     allowNotify = true;
     await tester.tap(find.byKey(const Key('reminder')));

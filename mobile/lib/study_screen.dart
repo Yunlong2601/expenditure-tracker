@@ -148,8 +148,12 @@ class _StudyScreenState extends State<StudyScreen> {
                       icon: const Icon(Icons.close),
                       onPressed: () => Navigator.of(context).maybePop(),
                     ),
-                    const Spacer(),
-                    _RulePill(rule: _f.rule),
+                    Expanded(
+                      child: Align(
+                        alignment: AlignmentDirectional.centerEnd,
+                        child: _RulePill(rule: _f.rule),
+                      ),
+                    ),
                   ],
                 ),
                 Expanded(
@@ -184,7 +188,12 @@ class _StudyScreenState extends State<StudyScreen> {
                                     size: const Size.square(236),
                                     painter: FocusRing(progress, cs.primary, track: context.greenSoft),
                                   ),
-                                  Column(
+                                  // Big text shrinks to fit inside the ring.
+                                  Padding(
+                                    padding: const EdgeInsets.all(30),
+                                    child: FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      child: Column(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
                                       Text(
@@ -211,6 +220,8 @@ class _StudyScreenState extends State<StudyScreen> {
                                         ),
                                       ),
                                     ],
+                                  ),
+                                    ),
                                   ),
                                 ],
                               ),

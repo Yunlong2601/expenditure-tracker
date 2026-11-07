@@ -108,7 +108,10 @@ class _HomeScreenState extends State<HomeScreen> {
       img = camera ? await _picker.camera() : await _picker.gallery();
     } catch (_) {
       Feel.oops();
-      _toast(camera ? tr('Allow camera access in Settings to snap receipts.', '请在设置里允许使用相机来拍小票。') : tr('Allow photo access in Settings.', '请在设置里允许访问照片。'));
+      _toast(
+        camera ? tr('Allow camera access in Settings to snap receipts.', '请在设置里允许使用相机来拍小票。') : tr('Allow photo access in Settings.', '请在设置里允许访问照片。'),
+        action: Remind.settingsAction(),
+      );
       return;
     }
     if (img == null || !mounted) return;

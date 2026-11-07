@@ -544,49 +544,52 @@ class _CompanionSheetState extends State<CompanionSheet> {
 
   @override
   Widget build(BuildContext context) => SafeArea(
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        const SizedBox(height: 16),
-        SheetHeader(
-          title: tr('Your companion', '你的伙伴'),
-          action: tr('Save', '保存'),
-          onAction: () async {
-            await Prefs.current.setCatName(_name.text);
-            Remind.syncCheckIns(DayStore.current);
-            Feel.logged();
-            if (context.mounted) Navigator.of(context).pop();
-          },
-        ),
-        const SizedBox(height: 18),
-        const CatAvatar(size: 84),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
-          child: TextField(
-            key: const Key('cat-name'),
-            controller: _name,
-            maxLength: 20,
-            style: const TextStyle(fontSize: 17),
-            decoration: InputDecoration(
-              counterText: '',
-              isDense: true,
-              // At least 44 points tall, so it's easy to tap.
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 13,
-              ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(22),
-                borderSide: const BorderSide(color: Palette.line),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(22),
-                borderSide: const BorderSide(color: Color(0xFFE2DCD1)),
+    // Scrolls when big text and the keyboard leave little room.
+    child: SingleChildScrollView(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const SizedBox(height: 16),
+          SheetHeader(
+            title: tr('Your companion', '你的伙伴'),
+            action: tr('Save', '保存'),
+            onAction: () async {
+              await Prefs.current.setCatName(_name.text);
+              Remind.syncCheckIns(DayStore.current);
+              Feel.logged();
+              if (context.mounted) Navigator.of(context).pop();
+            },
+          ),
+          const SizedBox(height: 18),
+          const CatAvatar(size: 84),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+            child: TextField(
+              key: const Key('cat-name'),
+              controller: _name,
+              maxLength: 20,
+              style: const TextStyle(fontSize: 17),
+              decoration: InputDecoration(
+                counterText: '',
+                isDense: true,
+                // At least 44 points tall, so it's easy to tap.
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 13,
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(22),
+                  borderSide: const BorderSide(color: Palette.line),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(22),
+                  borderSide: const BorderSide(color: Color(0xFFE2DCD1)),
+                ),
               ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     ),
   );
 }
@@ -807,29 +810,39 @@ class _FeedbackSheetState extends State<FeedbackSheet> {
               action: tr('Send', '发送'),
               onAction: _send,
             ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-              child: TextField(
-                key: const Key('feedback-field'),
-                controller: _c,
-                autofocus: true,
-                minLines: 4,
-                maxLines: 8,
-                maxLength: 2000,
-                textCapitalization: TextCapitalization.sentences,
-                decoration: InputDecoration(
-                  hintText: tr('What happened, or what would you like?', '发生了什么，或者你希望有什么？'),
+            // Scrolls when big text and the keyboard leave little room.
+            Flexible(
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                      child: TextField(
+                        key: const Key('feedback-field'),
+                        controller: _c,
+                        autofocus: true,
+                        minLines: 4,
+                        maxLines: 8,
+                        maxLength: 2000,
+                        textCapitalization: TextCapitalization.sentences,
+                        decoration: InputDecoration(
+                          hintText: tr('What happened, or what would you like?', '发生了什么，或者你希望有什么？'),
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                      child: Text(
+                        tr(
+                          'It opens your share sheet so you choose how to send it. Only the app version, language and phone system are added.',
+                          '会打开分享面板，由你选择怎么发送。只会附上 App 版本、语言和手机系统。',
+                        ),
+                        style: t.bodySmall?.copyWith(color: context.muted),
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-              child: Text(
-                tr(
-                  'It opens your share sheet so you choose how to send it. Only the app version, language and phone system are added.',
-                  '会打开分享面板，由你选择怎么发送。只会附上 App 版本、语言和手机系统。',
-                ),
-                style: t.bodySmall?.copyWith(color: context.muted),
               ),
             ),
           ],

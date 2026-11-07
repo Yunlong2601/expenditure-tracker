@@ -38,18 +38,29 @@ class CatFigure extends StatefulWidget {
   final double size;
   final CatMood mood;
 
-  /// Off in widget tests, so pumpAndSettle can settle.
+  /// Off in widget tests, so pumpAndSettle can settle. (A hop still plays:
+  /// it ends by itself.)
   static bool animate = true;
+
+  /// Counts hops; every cat on screen hops when it goes up.
+  static final hops = ValueNotifier<int>(0);
+
+  /// Makes the cat hop for joy, as when a task is ticked. Not with Reduce
+  /// Motion on.
+  static void hop() => hops.value++;
 
   @override
   State<CatFigure> createState() => _CatFigureState();
 }
 
-class _CatFigureState extends State<CatFigure>
-    with SingleTickerProviderStateMixin {
+class _CatFigureState extends State<CatFigure> with TickerProviderStateMixin {
   late final _c = AnimationController(
     vsync: this,
     duration: const Duration(seconds: 4),
+  );
+  late final _hop = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 520),
   );
 
   @override
@@ -63,11 +74,19 @@ class _CatFigureState extends State<CatFigure>
     if (!still && CatFigure.animate) {
       _c.repeat();
     }
+    CatFigure.hops.addListener(_onHop);
+  }
+
+  void _onHop() {
+    if (!mounted || MediaQuery.disableAnimationsOf(context)) return;
+    _hop.forward(from: 0);
   }
 
   @override
   void dispose() {
+    CatFigure.hops.removeListener(_onHop);
     _c.dispose();
+    _hop.dispose();
     super.dispose();
   }
 
@@ -75,13 +94,25 @@ class _CatFigureState extends State<CatFigure>
   Widget build(BuildContext context) => SizedBox.square(
     dimension: widget.size,
     child: AnimatedBuilder(
-      animation: _c,
+      animation: Listenable.merge([_c, _hop]),
       builder: (_, _) {
         final v = _c.value;
         final blink = v > 0.92 ? math.sin((v - 0.92) / 0.08 * math.pi) : 0.0;
         final wave = math.sin(v * math.pi * 4) * 0.25;
-        return CustomPaint(
-          painter: CatPainter(blink: blink, wave: wave, mood: widget.mood),
+        // Up and back down in one arc, with a little squash on landing.
+        final h = _hop.value;
+        final up = 4 * h * (1 - h);
+        final squash = h > 0.85 ? math.sin((h - 0.85) / 0.15 * math.pi) * 0.06 : 0.0;
+        return Transform.translate(
+          offset: Offset(0, -widget.size * 0.14 * up),
+          child: Transform.scale(
+            scaleX: 1 + squash,
+            scaleY: 1 - squash,
+            alignment: Alignment.bottomCenter,
+            child: CustomPaint(
+              painter: CatPainter(blink: blink, wave: wave, mood: widget.mood),
+            ),
+          ),
         );
       },
     ),
