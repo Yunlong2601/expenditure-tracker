@@ -281,6 +281,33 @@ void main() {
     await tester.pumpAndSettle();
   });
 
+  testWidgets('a session left alone to the end shows the summary', (
+    tester,
+  ) async {
+    f.setLength(15);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: tinyTheme(Brightness.light),
+        home: RecordsScreen(store: store, tab: 1),
+      ),
+    );
+    await tester.ensureVisible(find.byKey(const Key('focus-start')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('focus-start')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 600));
+    expect(f.running, isTrue);
+
+    // Time runs out with nothing else happening on the way.
+    await tester.pump(const Duration(minutes: 15));
+    await tester.pump();
+    expect(f.started, isFalse);
+    expect(find.byKey(const Key('study-summary')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('study-finish')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('study-clock')), findsNothing);
+  });
+
   testWidgets('the study log shows today, the week, subjects and sessions', (
     tester,
   ) async {

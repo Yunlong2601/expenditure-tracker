@@ -21,7 +21,12 @@ class StudyScreen extends StatefulWidget {
 
   /// Starts the session, or carries on with a paused one, and opens the
   /// study view over everything.
-  static Future<void> open(BuildContext context, DayStore store) {
+  static Future<void> open(BuildContext context, DayStore store) =>
+      openOn(Navigator.of(context, rootNavigator: true), store);
+
+  /// [open], on a navigator held from before, for a timer that starts
+  /// after the screen that set it up has closed.
+  static Future<void> openOn(NavigatorState nav, DayStore store) {
     final f = FocusSession.current;
     if (!f.running) {
       if (!f.started) {
@@ -31,7 +36,7 @@ class StudyScreen extends StatefulWidget {
       }
       f.start(store);
     }
-    return Navigator.of(context, rootNavigator: true).push<void>(
+    return nav.push<void>(
       MaterialPageRoute(
         fullscreenDialog: true,
         builder: (_) => StudyScreen(store: store),
@@ -55,11 +60,13 @@ class _StudyScreenState extends State<StudyScreen> {
 
   /// The session that ended while this view was open, for the summary.
   ({int minutes, String label, int left, bool quit})? _done;
-  late bool _wasStarted = _f.started;
+  /// Read when the view opens: the session was started just before.
+  late bool _wasStarted;
 
   @override
   void initState() {
     super.initState();
+    _wasStarted = _f.started;
     _f.addListener(_changed);
     StudyGuard.awake(true);
     _checkLock();
@@ -523,6 +530,23 @@ class _Summary extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(text, textAlign: TextAlign.center, style: t.bodyLarge),
+          if (FocusSession.current.lastTogether &&
+              !done.quit &&
+              done.minutes > 0) ...[
+            const SizedBox(height: 8),
+            Text(
+              tr(
+                'You studied together with your friends. High five!',
+                '你和朋友们一起学完啦，击个掌！',
+              ),
+              key: const Key('together-done'),
+              textAlign: TextAlign.center,
+              style: t.bodyLarge?.copyWith(
+                color: context.green,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
           if (locked) ...[
             const SizedBox(height: 8),
             Text(

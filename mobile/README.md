@@ -61,6 +61,12 @@ left, and a list of recent sessions. Blocking other apps by name, as Opal
 does, needs Apple's Screen Time permission (the Family Controls entitlement),
 which Apple has to approve for TestFlight or the App Store.
 
+**Study together** is for friends sitting side by side. One of them picks a
+length and makes a 4-digit code; the others type it in, and every timer
+starts at the same minute, a minute or two later. The code only says when to
+start and for how long, and each phone's clock is already right, so nothing
+goes online and nobody needs an account.
+
 The app follows the phone's language and light or dark mode until you pick
 others in Me.
 

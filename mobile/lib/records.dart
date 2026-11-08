@@ -12,6 +12,7 @@ import 'prefs.dart';
 import 'study.dart';
 import 'study_screen.dart';
 import 'theme.dart';
+import 'together.dart';
 
 /// Records (IMG_6782), opened by swiping in from the right on Home:
 /// Timeline, Focus and Notes.
@@ -412,6 +413,12 @@ class FocusSession extends ChangeNotifier {
   /// The session that finished last, for the study view's summary.
   ({int minutes, String label, int left, bool quit})? last;
 
+  /// Started from Study together, in step with friends' timers.
+  bool together = false;
+
+  /// Whether the session that finished last was a shared one.
+  bool lastTogether = false;
+
   Duration _left = const Duration(minutes: 25);
   Duration _counted = Duration.zero;
   DateTime? _endsAt;
@@ -604,6 +611,8 @@ class FocusSession extends ChangeNotifier {
         : (early ? elapsed.inMinutes : length);
     final name = label;
     final times = leftCount;
+    lastTogether = together;
+    together = false;
     _end?.cancel();
     _endsAt = null;
     _since = null;
@@ -924,6 +933,21 @@ class _FocusTimerState extends State<FocusTimer> {
               ],
             ],
           ),
+          if (!_f.started) ...[
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                key: const Key('together-open'),
+                onPressed: () => showTogether(context, widget.store),
+                icon: const Icon(Icons.groups_outlined),
+                label: Text(tr('Study together', '一起学习')),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size.fromHeight(48),
+                ),
+              ),
+            ),
+          ],
           const SizedBox(height: 16),
           Text(
             tr('Focused today: $today min', '今天已专注 $today 分钟'),

@@ -28,6 +28,7 @@ import 'package:spendsnap/study.dart';
 import 'package:spendsnap/study_screen.dart';
 import 'package:spendsnap/summary.dart';
 import 'package:spendsnap/theme.dart';
+import 'package:spendsnap/together.dart';
 import 'package:spendsnap/week_card.dart';
 
 class _NoReader implements ReceiptReader {
@@ -180,6 +181,20 @@ final screens = <String, Opener>{
     await t.pump();
     await FocusSession.current.finish(quit: true);
   },
+  'Study together': (t, c, s, l) => _sheet(c, (_) => TogetherSheet(store: s)),
+  'Study together code': (t, c, s, l) async {
+    await _together(t, c, s, const Key('together-make'));
+  },
+  'Study together join': (t, c, s, l) async {
+    await _together(t, c, s, const Key('together-join'));
+    // A code that started a few minutes ago shows the longest message.
+    final past = togetherStart(DateTime.now())
+        .subtract(const Duration(minutes: 5));
+    await t.enterText(
+      find.byKey(const Key('together-code')),
+      togetherCode(past, 25),
+    );
+  },
   'Guided Access steps': (t, c, s, l) => _sheet(c, (_) => const LockHelp()),
   'Chat': (t, c, s, l) async {
     await Prefs.current.setChatOn(true);
@@ -277,6 +292,22 @@ Future<void> _sheet(
   bool tall = false,
 }) async {
   showTinySheet<void>(c, b, tall: tall);
+}
+
+/// Opens Study together and taps [button] on it.
+Future<void> _together(
+  WidgetTester t,
+  BuildContext c,
+  DayStore s,
+  Key button,
+) async {
+  showTinySheet<void>(c, (_) => TogetherSheet(store: s));
+  await t.pump();
+  await t.pump(const Duration(milliseconds: 400));
+  await t.ensureVisible(find.byKey(button));
+  await t.pump();
+  await t.tap(find.byKey(button));
+  await t.pump();
 }
 
 typedef Opener = Future<void> Function(
