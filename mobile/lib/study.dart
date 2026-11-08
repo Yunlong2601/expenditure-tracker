@@ -43,11 +43,25 @@ const studyGrace = Duration(seconds: 15);
 
 /// The subjects on the Focus page. They are saved by these keys; a session
 /// for a task is saved with the task's title instead.
-const studySubjects = ['study', 'homework', 'reading', 'revision'];
+/// What a focus session can be for: school subjects first, then the rest.
+const studySubjects = [
+  'study',
+  'maths',
+  'english',
+  'science',
+  'chinese',
+  'homework',
+  'reading',
+  'revision',
+];
 
 /// The name to show for a session's subject or task.
 String subjectLabel(String? key) => switch (key) {
   'study' => tr('Study', '学习'),
+  'maths' => tr('Maths', '数学'),
+  'english' => tr('English', '英语'),
+  'science' => tr('Science', '科学'),
+  'chinese' => tr('Chinese', '华文'),
   'homework' => tr('Homework', '作业'),
   'reading' => tr('Reading', '阅读'),
   'revision' => tr('Revision', '复习'),

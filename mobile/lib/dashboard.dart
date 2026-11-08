@@ -1281,7 +1281,4 @@ class _Chevron extends StatelessWidget {
 }
 
 /// The soft fill of a calendar day, darker at night.
-Color _cell(BuildContext context) =>
-    Theme.of(context).brightness == Brightness.dark
-    ? const Color(0xFF30312C)
-    : Palette.sand;
+Color _cell(BuildContext context) => context.sand;

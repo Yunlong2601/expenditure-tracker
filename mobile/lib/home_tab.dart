@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import 'companion.dart';
 import 'day.dart';
+import 'exam.dart';
 import 'feel.dart';
 import 'kitty.dart';
 import 'onboarding.dart';
@@ -28,10 +29,14 @@ class HomeTab extends StatefulWidget {
     required this.onChat,
     required this.onRecords,
     this.onExpense,
+    this.onFocus,
   });
   final DayStore store;
   final VoidCallback onChat, onRecords;
   final VoidCallback? onExpense;
+
+  /// Opens the focus timer, from the exam card.
+  final VoidCallback? onFocus;
 
   @override
   State<HomeTab> createState() => _HomeTabState();
@@ -148,7 +153,9 @@ class _HomeTabState extends State<HomeTab> {
     final shown = _shown;
     final list = _s.tasksOn(shown);
     final isToday = sameDay(shown, today);
-    final countdowns = _s.upcoming().take(3).toList();
+    // In exam season the exam has its own card, so its chip would say it twice.
+    final exam = _s.examSoon();
+    final countdowns = _s.upcoming().where((c) => c != exam).take(3).toList();
     final w = MediaQuery.sizeOf(context).width;
 
     return GestureDetector(
@@ -170,9 +177,11 @@ class _HomeTabState extends State<HomeTab> {
             key: const Key('home-list'),
             padding: EdgeInsets.zero,
             children: [
+              // Calm has a shorter room and a smaller cat, so the list
+              // comes up sooner.
               RoomScene(
-                height: 300 + MediaQuery.paddingOf(context).top,
-                catSize: 160,
+                height: (context.calm ? 250 : 300) + MediaQuery.paddingOf(context).top,
+                catSize: context.calm ? 128 : 160,
                 items: _s.room,
                 outfit: _s.outfit,
                 child: Positioned(
@@ -216,6 +225,15 @@ class _HomeTabState extends State<HomeTab> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // In exam season, the exam comes first.
+                      if (exam != null) ...[
+                        ExamCard(
+                          store: _s,
+                          exam: exam,
+                          onStudy: widget.onFocus ?? widget.onRecords,
+                        ),
+                        const SizedBox(height: 16),
+                      ],
                       // The streak, the paws that fill the room above,
                       // and the next big days, on one line.
                       ChipRow(
@@ -1444,6 +1462,8 @@ Future<void> editCountdown(
   DateTime? date = c?.date;
   var yearly = c?.yearly ?? false;
   var remind = c?.remind ?? true;
+  // Guessed from the name until she flips the switch herself.
+  bool? exam = c?.exam;
   final today = dayOf(DateTime.now());
   final result = await showDialog<String>(
     context: context,
@@ -1466,6 +1486,7 @@ Future<void> editCountdown(
                   decoration: InputDecoration(
                     hintText: tr('Exams, a trip, a birthday…', '考试、旅行、生日……'),
                   ),
+                  onChanged: (_) => set(() {}),
                 ),
                 const SizedBox(height: 12),
                 OutlinedButton.icon(
@@ -1499,6 +1520,14 @@ Future<void> editCountdown(
                   subtitle: Text(tr('Like a birthday', '比如生日')),
                   value: yearly,
                   onChanged: (v) => set(() => yearly = v),
+                ),
+                SwitchListTile(
+                  key: const Key('countdown-exam'),
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(tr('It’s an exam', '这是考试')),
+                  subtitle: Text(tr('Home helps you get ready in the last 30 days', '最后 30 天，首页会帮你备考')),
+                  value: exam ?? looksLikeExam(name.text),
+                  onChanged: (v) => set(() => exam = v),
                 ),
                 SwitchListTile(
                   key: const Key('countdown-remind'),
@@ -1540,13 +1569,14 @@ Future<void> editCountdown(
   if (result != 'save' || name.text.trim().isEmpty) return;
   final day = date ?? today.add(const Duration(days: 7));
   if (c == null) {
-    await s.addCountdown(name.text.trim(), day, yearly: yearly, remind: remind);
+    await s.addCountdown(name.text.trim(), day, yearly: yearly, remind: remind, exam: exam);
   } else {
     c
       ..title = name.text.trim()
       ..date = day
       ..yearly = yearly
-      ..remind = remind;
+      ..remind = remind
+      ..exam = exam ?? looksLikeExam(name.text.trim());
     await s.save();
   }
   Feel.logged();

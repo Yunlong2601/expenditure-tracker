@@ -23,17 +23,55 @@ class Palette {
   static const lilac = Color(0xFFECE6F6);
 }
 
-/// Colours that change between light and dark mode.
+/// The app's two looks: Cosy (cream and pastel, a busy room) and Calm
+/// (deeper colours, a plainer room and a smaller cat) for older students
+/// who find Cosy too young.
+class TinyLook extends ThemeExtension<TinyLook> {
+  const TinyLook({this.calm = false});
+  final bool calm;
+
+  @override
+  TinyLook copyWith({bool? calm}) => TinyLook(calm: calm ?? this.calm);
+
+  @override
+  TinyLook lerp(TinyLook? other, double t) => t < 0.5 ? this : (other ?? this);
+}
+
+/// Calm's colours, light and dark. Each pair keeps text at 4.5:1.
+class CalmPalette {
+  CalmPalette._();
+  static const teal = Color(0xFF2E6B5E);
+  static const tealNight = Color(0xFF8FCBBB);
+  static const surface = Color(0xFFF5F6F4);
+  static const surfaceNight = Color(0xFF17191B);
+  static const card = Color(0xFFFFFFFF);
+  static const cardNight = Color(0xFF222527);
+  static const soft = Color(0xFFDDEBE6);
+  static const softNight = Color(0xFF1F3631);
+  static const sand = Color(0xFFECEDEA);
+  static const sandNight = Color(0xFF2A2E31);
+  static const muted = Color(0xFF5F6368);
+  static const mutedNight = Color(0xFFA0A4A8);
+}
+
+/// Colours that change between light and dark mode, and Cosy and Calm.
 extension TinyColors on BuildContext {
   bool get _dark => Theme.of(this).brightness == Brightness.dark;
 
+  /// The Calm look is on.
+  bool get calm => Theme.of(this).extension<TinyLook>()?.calm ?? false;
+
   /// Grey for quieter text. Light mode's is dark enough to read on sand
   /// (4.5:1), dark mode's light enough to read on the dark cards.
-  Color get muted => _dark ? const Color(0xFFA29E96) : const Color(0xFF6B6861);
+  Color get muted => calm
+      ? (_dark ? CalmPalette.mutedNight : CalmPalette.muted)
+      : (_dark ? const Color(0xFFA29E96) : const Color(0xFF6B6861));
 
   /// The soft box behind grouped rows; a dark one at night, so light text
   /// stays readable on it.
-  Color get sand => _dark ? const Color(0xFF30312C) : Palette.sand;
+  Color get sand => calm
+      ? (_dark ? CalmPalette.sandNight : CalmPalette.sand)
+      : (_dark ? const Color(0xFF30312C) : Palette.sand);
 
   /// The app's green for words and icons: the lighter one at night, since
   /// [Palette.sage] is too dark to read on the dark cards.
@@ -41,7 +79,9 @@ extension TinyColors on BuildContext {
 
   /// The soft green behind a picked day or a finished step; a deep green
   /// at night, so the green words on it stay readable.
-  Color get greenSoft => _dark ? const Color(0xFF2F3A2C) : Palette.sageSoft;
+  Color get greenSoft => calm
+      ? (_dark ? CalmPalette.softNight : CalmPalette.soft)
+      : (_dark ? const Color(0xFF2F3A2C) : Palette.sageSoft);
 }
 
 /// True when the phone's text is at 150% or more, where a row that puts a
@@ -49,33 +89,48 @@ extension TinyColors on BuildContext {
 bool bigText(BuildContext context) =>
     MediaQuery.textScalerOf(context).scale(20) >= 30;
 
-ThemeData tinyTheme(Brightness b) {
+ThemeData tinyTheme(Brightness b, {bool calm = false}) {
   final dark = b == Brightness.dark;
   final cs = ColorScheme.fromSeed(
-    seedColor: Palette.sage,
+    seedColor: calm ? CalmPalette.teal : Palette.sage,
     brightness: b,
-    primary: dark ? const Color(0xFF9CC293) : Palette.sage,
-    surface: dark ? const Color(0xFF1E1F1C) : Palette.cream,
+    primary: calm
+        ? (dark ? CalmPalette.tealNight : CalmPalette.teal)
+        : (dark ? const Color(0xFF9CC293) : Palette.sage),
+    surface: calm
+        ? (dark ? CalmPalette.surfaceNight : CalmPalette.surface)
+        : (dark ? const Color(0xFF1E1F1C) : Palette.cream),
   );
   ButtonStyle flash(Color c) =>
       ButtonStyle(overlayColor: WidgetStateProperty.resolveWith((s) => s.contains(WidgetState.pressed) ? c : null));
   final press = cs.primary.withValues(alpha: 0.18);
-  final muted = dark ? const Color(0xFFA29E96) : const Color(0xFF6B6861);
+  final muted = calm
+      ? (dark ? CalmPalette.mutedNight : CalmPalette.muted)
+      : (dark ? const Color(0xFFA29E96) : const Color(0xFF6B6861));
+  final soft = calm
+      ? (dark ? CalmPalette.softNight : CalmPalette.soft)
+      : (dark ? const Color(0xFF2F3A2C) : Palette.sageSoft);
+  final card = calm
+      ? (dark ? CalmPalette.cardNight : CalmPalette.card)
+      : (dark ? const Color(0xFF2A2B27) : Palette.paper);
   final base = ThemeData(
     colorScheme: cs,
     useMaterial3: true,
+    extensions: [TinyLook(calm: calm)],
     scaffoldBackgroundColor: cs.surface,
     splashColor: press,
     highlightColor: cs.primary.withValues(alpha: 0.08),
     appBarTheme: AppBarTheme(backgroundColor: cs.surface, surfaceTintColor: Colors.transparent, centerTitle: false),
     cardTheme: CardThemeData(
-      color: dark ? const Color(0xFF2A2B27) : Palette.paper,
+      color: card,
       elevation: 0,
       margin: EdgeInsets.zero,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
     ),
     bottomSheetTheme: BottomSheetThemeData(
-      backgroundColor: dark ? const Color(0xFF242521) : Palette.paper,
+      backgroundColor: calm
+          ? (dark ? const Color(0xFF1E2123) : CalmPalette.card)
+          : (dark ? const Color(0xFF242521) : Palette.paper),
       showDragHandle: true,
       dragHandleColor: dark ? const Color(0xFF4A4A44) : const Color(0xFFE6E1D8),
       dragHandleSize: const Size(36, 4),
@@ -85,7 +140,7 @@ ThemeData tinyTheme(Brightness b) {
     // a green label on the open tab.
     navigationBarTheme: NavigationBarThemeData(
       backgroundColor: Colors.transparent,
-      indicatorColor: dark ? const Color(0xFF2F3A2C) : Palette.sageSoft,
+      indicatorColor: soft,
       surfaceTintColor: Colors.transparent,
       elevation: 0,
       height: 70,
@@ -117,7 +172,7 @@ ThemeData tinyTheme(Brightness b) {
       backButtonIconBuilder: (_) => const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
     ),
     chipTheme: ChipThemeData(
-      backgroundColor: dark ? const Color(0xFF2F3A2C) : Palette.sageSoft,
+      backgroundColor: soft,
       side: BorderSide.none,
       shape: const StadiumBorder(),
       labelStyle: TextStyle(color: cs.primary, fontWeight: FontWeight.w600),

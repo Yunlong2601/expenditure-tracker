@@ -180,6 +180,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
               store: widget.store,
               onChat: _chat,
               onRecords: _records,
+              onFocus: () => _records(tab: 1),
               onExpense: _money,
             ),
             DashboardTab(

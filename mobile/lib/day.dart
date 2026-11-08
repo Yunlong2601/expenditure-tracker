@@ -334,6 +334,16 @@ const restDays = 2;
 
 /// A date to count down to, or, once it has passed, to count the days since.
 /// A yearly one, like a birthday, counts down to its next time round.
+/// Whether a countdown's name sounds like an exam: PSLE, a test, the
+/// mid-year or end-of-year exams, 考试, 期中 or 期末.
+bool looksLikeExam(String title) => RegExp(
+  r'exam|test|quiz|psle|\bsa ?[12]\b|\bwa ?[1-3]\b|\b(eoy|mye|eye)\b|mid-?year|end-?of-?year|o.?level|n.?level|考|测验|测试|期中|期末',
+  caseSensitive: false,
+).hasMatch(title);
+
+/// Days before an exam that Home leads with it.
+const examSeasonDays = 30;
+
 class Countdown {
   Countdown({
     String? id,
@@ -341,10 +351,15 @@ class Countdown {
     required this.date,
     this.yearly = false,
     this.remind = true,
-  }) : id = id ?? _id();
+    bool? exam,
+  }) : id = id ?? _id(),
+       exam = exam ?? looksLikeExam(title);
   final String id;
   String title;
   DateTime date;
+
+  /// An exam: Home helps get ready for it in the last [examSeasonDays].
+  bool exam;
 
   /// Comes round every year on the same day, like a birthday.
   bool yearly;
@@ -386,6 +401,7 @@ class Countdown {
     date: DateTime.parse(j['date'] as String),
     yearly: j['yearly'] == true,
     remind: j['remind'] != false,
+    exam: j['exam'] as bool?,
   );
   Map<String, dynamic> toJson() => {
     'id': id,
@@ -393,6 +409,7 @@ class Countdown {
     'date': dayOf(date).toIso8601String(),
     if (yearly) 'yearly': true,
     if (!remind) 'remind': false,
+    'exam': exam,
   };
 }
 
@@ -880,8 +897,9 @@ class DayStore extends ChangeNotifier {
     DateTime date, {
     bool yearly = false,
     bool remind = true,
+    bool? exam,
   }) async {
-    final c = Countdown(title: title, date: date, yearly: yearly, remind: remind);
+    final c = Countdown(title: title, date: date, yearly: yearly, remind: remind, exam: exam);
     countdowns.add(c);
     await save();
     return c;
@@ -896,6 +914,23 @@ class DayStore extends ChangeNotifier {
   List<Countdown> past([DateTime? now]) =>
       countdowns.where((c) => c.isPast(now)).toList()
         ..sort((a, b) => b.date.compareTo(a.date));
+
+  /// The next exam, if it's [examSeasonDays] away or less.
+  Countdown? examSoon([DateTime? now]) => upcoming(now)
+      .where((c) => c.exam && c.daysLeft(now) <= examSeasonDays)
+      .firstOrNull;
+
+  /// Minutes of finished focus by subject (or task) in the seven days that
+  /// end on [day], most first.
+  List<MapEntry<String, int>> focusBySubject(DateTime day) {
+    final by = <String, int>{};
+    for (var i = 0; i < 7; i++) {
+      for (final e in focusOn(day.subtract(Duration(days: i)))) {
+        by.update(e.kind ?? '', (m) => m + (int.tryParse(e.text) ?? 0), ifAbsent: () => int.tryParse(e.text) ?? 0);
+      }
+    }
+    return by.entries.where((e) => e.value > 0).toList()..sort((a, b) => b.value.compareTo(a.value));
+  }
 
   /// Countdowns that land on [day], for the calendar.
   List<Countdown> countdownsOn(DateTime day) =>

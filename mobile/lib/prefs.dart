@@ -117,6 +117,14 @@ class Prefs {
   Future<void> setQuiet(bool v) => _set('quiet', v ? true : null);
 
   /// 'light', 'dark' or null to follow the phone.
+  /// Minutes of study a day to aim for, shown in exam season.
+  int get studyGoal => (_values['study_goal'] as num?)?.toInt() ?? 45;
+  Future<void> setStudyGoal(int v) => _set('study_goal', v == 45 ? null : v);
+
+  /// The Calm look: deeper colours and a simpler room, for older students.
+  bool get calm => _values['look'] == 'calm';
+  Future<void> setCalm(bool v) => _set('look', v ? 'calm' : null);
+
   String? get themeMode => _values['theme'] as String?;
   Future<void> setThemeMode(String? v) => _set('theme', v);
 

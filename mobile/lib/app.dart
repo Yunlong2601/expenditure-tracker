@@ -70,8 +70,8 @@ class _SpendSnapAppState extends State<SpendSnapApp> with WidgetsBindingObserver
     return MaterialApp(
       title: 'Tiny Habits Cat',
       debugShowCheckedModeBanner: false,
-      theme: tinyTheme(Brightness.light),
-      darkTheme: tinyTheme(Brightness.dark),
+      theme: tinyTheme(Brightness.light, calm: Prefs.current.calm),
+      darkTheme: tinyTheme(Brightness.dark, calm: Prefs.current.calm),
       themeMode: switch (Prefs.current.themeMode) {
         'light' => ThemeMode.light,
         'dark' => ThemeMode.dark,

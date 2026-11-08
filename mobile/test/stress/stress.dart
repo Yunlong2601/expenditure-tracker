@@ -225,6 +225,17 @@ final screens = <String, Opener>{
   'Companion': (t, c, s, l) async {
     showCompanion(c);
   },
+  'Exam season': (t, c, s, l) async {
+    // A long exam name 10 days away puts the exam card at the top of Home.
+    await s.addCountdown(
+      'PSLE Science and Maths papers at the school hall',
+      DateTime.now().add(const Duration(days: 10)),
+    );
+    // Kept under the next paw unlock, so no "New for Mochi" note covers it.
+    await s.add(s.focus, '30', kind: 'maths');
+    await s.add(s.focus, '20', kind: 'science');
+    await s.add(s.focus, '10', kind: 'chinese');
+  },
   'Room': (t, c, s, l) async {
     // Everything earned and the crown on, so every card and the room are full.
     s.room.addAll(roomItems.map((r) => r.id));
@@ -289,9 +300,11 @@ Future<void> openScreen(
   required String lang,
   required Ledger ledger,
   required Opener open,
+  bool calm = false,
 }) async {
   Prefs.current = Prefs.memory();
   await Prefs.current.setOnboarded();
+  await Prefs.current.setCalm(calm);
   await Prefs.current.setLanguage(lang);
   // The longest name the cat can be given (20 letters).
   await Prefs.current.setCatName('Mochi Marshmallow II');
@@ -301,8 +314,8 @@ Future<void> openScreen(
   await tester.pumpWidget(
     MaterialApp(
       key: UniqueKey(),
-      theme: tinyTheme(Brightness.light),
-      darkTheme: tinyTheme(Brightness.dark),
+      theme: tinyTheme(Brightness.light, calm: calm),
+      darkTheme: tinyTheme(Brightness.dark, calm: calm),
       home: AppShell(store: s, ledger: ledger),
     ),
   );
@@ -436,9 +449,7 @@ void stressAll({
               final p = st.position;
               final end = p.maxScrollExtent;
               if (!end.isFinite || p.pixels >= end) break;
-              p.jumpTo(
-                (p.pixels + p.viewportDimension * 0.8).clamp(0.0, end),
-              );
+              p.jumpTo((p.pixels + p.viewportDimension * 0.8).clamp(0.0, end));
               await tester.pump();
             }
           }

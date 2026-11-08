@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import 'kitty.dart';
 import 'l10n.dart';
+import 'theme.dart';
 
 /// The cat's face in a soft round frame, as used in headers and chat.
 class CatAvatar extends StatelessWidget {
@@ -156,6 +157,7 @@ class RoomScene extends StatelessWidget {
               weekdayShort(DateTime.now()),
               dark,
               items,
+              calm: context.calm,
             ),
           ),
           Align(
@@ -332,10 +334,13 @@ void paintRoomItem(Canvas canvas, String id, Rect r) {
 const _roomInk = Color(0xFF3B3A36);
 
 class _RoomPainter extends CustomPainter {
-  _RoomPainter(this.weekday, this.dark, this.items);
+  _RoomPainter(this.weekday, this.dark, this.items, {this.calm = false});
   final String weekday;
   final bool dark;
   final Set<String> items;
+
+  /// The Calm look: cool plain walls, no sun and no big plant.
+  final bool calm;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -344,9 +349,12 @@ class _RoomPainter extends CustomPainter {
       ..shader = LinearGradient(
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
-        colors: dark
-            ? [const Color(0xFF2B2A25), const Color(0xFF22221E)]
-            : [const Color(0xFFF7EFE3), const Color(0xFFF4EADB)],
+        colors: switch ((calm, dark)) {
+          (true, true) => [const Color(0xFF22272A), const Color(0xFF1C2023)],
+          (true, false) => [const Color(0xFFEEF1EF), const Color(0xFFE6EAE7)],
+          (false, true) => [const Color(0xFF2B2A25), const Color(0xFF22221E)],
+          (false, false) => [const Color(0xFFF7EFE3), const Color(0xFFF4EADB)],
+        },
       ).createShader(Offset.zero & size);
     canvas.drawRect(Offset.zero & size, wall);
 
@@ -357,15 +365,17 @@ class _RoomPainter extends CustomPainter {
     );
     canvas.drawRRect(
       win,
-      Paint()..color = dark ? const Color(0xFF34465A) : const Color(0xFFCFE3F2),
+      Paint()..color = dark ? const Color(0xFF34465A) : (calm ? const Color(0xFFD9E6EC) : const Color(0xFFCFE3F2)),
     );
-    canvas.drawCircle(
-      Offset(w * 0.18, h * 0.3),
-      w * 0.03,
-      Paint()..color = const Color(0xFFF6CB7A),
-    );
+    if (!calm) {
+      canvas.drawCircle(
+        Offset(w * 0.18, h * 0.3),
+        w * 0.03,
+        Paint()..color = const Color(0xFFF6CB7A),
+      );
+    }
     final frame = Paint()
-      ..color = const Color(0xFFE9DCC8)
+      ..color = calm ? (dark ? const Color(0xFF3A4247) : const Color(0xFFD3D8D5)) : const Color(0xFFE9DCC8)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 6;
     canvas.drawRRect(win, frame);
@@ -405,7 +415,7 @@ class _RoomPainter extends CustomPainter {
     );
 
     // Desk.
-    final desk = Paint()..color = const Color(0xFFE2C49E);
+    final desk = Paint()..color = calm ? const Color(0xFFC8B497) : const Color(0xFFE2C49E);
     canvas.drawRRect(
       RRect.fromRectAndRadius(
         Rect.fromLTWH(w * 0.62, h * 0.62, w * 0.36, h * 0.1),
@@ -415,7 +425,7 @@ class _RoomPainter extends CustomPainter {
     );
     canvas.drawRect(
       Rect.fromLTWH(w * 0.66, h * 0.72, w * 0.28, h * 0.28),
-      desk..color = const Color(0xFFD9B88E),
+      desk..color = calm ? const Color(0xFFB9A585) : const Color(0xFFD9B88E),
     );
 
     // What she has earned: the rug and cushion on the floor first, so the
@@ -424,8 +434,8 @@ class _RoomPainter extends CustomPainter {
       if (items.contains(id)) paintRoomItem(canvas, id, roomItemSpot(id, w, h));
     }
 
-    // Plants: a big leafy one on the left, a small pot on the desk.
-    _plant(canvas, Offset(w * 0.06, h * 0.98), w * 0.2);
+    // Plants: a big leafy one on the left (not in Calm), a small pot on the desk.
+    if (!calm) _plant(canvas, Offset(w * 0.06, h * 0.98), w * 0.2);
     _plant(canvas, Offset(w * 0.9, h * 0.62), w * 0.09);
   }
 
@@ -460,7 +470,10 @@ class _RoomPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_RoomPainter old) =>
-      old.weekday != weekday || old.dark != dark || !setEquals(old.items, items);
+      old.weekday != weekday ||
+      old.dark != dark ||
+      old.calm != calm ||
+      !setEquals(old.items, items);
 }
 
 /// A small tab stuck to the screen edge with a vertical label, like the

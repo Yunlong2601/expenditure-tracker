@@ -117,6 +117,39 @@ class _MeTabState extends State<MeTab> {
     setState(() {});
   }
 
+  /// Cosy or Calm: the same app, in pastel or in deeper, plainer colours.
+  Future<void> _pickLook() async {
+    final v = await showModalBottomSheet<bool>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (final (calm, label, about) in [
+                (false, tr('Cosy', '温馨'), tr('Soft colours and a busy little room', '柔和的颜色，热闹的小房间')),
+                (true, tr('Calm', '简约'), tr('Deeper colours, a plainer room and a smaller cat', '更沉稳的颜色，简洁的房间，小一点的猫')),
+              ])
+                ListTile(
+                  key: Key('look-${calm ? 'calm' : 'cosy'}'),
+                  selected: _p.calm == calm,
+                  title: Text(label),
+                  subtitle: Text(about),
+                  trailing: _p.calm == calm ? const Icon(Icons.check) : null,
+                  onTap: () => Navigator.of(ctx).pop(calm),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (v == null || v == _p.calm) return;
+    await _p.setCalm(v);
+    widget.onThemeChanged();
+    redrawAll();
+    setState(() {});
+  }
+
   Future<void> _editCat() async {
     await showCompanion(context);
     setState(() {});
@@ -319,6 +352,14 @@ class _MeTabState extends State<MeTab> {
               label: tr('Theme', '主题'),
               value: _themeLabel,
               onTap: _pickTheme,
+            ),
+            _Row(
+              key: const Key('row-look'),
+              icon: Icons.auto_awesome_outlined,
+              bg: Palette.lilac,
+              label: tr('Look', '风格'),
+              value: _p.calm ? tr('Calm', '简约') : tr('Cosy', '温馨'),
+              onTap: _pickLook,
             ),
             _Row(
               icon: Icons.menu_book_outlined,
