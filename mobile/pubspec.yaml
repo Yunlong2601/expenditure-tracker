@@ -1,7 +1,7 @@
 name: spendsnap
 description: "Tiny Habits Cat: tasks, calendar, mood, focus, countdowns and expenses with a cat companion, all on the phone."
 publish_to: 'none'
-version: 0.2.0+5
+version: 0.3.0+6
 
 environment:
   sdk: ^3.13.0
