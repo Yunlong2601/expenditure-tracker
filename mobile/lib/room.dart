@@ -9,6 +9,7 @@ import 'kitty.dart';
 import 'l10n.dart';
 import 'prefs.dart';
 import 'theme.dart';
+import 'week_card.dart';
 
 /// The flame's orange.
 const flame = Color(0xFFEB8A5A);
@@ -452,6 +453,16 @@ class StreakSheet extends StatelessWidget {
                     key: const Key('rest-left'),
                     tr('Rest days left this week: $left', '本周还剩 $left 天休息日'),
                     style: t.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 16),
+                  OutlinedButton.icon(
+                    key: const Key('streak-share'),
+                    onPressed: () => showWeekCard(context, store),
+                    icon: const Icon(Icons.ios_share),
+                    label: Text(tr('Share my week', '分享我的一周')),
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size.fromHeight(48),
+                    ),
                   ),
                 ],
               ),

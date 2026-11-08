@@ -194,8 +194,11 @@ class ExamCard extends StatelessWidget {
             ClipRRect(
               borderRadius: BorderRadius.circular(5),
               child: SizedBox(
+                key: const Key('exam-subjects'),
                 height: 10,
                 child: Row(
+                  // Full height: a bare ColoredBox is as small as it may be.
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     for (final (i, MapEntry(value: m)) in subjects.indexed)
                       Expanded(

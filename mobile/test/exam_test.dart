@@ -106,6 +106,15 @@ void main() {
         expect(find.text('PSLE in 12 days'), findsOneWidget);
         expect(find.text('Today: 20 min of 45 min'), findsOneWidget);
         expect(find.text('Maths 20 min'), findsOneWidget);
+        // The subject bar is drawn at its full height.
+        for (final e in find
+            .descendant(
+              of: find.byKey(const Key('exam-subjects')),
+              matching: find.byType(ColoredBox),
+            )
+            .evaluate()) {
+          expect((e.renderObject! as RenderBox).size.height, 10);
+        }
 
         await tester.tap(find.byKey(const Key('exam-goal')));
         await tester.pumpAndSettle();

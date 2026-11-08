@@ -10,6 +10,7 @@ import 'ledger.dart';
 import 'l10n.dart';
 import 'stack_sheet.dart';
 import 'theme.dart';
+import 'week_card.dart';
 
 /// What she spent on [day], like "S$12.40", or null if nothing.
 String? spentOn(Ledger? l, DateTime day) {
@@ -464,6 +465,44 @@ class _DashboardTabState extends State<DashboardTab> {
                     ),
                     Text(
                       tr('How are you feeling right now?', '此刻心情如何？'),
+                      style: t.bodyMedium?.copyWith(color: context.muted),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.chevron_right, color: context.muted),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        // The week as a picture to share.
+        Panel(
+          key: const Key('week-card-open'),
+          onTap: () => showWeekCard(context, _s),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: context.greenSoft,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.auto_awesome_outlined, color: context.green),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      tr('My week as a picture', '把这周做成一张图'),
+                      style: t.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    Text(
+                      tr('Study time, moods and wins, to share', '学习时间、心情和成就，可以分享'),
                       style: t.bodyMedium?.copyWith(color: context.muted),
                     ),
                   ],

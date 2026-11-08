@@ -28,6 +28,7 @@ import 'package:spendsnap/study.dart';
 import 'package:spendsnap/study_screen.dart';
 import 'package:spendsnap/summary.dart';
 import 'package:spendsnap/theme.dart';
+import 'package:spendsnap/week_card.dart';
 
 class _NoReader implements ReceiptReader {
   @override
@@ -244,6 +245,10 @@ final screens = <String, Opener>{
   },
   'Streak': (t, c, s, l) async {
     showStreakSheet(c, s);
+  },
+  'Week picture': (t, c, s, l) async {
+    await s.add(s.focus, '40', kind: 'chinese');
+    await _push(c, WeekCardScreen(store: s));
   },
   'Feedback': (t, c, s, l) => _sheet(c, (_) => const FeedbackSheet()),
   'Money': (t, c, s, l) => _push(c, HomeScreen(ledger: l, reader: _NoReader())),
