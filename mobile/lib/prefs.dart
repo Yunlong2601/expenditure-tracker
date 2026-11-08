@@ -68,10 +68,13 @@ class Prefs {
   String? get goalName => _values['goal_name'] as String?;
   double get goalTarget => (_values['goal_target'] as num?)?.toDouble() ?? 0;
   double get goalSaved => (_values['goal_saved'] as num?)?.toDouble() ?? 0;
-  Future<void> setGoal(String? name, {double target = 0, double saved = 0}) async {
+  /// The goal's picture, an emoji. Guessed from the name when not picked.
+  String? get goalPic => _values['goal_pic'] as String?;
+  Future<void> setGoal(String? name, {double target = 0, double saved = 0, String? pic}) async {
     await _set('goal_name', name);
     await _set('goal_target', name == null ? null : target);
     await _set('goal_saved', name == null ? null : saved);
+    await _set('goal_pic', name == null ? null : pic);
   }
 
   Future<void> addToGoal(double amount) =>

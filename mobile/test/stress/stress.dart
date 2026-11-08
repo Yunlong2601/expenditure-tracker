@@ -247,6 +247,16 @@ final screens = <String, Opener>{
   },
   'Feedback': (t, c, s, l) => _sheet(c, (_) => const FeedbackSheet()),
   'Money': (t, c, s, l) => _push(c, HomeScreen(ledger: l, reader: _NoReader())),
+  'Pocket money jar': (t, c, s, l) async {
+    // A week's pocket money and a long goal name fill both jars.
+    await Prefs.current.setAllowance(80);
+    await Prefs.current.setGoal(
+      'Concert tickets with my best friends',
+      target: 120,
+      saved: 45,
+    );
+    await _push(c, HomeScreen(ledger: l, reader: _NoReader()));
+  },
   'Cash entry': (t, c, s, l) => _sheet(c, (_) => const QuickAddSheet()),
   'Month picture': (t, c, s, l) => _push(c, SummaryScreen(ledger: l)),
   'Settings': (t, c, s, l) => _push(c, SettingsScreen(ledger: l)),

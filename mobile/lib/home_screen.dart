@@ -8,6 +8,7 @@ import 'draft.dart';
 import 'feel.dart';
 import 'format.dart';
 import 'goal.dart';
+import 'jar.dart';
 import 'kitty.dart';
 import 'l10n.dart';
 import 'ledger.dart';
@@ -720,34 +721,30 @@ class _TotalCard extends StatelessWidget {
       final left = budget - spent;
       final used = budget <= 0 ? 1.0 : spent / budget;
       final mood = used > 1 ? CatMood.sad : (used >= 0.8 ? CatMood.worried : CatMood.happy);
-      cat = SizedBox(
-        width: 76,
-        height: 76,
-        child: CustomPaint(
-          key: Key('cat-${mood.name}'),
-          painter: CatPainter(mood: mood, paw: false),
-        ),
+      // The pocket money jar empties as she spends, with the cat on the lid.
+      cat = Jar(
+        key: const Key('money-jar'),
+        fill: budget <= 0 ? 0 : (left / budget).clamp(0.0, 1.0),
+        size: const Size(70, 84),
+        mood: mood,
+        catKey: Key('cat-${mood.name}'),
       );
+      final treats = treatsLeft(left);
       body = [
         Text(left >= 0 ? tr('Left $when', '$when还剩') : tr('Over $when', '$when超支'), style: t.titleMedium?.copyWith(color: on)),
         const SizedBox(height: 4),
         big(left.abs(), 'SGD'),
-        const SizedBox(height: 8),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(8),
-          child: LinearProgressIndicator(
-            value: used.clamp(0.0, 1.0),
-            minHeight: 10,
-            backgroundColor: on.withValues(alpha: 0.15),
-            color: mood == CatMood.happy ? cs.primary : cs.error,
-          ),
-        ),
         const SizedBox(height: 8),
         Text(tr('Spent ${money(spent, 'SGD')} of ${money(budget, 'SGD')}', '已花 ${money(spent, 'SGD')}，共 ${money(budget, 'SGD')}'), style: t.bodyMedium?.copyWith(color: on)),
         if (overview.received('SGD') > 0)
           Text(
             tr('Includes ${money(overview.received('SGD'), 'SGD')} money in', '含收入 ${money(overview.received('SGD'), 'SGD')}'),
             style: t.bodySmall?.copyWith(color: on.withValues(alpha: 0.8)),
+          ),
+        if (treats != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Text(treats, key: const Key('treats-left'), style: t.bodyMedium?.copyWith(color: on)),
           ),
         if (mood != CatMood.happy)
           Padding(
