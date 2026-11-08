@@ -154,7 +154,7 @@ class _WeekCardScreenState extends State<WeekCardScreen> {
       final png = await img.toByteData(format: ui.ImageByteFormat.png);
       final d = _monday;
       final name =
-          'TinyHabitsCat-week-${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}.png';
+          'Purrpose-week-${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}.png';
       if (png != null) ok = await Share.bytes(png.buffer.asUint8List(), name);
     } finally {
       if (mounted) setState(() => _sharing = false);
@@ -431,7 +431,7 @@ class WeekCard extends StatelessWidget {
                     Icon(Icons.pets, size: 16, color: context.green),
                     const SizedBox(width: 6),
                     Text(
-                      'Tiny Habits Cat',
+                      appName,
                       style: t.labelMedium?.copyWith(
                         color: context.muted,
                         fontWeight: FontWeight.w700,

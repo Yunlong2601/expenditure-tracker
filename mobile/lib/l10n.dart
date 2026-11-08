@@ -19,6 +19,10 @@ bool get zh => switch (Prefs.current.language) {
 /// The text in the app's language.
 String tr(String en, String zh_) => zh ? zh_ : en;
 
+/// The app's name: Purrpose in English, 喵学伴 ("cat study buddy") in
+/// Chinese.
+String get appName => tr('Purrpose', '喵学伴');
+
 /// Redraws every screen, open sheets included, after the language changes.
 void redrawAll() {
   void mark(Element e) {

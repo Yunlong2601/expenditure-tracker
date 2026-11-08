@@ -33,7 +33,7 @@ class PickedImage {
   final String name;
 }
 
-/// Tiny Habits Cat. [SpendSnapApp] keeps its old name so tests and the
+/// Purrpose (喵学伴). [SpendSnapApp] keeps its old name so tests and the
 /// iOS project don't need to change.
 class SpendSnapApp extends StatefulWidget {
   const SpendSnapApp({super.key, this.ledgerDir, this.reader, this.picker});
@@ -71,7 +71,7 @@ class _SpendSnapAppState extends State<SpendSnapApp> with WidgetsBindingObserver
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Tiny Habits Cat',
+      title: appName,
       debugShowCheckedModeBanner: false,
       theme: tinyTheme(Brightness.light, calm: Prefs.current.calm),
       darkTheme: tinyTheme(Brightness.dark, calm: Prefs.current.calm),

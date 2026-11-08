@@ -115,7 +115,7 @@ struct TodayView: View {
           Text(done).font(.caption2).foregroundColor(.secondary)
         }
       } else {
-        Text(entry.words?.stale ?? (chinese ? "打开 Tiny Habits Cat 看看今天" : "Open Tiny Habits Cat to see today"))
+        Text(entry.words?.stale ?? (chinese ? "打开喵学伴看看今天" : "Open Purrpose to see today"))
           .font(.subheadline)
           .foregroundColor(.secondary)
         Spacer(minLength: 0)

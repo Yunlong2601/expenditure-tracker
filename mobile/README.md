@@ -1,4 +1,4 @@
-# Spend Snap (iPhone app, Android-ready)
+# Purrpose · 喵学伴 (iPhone app, Android-ready)
 
 An expense tracker for people who don't want to think about it. Everything
 stays on your phone: no account, no server, no internet needed.
@@ -103,7 +103,7 @@ more.
    `Runner/AppDelegate.swift` and `TodayWidget/TodayWidget.swift`.
 4. Plug in your iPhone, then `flutter run --release`.
 5. Touch and hold the Home Screen, tap **Edit > Add Widget**, and pick
-   Tiny Habits Cat.
+   Purrpose (喵学伴 on a phone set to Chinese).
 
 **Option B: TestFlight (US$99/year Apple Developer account).** Lasts 90 days per
 build and installs like a normal app. You can build in the cloud with

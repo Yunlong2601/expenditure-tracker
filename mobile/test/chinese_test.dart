@@ -32,6 +32,13 @@ void main() {
       expect(t.bodyMedium!.height, isNot(1.5));
     });
 
+    test('the app is Purrpose, and 喵学伴 in Chinese', () async {
+      await Prefs.current.setLanguage('en');
+      expect(appName, 'Purrpose');
+      await Prefs.current.setLanguage('zh');
+      expect(appName, '喵学伴');
+    });
+
     test('the app asks for Simplified Chinese by name', () {
       expect(simplifiedChinese.languageCode, 'zh');
       expect(simplifiedChinese.scriptCode, 'Hans');

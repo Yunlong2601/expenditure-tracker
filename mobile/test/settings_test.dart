@@ -207,7 +207,7 @@ void main() {
 
     final call = shared.singleWhere((c) => c.method == 'file');
     final path = call.arguments as String;
-    expect(path, contains('TinyHabitsCat-backup-'));
+    expect(path, contains('Purrpose-backup-'));
     late final Map<String, Object?> data;
     await tester.runAsync(() async {
       data = (jsonDecode(await File(path).readAsString()) as Map)
@@ -270,7 +270,7 @@ void main() {
     await show(tester, ledger: l);
     await tapReal(tester, find.byKey(const Key('restore')));
     expect(
-      find.textContaining("isn't a Tiny Habits Cat backup"),
+      find.textContaining("isn't a Purrpose backup"),
       findsOneWidget,
     );
     expect(l.all, hasLength(1));

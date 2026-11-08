@@ -39,7 +39,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     data['prefs'] = Prefs.current.toJson();
     data['day'] = DayStore.current.toJson();
     final day = DateTime.now().toIso8601String().substring(0, 10);
-    final ok = await Share.bytes(utf8.encode(jsonEncode(data)), 'TinyHabitsCat-backup-$day.json');
+    final ok = await Share.bytes(utf8.encode(jsonEncode(data)), 'Purrpose-backup-$day.json');
     if (ok && mounted) _say(tr('Backed up. Keep that file somewhere safe.', '备份好了。把这个文件放在安全的地方。'));
   }
 
@@ -50,7 +50,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final n = Ledger.backupSize(data);
     if (n == null) {
       Feel.oops();
-      return _say(tr("That file isn't a Tiny Habits Cat backup.", '这不是 Tiny Habits Cat 的备份文件。'));
+      return _say(tr("That file isn't a Purrpose backup.", '这不是喵学伴的备份文件。'));
     }
     final yes = await showDialog<bool>(
       context: context,
@@ -152,7 +152,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   if (!context.mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text(tr('Allow notifications for Tiny Habits Cat in iPhone Settings first.', '请先在 iPhone 设置里允许 Tiny Habits Cat 发通知。')),
+                      content: Text(tr('Allow notifications for Purrpose in iPhone Settings first.', '请先在 iPhone 设置里允许喵学伴发通知。')),
                       action: Remind.settingsAction(notifications: true),
                     ),
                   );

@@ -160,7 +160,7 @@ void main() {
       });
       await t.pumpAndSettle();
       final path = shared.single.arguments as String;
-      expect(path, contains('TinyHabitsCat-week-'));
+      expect(path, contains('Purrpose-week-'));
       late final Uint8List png;
       await t.runAsync(() async => png = await File(path).readAsBytes());
       // PNG width and height, from its header.

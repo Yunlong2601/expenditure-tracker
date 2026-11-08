@@ -405,7 +405,7 @@ class _MeTabState extends State<MeTab> {
               label: tr('About us', '关于我们'),
               onTap: () => showAboutDialog(
                 context: context,
-                applicationName: 'Tiny Habits Cat',
+                applicationName: appName,
                 applicationVersion: '0.2.0',
                 applicationLegalese: CatBrain.current == null
                     ? tr(
@@ -825,7 +825,7 @@ class _FeedbackSheetState extends State<FeedbackSheet> {
       text.trim(),
       '',
       '---',
-      'Tiny Habits Cat 0.2.0 · ${zh ? 'zh' : 'en'} · $os',
+      'Purrpose 0.3.0 · ${zh ? 'zh' : 'en'} · $os',
     ].join('\n');
   }
 

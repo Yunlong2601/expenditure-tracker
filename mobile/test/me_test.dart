@@ -51,7 +51,7 @@ void main() {
     await tester.tap(find.byKey(const Key('sheet-Send')));
     await tester.pumpAndSettle();
     expect(copied, startsWith('Please add a dark cat'));
-    expect(copied, contains('Tiny Habits Cat'));
+    expect(copied, contains('Purrpose 0.3.0'));
     expect(find.text('Copied. Paste it into a message to us.'), findsOneWidget);
     expect(find.byKey(const Key('feedback-field')), findsNothing);
     expect(shares, ['feedback.txt']);

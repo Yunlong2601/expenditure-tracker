@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'l10n.dart';
 
-/// Tiny Habits Cat colours: warm cream paper, sage green and soft ink.
+/// Purrpose colours: warm cream paper, sage green and soft ink.
 class Palette {
   Palette._();
   static const cream = Color(0xFFFAF6EF);

@@ -39,7 +39,7 @@ class _SummaryScreenState extends State<SummaryScreen> {
       final b = _picture.currentContext!.findRenderObject()! as RenderRepaintBoundary;
       final img = await b.toImage(pixelRatio: 3);
       final png = await img.toByteData(format: ui.ImageByteFormat.png);
-      final name = 'TinyHabitsCat-${DateFormat('yyyy-MM').format(_month)}.png';
+      final name = 'Purrpose-${DateFormat('yyyy-MM').format(_month)}.png';
       if (png != null) await Share.bytes(png.buffer.asUint8List(), name);
     } finally {
       if (mounted) setState(() => _sharing = false);
@@ -239,7 +239,7 @@ class _SummaryCard extends StatelessWidget {
             children: [
               paw(on.withValues(alpha: 0.6)),
               const SizedBox(width: 6),
-              Flexible(child: Text('Tiny Habits Cat', style: t.labelLarge?.copyWith(color: on))),
+              Flexible(child: Text(appName, style: t.labelLarge?.copyWith(color: on))),
             ],
           ),
         ],

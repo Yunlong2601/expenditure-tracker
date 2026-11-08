@@ -1,6 +1,6 @@
 # The cat's AI chat (optional, free to start)
 
-Out of the box, the cat in Tiny Habits Cat answers on the phone with short
+Out of the box, the cat in Purrpose answers on the phone with short
 built-in replies. This folder adds an optional real AI chat: a small
 Supabase Edge Function, `cat-chat`, that asks an AI for the cat's reply. If
 the function isn't set up, or can't be reached, the app goes back to the

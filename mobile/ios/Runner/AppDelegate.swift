@@ -6,6 +6,13 @@ import UserNotifications
 import Vision
 import WidgetKit
 
+/// The app's name as the Home Screen shows it, in the phone's language:
+/// Purrpose, or 喵学伴 in Chinese.
+let appTitle =
+  Bundle.main.localizedInfoDictionary?["CFBundleDisplayName"] as? String
+  ?? Bundle.main.infoDictionary?["CFBundleDisplayName"] as? String
+  ?? "Purrpose"
+
 @main
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
   override func application(
@@ -215,7 +222,7 @@ enum Remind {
             at > now, !(day == 0 && skipToday)
           else { continue }
           let content = UNMutableNotificationContent()
-          content.title = "Tiny Habits Cat"
+          content.title = appTitle
           content.body = texts[day % texts.count]
           content.sound = .default
           let when = cal.dateComponents([.year, .month, .day, .hour, .minute], from: at)
@@ -247,7 +254,7 @@ enum Remind {
               let body = item["body"] as? String
             else { continue }
             let content = UNMutableNotificationContent()
-            content.title = "Tiny Habits Cat"
+            content.title = appTitle
             content.body = body
             if item["sound"] as? Bool ?? true { content.sound = .default }
             let at = Date(timeIntervalSince1970: ms / 1000)
@@ -268,7 +275,7 @@ enum Remind {
               let minute = item["minute"] as? Int, let body = item["body"] as? String
             else { continue }
             let content = UNMutableNotificationContent()
-            content.title = "Tiny Habits Cat"
+            content.title = appTitle
             content.body = body
             content.sound = .default
             var when = DateComponents()
@@ -334,7 +341,7 @@ enum Study {
             let body = item["body"] as? String
           else { continue }
           let content = UNMutableNotificationContent()
-          content.title = "Tiny Habits Cat"
+          content.title = appTitle
           content.body = body
           content.sound = .default
           let trigger = UNTimeIntervalNotificationTrigger(timeInterval: max(1, seconds), repeats: false)
