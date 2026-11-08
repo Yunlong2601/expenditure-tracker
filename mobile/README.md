@@ -79,14 +79,25 @@ cat goes back to on-phone replies.
 
 Apple only lets you install apps built on a Mac (or a cloud Mac).
 
-**Option A: your own Mac (free).**
+The Home Screen widget shares today's tasks with the app through an App Group
+(`group.com.shenetic.purrse`), and Apple only allows App Groups on a paid
+Apple Developer account (US$99/year). A free Apple ID can't sign this app any
+more.
+
+**Option A: your own Mac.**
 1. Install Xcode from the Mac App Store and [Flutter](https://docs.flutter.dev/get-started/install/macos).
 2. `cd mobile && flutter pub get`
-3. Open `ios/Runner.xcworkspace` in Xcode, select **Runner > Signing &
-   Capabilities**, tick *Automatically manage signing*, and pick your Apple ID
-   as the team. Change the bundle id if Xcode says it's taken.
+3. Open `ios/Runner.xcworkspace` in Xcode. For both the **Runner** and the
+   **TodayWidgetExtension** targets, open **Signing & Capabilities**, tick
+   *Automatically manage signing* and pick your team. Xcode registers the App
+   Group for you.
+   If Xcode says the bundle id or the App Group is taken, change both: the
+   bundle ids (the widget's must start with the app's), and the group in
+   `Runner/Runner.entitlements`, `TodayWidget/TodayWidget.entitlements`,
+   `Runner/AppDelegate.swift` and `TodayWidget/TodayWidget.swift`.
 4. Plug in your iPhone, then `flutter run --release`.
-   With a free Apple ID the app has to be reinstalled every 7 days.
+5. Touch and hold the Home Screen, tap **Edit > Add Widget**, and pick
+   Tiny Habits Cat.
 
 **Option B: TestFlight (US$99/year Apple Developer account).** Lasts 90 days per
 build and installs like a normal app. You can build in the cloud with

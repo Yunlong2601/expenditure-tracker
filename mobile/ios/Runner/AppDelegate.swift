@@ -4,6 +4,7 @@ import UIKit
 import UniformTypeIdentifiers
 import UserNotifications
 import Vision
+import WidgetKit
 
 @main
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
@@ -24,6 +25,7 @@ import Vision
       Remind.register(messenger: registrar.messenger())
       Share.register(messenger: registrar.messenger())
       Study.register(messenger: registrar.messenger())
+      TodayWidgetBridge.register(messenger: registrar.messenger())
     }
   }
 }
@@ -280,6 +282,22 @@ enum Remind {
       default:
         result(FlutterMethodNotImplemented)
       }
+    }
+  }
+}
+
+/// Hands today's words (lib/today_widget.dart) to the Home Screen widget
+/// through the App Group both share, and asks the widget to redraw.
+enum TodayWidgetBridge {
+  static let appGroup = "group.com.shenetic.purrse"
+
+  static func register(messenger: FlutterBinaryMessenger) {
+    let channel = FlutterMethodChannel(name: "spendsnap/widget", binaryMessenger: messenger)
+    channel.setMethodCallHandler { call, result in
+      guard call.method == "update" else { return result(FlutterMethodNotImplemented) }
+      UserDefaults(suiteName: appGroup)?.set(call.arguments as? String, forKey: "today")
+      WidgetCenter.shared.reloadTimelines(ofKind: "TodayWidget")
+      result(nil)
     }
   }
 }
