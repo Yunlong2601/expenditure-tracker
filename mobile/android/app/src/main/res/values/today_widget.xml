@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="today_widget_name">Today</string>
+    <string name="today_widget_description">Your next three things to do, and your streak</string>
+    <string name="today_widget_open">Open Tiny Habits Cat to see today</string>
+
+    <color name="today_bg">#FFFBF7F0</color>
+    <color name="today_text">#FF2B2B26</color>
+    <color name="today_muted">#FF6B6A62</color>
+    <color name="today_green">#FF3F6B45</color>
+
+    <style name="TodayWidgetTask">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginBottom">3dp</item>
+        <item name="android:ellipsize">end</item>
+        <item name="android:maxLines">1</item>
+        <item name="android:textColor">@color/today_text</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:visibility">gone</item>
+    </style>
+</resources>

@@ -21,6 +21,7 @@ import 'records.dart';
 import 'remind.dart';
 import 'room.dart';
 import 'settings_screen.dart';
+import 'today_widget.dart';
 
 /// The three tabs from the wireframes: Pet, Dashboard and Me.
 class AppShell extends StatefulWidget {
@@ -100,6 +101,8 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     switch (state) {
       case AppLifecycleState.hidden || AppLifecycleState.paused:
         FocusSession.current.appLeft();
+        // A new day may have begun since the last change.
+        TodayWidget.push(widget.store);
       case AppLifecycleState.resumed:
         FocusSession.current.appBack();
       case _:
@@ -107,13 +110,15 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
     }
   }
 
-  /// Task and countdown reminders follow every change, once per batch.
+  /// Task and countdown reminders, and the Home Screen widget, follow
+  /// every change, once per batch.
   void _queueAlerts() {
     if (_alertsQueued) return;
     _alertsQueued = true;
     scheduleMicrotask(() {
       _alertsQueued = false;
       Remind.syncAlerts(widget.store);
+      TodayWidget.push(widget.store);
     });
   }
 
@@ -195,6 +200,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
               onLanguageChanged: () {
                 final l = widget.ledger;
                 if (l != null) Remind.sync(l);
+                TodayWidget.push(widget.store);
               },
             ),
           ],
