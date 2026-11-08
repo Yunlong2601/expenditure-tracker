@@ -76,15 +76,6 @@ class _HomeTabState extends State<HomeTab> {
     );
   }
 
-  String _greeting() {
-    final h = DateTime.now().hour;
-    final name = Prefs.current.catName;
-    if (h < 11) return tr('Good morning! $name is ready for today.', '早上好！$name 准备好陪你开始今天啦。');
-    if (h < 17) return tr('Hi again. One small thing at a time.', '又见面啦，一次做好一件小事。');
-    if (h < 22) return tr('Evening. How did today go?', '晚上好，今天过得怎么样？');
-    return tr('It’s late. $name says rest is a task too.', '很晚啦，$name 说休息也是一件要做的事。');
-  }
-
   Future<void> _addTask() async {
     Feel.tap();
     await showTinySheet<void>(
@@ -184,25 +175,21 @@ class _HomeTabState extends State<HomeTab> {
                 catSize: context.calm ? 128 : 160,
                 items: _s.room,
                 outfit: _s.outfit,
+                // Mochi's hello, in a speech bubble over the window. It
+                // stops short of the wall calendar, so today's date always
+                // shows, and stays short enough for the smallest phone.
                 child: Positioned(
                   left: 20,
-                  right: 20,
+                  right: w * 0.34 + 8,
                   top: MediaQuery.paddingOf(context).top + 12,
-                  // On a soft label of its own, so the words never sit on
-                  // the window or the wall behind.
                   child: Align(
                     alignment: AlignmentDirectional.centerStart,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 7,
-                      ),
-                      decoration: BoxDecoration(
-                        color: cs.surface.withValues(alpha: 0.88),
-                        borderRadius: BorderRadius.circular(16),
-                      ),
+                    child: SpeechBubble(
+                      key: const Key('home-greeting'),
                       child: Text(
-                        _greeting(),
+                        homeGreeting(DateTime.now()),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                         style: t.titleMedium?.copyWith(
                           color: cs.onSurface,
                           fontWeight: FontWeight.w600,
@@ -1581,4 +1568,62 @@ Future<void> editCountdown(
   }
   Feel.logged();
   if (remind) await Remind.ask();
+}
+
+/// What Mochi says at the top of Home at [now]: a few words, so the bubble
+/// never covers the date on the wall.
+String homeGreeting(DateTime now) {
+  final h = now.hour;
+  if (h < 5 || h >= 22) return tr('Rest is a task too.', '休息也很重要哦。');
+  if (h < 11) return tr('Good morning!', '早上好！');
+  if (h < 17) return tr('You’ve got this!', '加油，你可以的！');
+  return tr('How was today?', '今天过得好吗？');
+}
+
+/// Mochi's words, in a bubble whose tail points down towards her.
+class SpeechBubble extends StatelessWidget {
+  const SpeechBubble({super.key, required this.child});
+  final Widget child;
+
+  static const _tail = 8.0;
+
+  @override
+  Widget build(BuildContext context) => CustomPaint(
+    painter: _BubblePainter(
+      Theme.of(context).colorScheme.surface.withValues(alpha: 0.94),
+    ),
+    child: Padding(
+      padding: const EdgeInsets.fromLTRB(14, 7, 14, 7 + _tail),
+      child: child,
+    ),
+  );
+}
+
+class _BubblePainter extends CustomPainter {
+  _BubblePainter(this.color);
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const tail = SpeechBubble._tail;
+    final fill = Paint()..color = color;
+    final body = Rect.fromLTWH(0, 0, size.width, size.height - tail);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(body, const Radius.circular(16)),
+      fill,
+    );
+    // Near the right end, leaning towards the cat below.
+    final x = size.width - 30;
+    canvas.drawPath(
+      Path()
+        ..moveTo(x - 8, body.bottom - 1)
+        ..lineTo(x + 8, body.bottom - 1)
+        ..lineTo(x + 13, size.height)
+        ..close(),
+      fill,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_BubblePainter old) => old.color != color;
 }

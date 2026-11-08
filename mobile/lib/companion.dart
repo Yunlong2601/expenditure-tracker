@@ -124,8 +124,8 @@ class _CatFigureState extends State<CatFigure> with TickerProviderStateMixin {
   );
 }
 
-/// A cozy little room drawn behind the cat: a window, a plant, a calendar
-/// frame showing the weekday, and a desk. Drawn for this app.
+/// A cozy little room drawn behind the cat: a window, a plant, a wall
+/// calendar showing today's date, and a desk. Drawn for this app.
 class RoomScene extends StatelessWidget {
   const RoomScene({
     super.key,
@@ -155,6 +155,7 @@ class RoomScene extends StatelessWidget {
           CustomPaint(
             painter: _RoomPainter(
               weekdayShort(DateTime.now()),
+              DateTime.now().day,
               dark,
               items,
               calm: context.calm,
@@ -334,8 +335,11 @@ void paintRoomItem(Canvas canvas, String id, Rect r) {
 const _roomInk = Color(0xFF3B3A36);
 
 class _RoomPainter extends CustomPainter {
-  _RoomPainter(this.weekday, this.dark, this.items, {this.calm = false});
+  _RoomPainter(this.weekday, this.date, this.dark, this.items, {this.calm = false});
   final String weekday;
+
+  /// Today's day of the month, big on the wall calendar.
+  final int date;
   final bool dark;
   final Set<String> items;
 
@@ -385,12 +389,19 @@ class _RoomPainter extends CustomPainter {
       frame..strokeWidth = 4,
     );
 
-    // Calendar frame with the weekday.
-    final cal = RRect.fromRectAndRadius(
-      Rect.fromLTWH(w * 0.7, h * 0.1, w * 0.16, h * 0.2),
-      const Radius.circular(6),
-    );
+    // A wall calendar with today's date: the weekday on a red strip and
+    // the day big underneath, readable at a glance.
+    final calRect = Rect.fromLTWH(w * 0.7, h * 0.1, w * 0.16, h * 0.2);
+    final cal = RRect.fromRectAndRadius(calRect, const Radius.circular(6));
     canvas.drawRRect(cal, Paint()..color = const Color(0xFFFFF8EE));
+    final strip = calRect.height * 0.32;
+    canvas.save();
+    canvas.clipRRect(cal);
+    canvas.drawRect(
+      Rect.fromLTWH(calRect.left, calRect.top, calRect.width, strip),
+      Paint()..color = const Color(0xFFD9645A),
+    );
+    canvas.restore();
     canvas.drawRRect(
       cal,
       Paint()
@@ -398,21 +409,26 @@ class _RoomPainter extends CustomPainter {
         ..style = PaintingStyle.stroke
         ..strokeWidth = 3,
     );
-    final tp = TextPainter(
-      text: TextSpan(
-        text: weekday,
-        style: const TextStyle(
-          color: Color(0xFF6B5A44),
-          fontSize: 13,
-          fontWeight: FontWeight.w600,
+    void centred(String text, double size, Color color, double top, double bottom) {
+      final tp = TextPainter(
+        text: TextSpan(
+          text: text,
+          style: TextStyle(color: color, fontSize: size, fontWeight: FontWeight.w800, height: 1),
         ),
-      ),
-      textDirection: TextDirection.ltr,
-    )..layout();
-    tp.paint(
-      canvas,
-      Offset(cal.center.dx - tp.width / 2, cal.center.dy - tp.height / 2),
-    );
+        textDirection: TextDirection.ltr,
+        maxLines: 1,
+      )..layout();
+      // Shrinks to fit a narrow calendar rather than spilling over its edge.
+      final fit = math.min(1.0, (calRect.width - 8) / math.max(1, tp.width));
+      canvas.save();
+      canvas.translate(calRect.center.dx, (top + bottom) / 2);
+      canvas.scale(fit);
+      tp.paint(canvas, Offset(-tp.width / 2, -tp.height / 2));
+      canvas.restore();
+    }
+
+    centred(weekday, math.min(12, strip * 0.62), Colors.white, calRect.top, calRect.top + strip);
+    centred('$date', math.min(30, (calRect.height - strip) * 0.62), const Color(0xFF5A4A36), calRect.top + strip, calRect.bottom);
 
     // Desk.
     final desk = Paint()..color = calm ? const Color(0xFFC8B497) : const Color(0xFFE2C49E);
@@ -471,6 +487,7 @@ class _RoomPainter extends CustomPainter {
   @override
   bool shouldRepaint(_RoomPainter old) =>
       old.weekday != weekday ||
+      old.date != date ||
       old.dark != dark ||
       old.calm != calm ||
       !setEquals(old.items, items);
