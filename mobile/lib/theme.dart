@@ -199,9 +199,16 @@ ThemeData tinyTheme(Brightness b, {bool calm = false}) {
 /// Type as on iPhone: no extra space between letters (Material's defaults
 /// spread them out), big headings a touch tighter, and the small sizes one
 /// step up so grey hints stay easy to read.
+///
+/// Chinese is set the way Chinese apps set it: characters never pulled
+/// closer together, and body text with a little more room between lines.
 TextTheme _type(TextTheme t) {
-  TextStyle? s(TextStyle? x, {double? size, double spacing = 0}) =>
-      x?.copyWith(letterSpacing: spacing, fontSize: size ?? x.fontSize);
+  TextStyle? s(TextStyle? x, {double? size, double spacing = 0}) => x?.copyWith(
+    letterSpacing: zh ? 0 : spacing,
+    fontSize: size ?? x.fontSize,
+  );
+  TextStyle? body(TextStyle? x, {double? size}) =>
+      zh ? s(x, size: size)?.copyWith(height: 1.5) : s(x, size: size);
   return t.copyWith(
     displayLarge: s(t.displayLarge, spacing: -0.5),
     displayMedium: s(t.displayMedium, spacing: -0.5),
@@ -212,9 +219,9 @@ TextTheme _type(TextTheme t) {
     titleLarge: s(t.titleLarge, spacing: -0.2),
     titleMedium: s(t.titleMedium),
     titleSmall: s(t.titleSmall),
-    bodyLarge: s(t.bodyLarge),
-    bodyMedium: s(t.bodyMedium, size: 15),
-    bodySmall: s(t.bodySmall, size: 13),
+    bodyLarge: body(t.bodyLarge),
+    bodyMedium: body(t.bodyMedium, size: 15),
+    bodySmall: body(t.bodySmall, size: 13),
     labelLarge: s(t.labelLarge),
     labelMedium: s(t.labelMedium, size: 13),
     labelSmall: s(t.labelSmall, size: 12),

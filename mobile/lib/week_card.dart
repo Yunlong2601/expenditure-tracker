@@ -91,7 +91,7 @@ class WeekStats {
     if (activeDays >= 5) {
       return tr(
         'Something done on $activeDays days. Great rhythm!',
-        '这周有 $activeDays 天都有完成，节奏很棒！',
+        '这周 $activeDays 天都在自律打卡，节奏很棒！',
       );
     }
     return tr('Every little bit counts. Keep going!', '每一点努力都算数，继续加油！');
@@ -359,7 +359,7 @@ class WeekCard extends StatelessWidget {
                     const SizedBox(width: 10),
                     _Tile(
                       value: '${stats.activeDays} / 7',
-                      label: tr('days active', '天有行动'),
+                      label: tr('days active', '天打卡'),
                       icon: Icons.event_available_outlined,
                       color: subjectColors[2],
                     ),

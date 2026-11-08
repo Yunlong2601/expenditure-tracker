@@ -184,7 +184,7 @@ class _DashboardTabState extends State<DashboardTab> {
     final t = Theme.of(context).textTheme;
     final top = MediaQuery.paddingOf(context).top;
     final isToday = sameDay(_picked, DateTime.now());
-    final dayLabel = isToday ? tr('Today', '今日') : dayMonth(_picked);
+    final dayLabel = isToday ? tr('Today', '今天') : dayMonth(_picked);
     final tasks = _s.tasksOn(_picked);
     final done = _s.doneOn(_picked);
     final open = tasks.where((x) => !x.done).length;
@@ -600,7 +600,7 @@ class _DashboardTabState extends State<DashboardTab> {
                 icon: Icons.date_range,
                 color: const Color(0xFFE8B067),
                 value: '$week',
-                label: tr('7-day min', '近7天分钟'),
+                label: tr('7-day min', '近 7 天分钟'),
               ),
               _Stat(
                 icon: Icons.insights,

@@ -30,7 +30,7 @@ class TodayWidget {
       'tasks': [
         for (final t in open.take(3))
           {
-            'title': t.private ? tr('Private task', '私密任务') : t.title,
+            'title': t.private ? tr('Private task', '不公开的事') : t.title,
             'time': t.minutes == null
                 ? null
                 : hhmm(DateTime(0, 1, 1, 0, t.minutes!)),

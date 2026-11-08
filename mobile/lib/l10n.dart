@@ -69,9 +69,9 @@ List<String> get weekdayHeads =>
 String weekdayShort(DateTime d) =>
     zh ? '周${_weekdaysZh[d.weekday - 1]}' : _weekdaysEn[d.weekday - 1];
 
-/// "Nov 2026" or "2026 年 11 月".
+/// "Nov 2026" or "2026年11月".
 String monthYear(DateTime d) =>
-    zh ? '${d.year} 年 ${d.month} 月' : '${_monthsEn[d.month - 1]} ${d.year}';
+    zh ? '${d.year}年${d.month}月' : '${_monthsEn[d.month - 1]} ${d.year}';
 
 /// "November" or "11月".
 String monthLong(DateTime d) => zh ? '${d.month}月' : _monthsLongEn[d.month - 1];

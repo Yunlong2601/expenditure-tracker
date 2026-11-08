@@ -18,6 +18,9 @@ import 'reader.dart';
 /// The old pink, still used by a few money screens.
 const pink = Color(0xFFFF69B4);
 
+/// zh-Hans, as used in Singapore and mainland China.
+const simplifiedChinese = Locale.fromSubtags(languageCode: 'zh', scriptCode: 'Hans');
+
 /// Lets tests replace the camera and photo library.
 abstract class ReceiptPicker {
   Future<PickedImage?> camera();
@@ -78,8 +81,10 @@ class _SpendSnapAppState extends State<SpendSnapApp> with WidgetsBindingObserver
         _ => ThemeMode.system,
       },
       // The phone's language, or the one picked in Me → Language.
-      locale: Locale(zh ? 'zh' : 'en'),
-      supportedLocales: const [Locale('en'), Locale('zh')],
+      // Simplified Chinese by name, so phones draw its own character forms
+      // rather than Japanese ones.
+      locale: zh ? simplifiedChinese : const Locale('en'),
+      supportedLocales: const [Locale('en'), Locale('zh'), simplifiedChinese],
       localizationsDelegates: GlobalMaterialLocalizations.delegates,
       // Text grows with the phone's setting up to 200%, as WCAG asks; past
       // that (iOS goes to about 310%) the cat scenes and cards lose their shape.

@@ -44,7 +44,7 @@ class _MeTabState extends State<MeTab> {
       : const ['Quiet', 'Sometimes', 'Often'];
 
   String get _themeLabel => switch (_p.themeMode) {
-    'light' => tr('Light', '白色'),
+    'light' => tr('Light', '浅色'),
     'dark' => tr('Dark', '深色'),
     _ => tr('Same as phone', '跟随系统'),
   };
@@ -95,7 +95,7 @@ class _MeTabState extends State<MeTab> {
           children: [
             for (final (k, label) in [
               ('system', tr('Same as phone', '跟随系统')),
-              ('light', tr('Light', '白色')),
+              ('light', tr('Light', '浅色')),
               ('dark', tr('Dark', '深色')),
             ])
               ListTile(
@@ -729,7 +729,7 @@ class _HelpSheet extends StatelessWidget {
         ),
       ),
       (
-        tr('Make a stack', '做成一叠'),
+        tr('Make a stack', '拆成几步'),
         tr(
           'Hold + to make a list of steps. Home shows only the next step.',
           '长按 + 做一串步骤。首页只显示下一步。',

@@ -19,7 +19,7 @@ enum StudyRule {
   String get label => switch (this) {
     nudge => tr('Nudge me', '提醒我'),
     strict => tr('Strict', '严格'),
-    lock => tr('Lock me in', '锁定'),
+    lock => tr('Lock me in', '学霸模式'),
   };
 
   String get about => switch (this) {

@@ -296,8 +296,8 @@ class _HomeTabState extends State<HomeTab> {
                             child: IconButton.filled(
                               key: const Key('add-task'),
                               tooltip: isToday
-                                  ? tr('Add for today (hold to make a stack)', '添加今天的事（长按做成一叠）')
-                                  : tr('Add for ${dayMonth(shown)} (hold to make a stack)', '添加到${dayMonth(shown)}（长按做成一叠）'),
+                                  ? tr('Add for today (hold to make a stack)', '添加今天的事（长按拆成几步）')
+                                  : tr('Add for ${dayMonth(shown)} (hold to make a stack)', '添加到${dayMonth(shown)}（长按拆成几步）'),
                               iconSize: 28,
                               onPressed: _addTask,
                               icon: const Icon(Icons.add),

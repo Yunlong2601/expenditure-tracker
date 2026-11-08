@@ -109,7 +109,7 @@ class _ChatScreenState extends State<ChatScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(tr('Clear this chat?', '清空聊天记录？')),
-        content: Text(tr('Memories and the notebook stay.', '宠物记忆和内心本会保留。')),
+        content: Text(tr('Memories and the notebook stay.', '宠物记忆和小本子会保留。')),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
@@ -201,7 +201,7 @@ class _ChatScreenState extends State<ChatScreen> {
             itemBuilder: (_) => [
               PopupMenuItem(value: 'checkins', child: Text(tr('Check-ins', '定时约定'))),
               PopupMenuItem(value: 'memory', child: Text(tr('What I remember', '宠物记忆'))),
-              PopupMenuItem(value: 'notebook', child: Text(tr('My notebook', '内心本'))),
+              PopupMenuItem(value: 'notebook', child: Text(tr('My notebook', '小本子'))),
             ],
           ),
           const SizedBox(width: 8),
@@ -256,7 +256,7 @@ class _ChatScreenState extends State<ChatScreen> {
                             controller: _c,
                             textCapitalization: TextCapitalization.sentences,
                             decoration: InputDecoration(
-                              hintText: tr('Chat with me…', '和我聊聊吧…'),
+                              hintText: tr('Chat with me…', '和我聊聊吧……'),
                               filled: true,
                               fillColor: cs.onSurface.withValues(alpha: 0.04),
                               isDense: true,
@@ -1028,7 +1028,7 @@ class _MemorySheetState extends State<MemorySheet> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            tr('Remember one small thing first?', '先记住一件小事?'),
+                            tr('Remember one small thing first?', '先记住一件小事？'),
                             style: t.titleMedium?.copyWith(
                               fontWeight: FontWeight.w600,
                             ),
@@ -1078,7 +1078,7 @@ class NotebookSheet extends StatelessWidget {
     final pages = store.notebook.reversed.toList();
     return Column(
       children: [
-        SheetHeader(title: tr('My notebook', '内心本')),
+        SheetHeader(title: tr('My notebook', '小本子')),
         Expanded(
           child: ListView(
             padding: const EdgeInsets.symmetric(horizontal: 20),

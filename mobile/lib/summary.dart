@@ -51,7 +51,7 @@ class _SummaryScreenState extends State<SummaryScreen> {
     final now = DateTime.now();
     final isThisMonth = _month.year == now.year && _month.month == now.month;
     return Scaffold(
-      appBar: AppBar(title: Text(tr('My month', '我的月度'))),
+      appBar: AppBar(title: Text(tr('My month', '月度小结'))),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.all(20),

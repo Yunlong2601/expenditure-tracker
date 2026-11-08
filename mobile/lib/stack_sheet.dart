@@ -46,7 +46,7 @@ class _StackSheetState extends State<StackSheet> {
   Future<void> _save() async {
     final steps = _steps.where((s) => s.title.trim().isNotEmpty).toList();
     final title = _title.text.trim().isEmpty
-        ? (steps.firstOrNull?.title ?? tr('Stack', '一叠'))
+        ? (steps.firstOrNull?.title ?? tr('Stack', '分步任务'))
         : _title.text.trim();
     final t = widget.task;
     if (steps.isEmpty) {
@@ -102,7 +102,7 @@ class _StackSheetState extends State<StackSheet> {
     final done = _steps.where((s) => s.done).length;
     return Column(
       children: [
-        SheetHeader(title: tr('Edit stack', '编辑一叠'), action: tr('Save', '保存'), onAction: _save),
+        SheetHeader(title: tr('Edit stack', '编辑分步任务'), action: tr('Save', '保存'), onAction: _save),
         Expanded(
           child: ListView(
             padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
@@ -117,14 +117,14 @@ class _StackSheetState extends State<StackSheet> {
                         fontWeight: FontWeight.w700,
                       ),
                       decoration: InputDecoration(
-                        hintText: tr('Name this stack', '给这叠起个名字'),
+                        hintText: tr('Name this stack', '给这个任务起个名字'),
                         border: InputBorder.none,
                         isDense: true,
                       ),
                     ),
                   ),
                   IconButton.outlined(
-                    tooltip: tr('How stacks work', '一叠是怎么用的'),
+                    tooltip: tr('How stacks work', '分步任务怎么用'),
                     iconSize: 18,
                     icon: const Icon(Icons.question_mark),
                     onPressed: () => setState(() => _help = !_help),
@@ -135,7 +135,7 @@ class _StackSheetState extends State<StackSheet> {
                 Padding(
                   padding: const EdgeInsets.only(top: 6),
                   child: Text(
-                    tr('Steps stacked on top of each other: your list shows only the top one, and the next appears when you check it off. Hold a step to reorder; swipe left to delete.', '步骤一层层叠在一起：清单上只显示最上面那一步，勾掉后下一步才出现。长按步骤可以排序，左滑删除。'),
+                    tr('Steps stacked on top of each other: your list shows only the top one, and the next appears when you check it off. Hold a step to reorder; swipe left to delete.', '把一件事拆成几步：清单上只显示当前这一步，勾掉后下一步才出现。长按步骤可以排序，左滑删除。'),
                     style: t.bodyMedium?.copyWith(
                       color: context.muted,
                       height: 1.4,
