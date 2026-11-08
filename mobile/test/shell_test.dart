@@ -95,6 +95,8 @@ void main() {
         const FakeAccessibilityFeatures(disableAnimations: true);
     addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
     await tester.pump();
+    await tester.ensureVisible(find.byKey(Key('tick-${b.id}')));
+    await tester.pump();
     await tester.tap(find.byKey(Key('tick-${b.id}')));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 260));
@@ -126,6 +128,8 @@ void main() {
   testWidgets('the mood diary records a mood', (tester) async {
     await Prefs.current.setOnboarded();
     await tester.pumpWidget(_app(store));
+    await tester.ensureVisible(find.byKey(const Key('quick-mood')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('quick-mood')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('mood-calm')));

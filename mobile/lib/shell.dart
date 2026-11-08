@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 
 import 'app.dart';
 import 'chat.dart';
+import 'companion.dart';
 import 'dashboard.dart';
 import 'day.dart';
 import 'feel.dart';
@@ -15,8 +16,10 @@ import 'l10n.dart';
 import 'ledger.dart';
 import 'me_tab.dart';
 import 'reader.dart';
+import 'prefs.dart';
 import 'records.dart';
 import 'remind.dart';
+import 'room.dart';
 import 'settings_screen.dart';
 
 /// The three tabs from the wireframes: Pet, Dashboard and Me.
@@ -53,12 +56,37 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     widget.store.addListener(_queueAlerts);
+    widget.store.onEarned = _earned;
     WidgetsBinding.instance.addObserver(this);
     _queueAlerts();
   }
 
+  /// Something new for Mochi: the cat cheers, and a note says what it is.
+  void _earned(List<RoomItem> items) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      KittyLayer.cheer();
+      CatFigure.hop();
+      final name = Prefs.current.catName;
+      final what = items.map((r) => r.label).join(tr(', ', '、'));
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            key: const Key('earned'),
+            content: Text(tr('New for $name: $what!', '$name 得到了新东西：$what！')),
+            action: SnackBarAction(
+              label: tr('See', '去看看'),
+              onPressed: () => showRoomSheet(context, widget.store),
+            ),
+          ),
+        );
+    });
+  }
+
   @override
   void dispose() {
+    if (widget.store.onEarned == _earned) widget.store.onEarned = null;
     widget.store.removeListener(_queueAlerts);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();

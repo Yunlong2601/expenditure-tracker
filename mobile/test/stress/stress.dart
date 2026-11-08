@@ -20,6 +20,7 @@ import 'package:spendsnap/prefs.dart';
 import 'package:spendsnap/quick_add_sheet.dart';
 import 'package:spendsnap/reader.dart';
 import 'package:spendsnap/records.dart';
+import 'package:spendsnap/room.dart';
 import 'package:spendsnap/settings_screen.dart';
 import 'package:spendsnap/shell.dart';
 import 'package:spendsnap/stack_sheet.dart';
@@ -223,6 +224,15 @@ final screens = <String, Opener>{
   ),
   'Companion': (t, c, s, l) async {
     showCompanion(c);
+  },
+  'Room': (t, c, s, l) async {
+    // Everything earned and the crown on, so every card and the room are full.
+    s.room.addAll(roomItems.map((r) => r.id));
+    await s.wear('crown');
+    showRoomSheet(c, s);
+  },
+  'Streak': (t, c, s, l) async {
+    showStreakSheet(c, s);
   },
   'Feedback': (t, c, s, l) => _sheet(c, (_) => const FeedbackSheet()),
   'Money': (t, c, s, l) => _push(c, HomeScreen(ledger: l, reader: _NoReader())),

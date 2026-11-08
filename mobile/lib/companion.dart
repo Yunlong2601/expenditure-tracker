@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart' show setEquals;
 import 'package:flutter/material.dart';
 
 import 'kitty.dart';
@@ -34,9 +35,12 @@ class CatAvatar extends StatelessWidget {
 
 /// The cat on its own, waving, at any size.
 class CatFigure extends StatefulWidget {
-  const CatFigure({super.key, this.size = 120, this.mood = CatMood.happy});
+  const CatFigure({super.key, this.size = 120, this.mood = CatMood.happy, this.outfit});
   final double size;
   final CatMood mood;
+
+  /// What she has on, earned in her room.
+  final String? outfit;
 
   /// Off in widget tests, so pumpAndSettle can settle. (A hop still plays:
   /// it ends by itself.)
@@ -110,7 +114,7 @@ class _CatFigureState extends State<CatFigure> with TickerProviderStateMixin {
             scaleY: 1 - squash,
             alignment: Alignment.bottomCenter,
             child: CustomPaint(
-              painter: CatPainter(blink: blink, wave: wave, mood: widget.mood),
+              painter: CatPainter(blink: blink, wave: wave, mood: widget.mood, outfit: widget.outfit),
             ),
           ),
         );
@@ -126,9 +130,17 @@ class RoomScene extends StatelessWidget {
     super.key,
     this.height = 260,
     this.catSize = 150,
+    this.items = const {},
+    this.outfit,
     this.child,
   });
   final double height, catSize;
+
+  /// What she has earned for the room, by [RoomItem.id].
+  final Set<String> items;
+
+  /// What Mochi has on.
+  final String? outfit;
   final Widget? child;
 
   @override
@@ -143,11 +155,12 @@ class RoomScene extends StatelessWidget {
             painter: _RoomPainter(
               weekdayShort(DateTime.now()),
               dark,
+              items,
             ),
           ),
           Align(
             alignment: const Alignment(0, 0.95),
-            child: CatFigure(size: catSize),
+            child: CatFigure(size: catSize, outfit: outfit),
           ),
           ?child,
         ],
@@ -156,10 +169,173 @@ class RoomScene extends StatelessWidget {
   }
 }
 
+/// Where each earned thing goes in a room [w] wide and [h] tall.
+Rect roomItemSpot(String id, double w, double h) => switch (id) {
+  'rug' => Rect.fromCenter(center: Offset(w * 0.5, h * 0.93), width: w * 0.66, height: h * 0.12),
+  'cushion' => Rect.fromCenter(center: Offset(w * 0.5, h * 0.9), width: w * 0.38, height: h * 0.12),
+  'lights' => Rect.fromLTWH(w * 0.44, h * 0.34, w * 0.54, h * 0.12),
+  'poster' => Rect.fromLTWH(w * 0.47, h * 0.1, w * 0.16, h * 0.22),
+  'shelf' => Rect.fromLTWH(w * 0.08, h * 0.53, w * 0.3, h * 0.13),
+  'fish' => Rect.fromLTWH(w * 0.63, h * 0.62 - w * 0.12, w * 0.12, w * 0.12),
+  'lamp' => Rect.fromLTWH(w * 0.76, h * 0.62 - w * 0.15, w * 0.1, w * 0.15),
+  _ => Rect.zero,
+};
+
+/// Draws one thing for the room, by [RoomItem.id], to fill [r]: in the room
+/// itself and on its card in Mochi's room.
+void paintRoomItem(Canvas canvas, String id, Rect r) {
+  final l = r.left, t = r.top, w = r.width, h = r.height;
+  final edge = Paint()
+    ..color = const Color(0x33000000)
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 1.5;
+  switch (id) {
+    case 'rug':
+      canvas.drawOval(r, Paint()..color = const Color(0xFFB9D3C4));
+      canvas.drawOval(r.deflate(w * 0.06), Paint()..color = const Color(0xFFE3EFE6));
+      canvas.drawOval(
+        r.deflate(w * 0.14),
+        Paint()
+          ..color = const Color(0xFFB9D3C4)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = math.max(1.5, h * 0.06),
+      );
+    case 'cushion':
+      final c = Rect.fromLTWH(l, t + h * 0.25, w, h * 0.75);
+      canvas.drawOval(c, Paint()..color = const Color(0xFFE9A7A0));
+      canvas.drawOval(
+        Rect.fromLTWH(l + w * 0.1, t + h * 0.25, w * 0.8, h * 0.45),
+        Paint()..color = const Color(0xFFF2C2BC),
+      );
+      canvas.drawCircle(Offset(l + w / 2, t + h * 0.5), math.max(1.5, h * 0.06), Paint()..color = const Color(0xFFD98C85));
+    case 'lights':
+      final from = Offset(l, t + h * 0.15), to = Offset(r.right, t);
+      final sag = Offset(l + w / 2, t + h * 0.95);
+      final wire = Path()
+        ..moveTo(from.dx, from.dy)
+        ..quadraticBezierTo(sag.dx, sag.dy, to.dx, to.dy);
+      canvas.drawPath(
+        wire,
+        Paint()
+          ..color = const Color(0xFF8C7B66)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.5,
+      );
+      const bulbs = [Color(0xFFF6CB7A), Color(0xFFF2A0B6), Color(0xFF8FD3C9), Color(0xFFF4A261)];
+      final bulb = math.max(2.5, math.min(w, h * 4) * 0.022);
+      for (var i = 1; i < 8; i++) {
+        final k = i / 8;
+        final p = Offset(
+          (1 - k) * (1 - k) * from.dx + 2 * (1 - k) * k * sag.dx + k * k * to.dx,
+          (1 - k) * (1 - k) * from.dy + 2 * (1 - k) * k * sag.dy + k * k * to.dy,
+        );
+        final c = bulbs[i % bulbs.length];
+        canvas.drawCircle(p + Offset(0, bulb), bulb * 2.2, Paint()..color = c.withValues(alpha: 0.25));
+        canvas.drawCircle(p + Offset(0, bulb), bulb, Paint()..color = c);
+      }
+    case 'poster':
+      final card = RRect.fromRectAndRadius(r, Radius.circular(w * 0.08));
+      canvas.drawRRect(card, Paint()..color = const Color(0xFFFFF4DC));
+      canvas.drawRRect(card, edge);
+      final star = Path();
+      final c = r.center, big = math.min(w, h) * 0.36;
+      for (var i = 0; i < 10; i++) {
+        final rr = i.isEven ? big : big * 0.45;
+        final a = -math.pi / 2 + i * math.pi / 5;
+        final p = c + Offset(math.cos(a) * rr, math.sin(a) * rr);
+        i == 0 ? star.moveTo(p.dx, p.dy) : star.lineTo(p.dx, p.dy);
+      }
+      canvas.drawPath(star..close(), Paint()..color = const Color(0xFFF6CB5A));
+      // Tape at the top corners.
+      final tape = Paint()..color = const Color(0x66C9B79C);
+      canvas.drawRect(Rect.fromCenter(center: Offset(l + w * 0.15, t), width: w * 0.3, height: h * 0.08), tape);
+      canvas.drawRect(Rect.fromCenter(center: Offset(r.right - w * 0.15, t), width: w * 0.3, height: h * 0.08), tape);
+    case 'shelf':
+      final plank = Rect.fromLTWH(l, t + h * 0.82, w, h * 0.18);
+      canvas.drawRRect(RRect.fromRectAndRadius(plank, const Radius.circular(2)), Paint()..color = const Color(0xFFC9A57A));
+      const books = [
+        (0.06, 0.72, Color(0xFF8EA7D8)),
+        (0.19, 0.6, Color(0xFFEB8A5A)),
+        (0.3, 0.78, Color(0xFF7FB58A)),
+        (0.43, 0.55, Color(0xFFF6CB7A)),
+        (0.54, 0.68, Color(0xFFF2A0B6)),
+      ];
+      for (final (x, tall, c) in books) {
+        canvas.drawRRect(
+          RRect.fromRectAndRadius(
+            Rect.fromLTWH(l + w * x, t + h * (0.82 - tall), w * 0.1, h * tall),
+            const Radius.circular(1.5),
+          ),
+          Paint()..color = c,
+        );
+      }
+      // A tiny pot at the end of the shelf.
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(Rect.fromLTWH(l + w * 0.76, t + h * 0.56, w * 0.14, h * 0.26), const Radius.circular(2)),
+        Paint()..color = const Color(0xFFE7A784),
+      );
+      canvas.drawCircle(Offset(l + w * 0.83, t + h * 0.46), w * 0.07, Paint()..color = const Color(0xFF7FA36F));
+    case 'fish':
+      final bowl = Rect.fromLTWH(l, t + h * 0.08, w, h * 0.92);
+      canvas.drawOval(bowl, Paint()..color = const Color(0xFFCFE8F2));
+      canvas.save();
+      canvas.clipPath(Path()..addOval(bowl));
+      canvas.drawRect(Rect.fromLTWH(l, t + h * 0.4, w, h), Paint()..color = const Color(0xFF9CCFE3));
+      canvas.restore();
+      canvas.drawOval(bowl, edge);
+      canvas.drawLine(Offset(l + w * 0.2, t + h * 0.1), Offset(r.right - w * 0.2, t + h * 0.1), edge..strokeWidth = 2.5);
+      final fish = Paint()..color = const Color(0xFFF4A261);
+      final body = Rect.fromCenter(center: Offset(l + w * 0.46, t + h * 0.64), width: w * 0.34, height: h * 0.2);
+      canvas.drawOval(body, fish);
+      canvas.drawPath(
+        Path()
+          ..moveTo(body.right - w * 0.04, body.center.dy)
+          ..lineTo(body.right + w * 0.12, body.top)
+          ..lineTo(body.right + w * 0.12, body.bottom)
+          ..close(),
+        fish,
+      );
+      canvas.drawCircle(Offset(body.left + w * 0.08, body.center.dy - h * 0.02), math.max(1, w * 0.025), Paint()..color = _roomInk);
+    case 'lamp':
+      final warm = Paint()..color = const Color(0x33F6CB7A);
+      canvas.drawPath(
+        Path()
+          ..moveTo(l + w * 0.55, t + h * 0.3)
+          ..lineTo(l - w * 0.2, r.bottom)
+          ..lineTo(r.right + w * 0.4, r.bottom)
+          ..close(),
+        warm,
+      );
+      final metal = Paint()
+        ..color = const Color(0xFF6FA39B)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = math.max(2, w * 0.1)
+        ..strokeCap = StrokeCap.round;
+      canvas.drawLine(Offset(l + w * 0.35, r.bottom - h * 0.04), Offset(l + w * 0.25, t + h * 0.45), metal);
+      canvas.drawLine(Offset(l + w * 0.25, t + h * 0.45), Offset(l + w * 0.6, t + h * 0.18), metal);
+      canvas.drawOval(
+        Rect.fromLTWH(l, r.bottom - h * 0.1, w * 0.7, h * 0.1),
+        Paint()..color = const Color(0xFF6FA39B),
+      );
+      canvas.drawPath(
+        Path()
+          ..moveTo(l + w * 0.4, t + h * 0.06)
+          ..lineTo(l + w * 0.85, t)
+          ..lineTo(r.right + w * 0.1, t + h * 0.36)
+          ..lineTo(l + w * 0.4, t + h * 0.36)
+          ..close(),
+        Paint()..color = const Color(0xFF8FC7BE),
+      );
+  }
+}
+
+const _roomInk = Color(0xFF3B3A36);
+
 class _RoomPainter extends CustomPainter {
-  _RoomPainter(this.weekday, this.dark);
+  _RoomPainter(this.weekday, this.dark, this.items);
   final String weekday;
   final bool dark;
+  final Set<String> items;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -242,6 +418,12 @@ class _RoomPainter extends CustomPainter {
       desk..color = const Color(0xFFD9B88E),
     );
 
+    // What she has earned: the rug and cushion on the floor first, so the
+    // plant stands in front of them.
+    for (final id in ['poster', 'shelf', 'lights', 'rug', 'cushion', 'fish', 'lamp']) {
+      if (items.contains(id)) paintRoomItem(canvas, id, roomItemSpot(id, w, h));
+    }
+
     // Plants: a big leafy one on the left, a small pot on the desk.
     _plant(canvas, Offset(w * 0.06, h * 0.98), w * 0.2);
     _plant(canvas, Offset(w * 0.9, h * 0.62), w * 0.09);
@@ -278,7 +460,7 @@ class _RoomPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_RoomPainter old) =>
-      old.weekday != weekday || old.dark != dark;
+      old.weekday != weekday || old.dark != dark || !setEquals(old.items, items);
 }
 
 /// A small tab stuck to the screen edge with a vertical label, like the

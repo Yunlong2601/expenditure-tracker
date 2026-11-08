@@ -296,6 +296,42 @@ class Entry {
   };
 }
 
+/// Something for Mochi's room or for Mochi to wear, earned with paws.
+class RoomItem {
+  const RoomItem(this.id, this.paws, this.en, this.cn, {this.outfit = false});
+  final String id;
+
+  /// Paws needed to earn it.
+  final int paws;
+  final String en, cn;
+
+  /// Worn by Mochi, one at a time, instead of standing in the room.
+  final bool outfit;
+  String get label => zh ? cn : en;
+}
+
+/// Everything there is to earn, cheapest first. The first comes on day one;
+/// the last takes about a month of a few things a day.
+const roomItems = [
+  RoomItem('cushion', 3, 'Cushion', '坐垫'),
+  RoomItem('rug', 8, 'Rug', '地毯'),
+  RoomItem('lights', 15, 'Fairy lights', '小彩灯'),
+  RoomItem('bow', 22, 'Bow', '蝴蝶结', outfit: true),
+  RoomItem('shelf', 30, 'Bookshelf', '书架'),
+  RoomItem('fish', 42, 'Fish bowl', '小鱼缸'),
+  RoomItem('poster', 56, 'Star poster', '星星海报'),
+  RoomItem('lamp', 72, 'Desk lamp', '台灯'),
+  RoomItem('scarf', 90, 'Scarf', '围巾', outfit: true),
+  RoomItem('crown', 120, 'Crown', '小皇冠', outfit: true),
+];
+
+/// Things ticked off count up to this many a day, so adding and ticking a
+/// long list of tiny tasks doesn't fill the room in an afternoon.
+const pawsPerDay = 8;
+
+/// Rest days a week (Monday to Sunday) that don't break a streak.
+const restDays = 2;
+
 /// A date to count down to, or, once it has passed, to count the days since.
 /// A yearly one, like a birthday, counts down to its next time round.
 class Countdown {
@@ -410,6 +446,20 @@ class DayStore extends ChangeNotifier {
   final focus = <Entry>[];
   bool checkInsPaused = false;
 
+  /// What Mochi has earned, by [RoomItem.id]. Kept once earned: a quiet
+  /// week or a deleted task never takes anything away.
+  final room = <String>{};
+
+  /// The outfit Mochi has on, by [RoomItem.id], or null for none.
+  String? outfit;
+
+  /// The most paws ever counted, so deleting old tasks doesn't lose any.
+  int _pawsBest = 0;
+
+  /// Told about each new thing as it's earned (not on load or restore), so
+  /// the app can cheer.
+  void Function(List<RoomItem> items)? onEarned;
+
   static Future<DayStore> load(Directory dir) async {
     final s = DayStore(File('${dir.path}/day.json'));
     try {
@@ -417,6 +467,7 @@ class DayStore extends ChangeNotifier {
         s._read((jsonDecode(await s._file.readAsString()) as Map).cast());
       }
     } on FormatException catch (_) {}
+    s._settleRoom(quiet: true);
     return current = s;
   }
 
@@ -458,6 +509,11 @@ class DayStore extends ChangeNotifier {
           CheckIn.fromJson((c as Map).cast()),
       ]);
     checkInsPaused = j['check_ins_paused'] == true;
+    room
+      ..clear()
+      ..addAll([for (final r in (j['room'] as List? ?? const [])) r as String]);
+    outfit = j['outfit'] as String?;
+    _pawsBest = (j['paws'] as num?)?.toInt() ?? 0;
   }
 
   Map<String, dynamic> toJson() => {
@@ -472,15 +528,20 @@ class DayStore extends ChangeNotifier {
     'countdowns': [for (final c in countdowns) c.toJson()],
     'check_ins': [for (final c in checkIns) c.toJson()],
     if (checkInsPaused) 'check_ins_paused': true,
+    if (room.isNotEmpty) 'room': [for (final r in roomItems) if (room.contains(r.id)) r.id],
+    if (outfit != null) 'outfit': outfit,
+    if (_pawsBest > 0) 'paws': _pawsBest,
   };
 
   Future<void> restore(Map<String, dynamic> j) async {
     _read(j);
+    _settleRoom(quiet: true);
     await save();
   }
 
   /// Writes the file and tells every screen to redraw.
   Future<void> save() {
+    _settleRoom();
     notifyListeners();
     final f = _file;
     if (f == null) return Future.value();
@@ -839,4 +900,118 @@ class DayStore extends ChangeNotifier {
   /// Countdowns that land on [day], for the calendar.
   List<Countdown> countdownsOn(DateTime day) =>
       countdowns.where((c) => c.fallsOn(day)).toList();
+
+  // Mochi's room and streaks.
+
+  /// When each thing was ticked off: one-off tasks and each day of a
+  /// repeating one.
+  Iterable<DateTime> get _doneTimes sync* {
+    for (final t in tasks) {
+      if (t.repeat == Repeat.none) {
+        if (t.done && t.doneAt != null) yield t.doneAt!;
+      } else {
+        yield* t.doneDays.values;
+      }
+    }
+  }
+
+  /// Paws: one for each thing ticked off (up to [pawsPerDay] a day) and one
+  /// for every 10 minutes of finished focus.
+  int get paws {
+    final perDay = <String, int>{};
+    for (final at in _doneTimes) {
+      perDay.update(dayKey(at), (n) => n + 1, ifAbsent: () => 1);
+    }
+    final ticks = perDay.values.fold(0, (a, n) => a + min(n, pawsPerDay));
+    final minutes = focus
+        .where((e) => !e.quit)
+        .fold(0, (a, e) => a + (int.tryParse(e.text) ?? 0));
+    return max(_pawsBest, ticks + minutes ~/ 10);
+  }
+
+  /// The next thing to earn, or null once everything is.
+  RoomItem? get nextItem =>
+      roomItems.where((r) => !room.contains(r.id)).firstOrNull;
+
+  /// Hands out whatever the paws now pay for. A new outfit goes straight on.
+  void _settleRoom({bool quiet = false}) {
+    final p = paws;
+    _pawsBest = p;
+    final earned = [
+      for (final r in roomItems)
+        if (r.paws <= p && !room.contains(r.id)) r,
+    ];
+    if (earned.isEmpty) return;
+    room.addAll(earned.map((r) => r.id));
+    if (quiet) return;
+    final worn = earned.lastWhere((r) => r.outfit, orElse: () => earned.first);
+    if (worn.outfit) outfit = worn.id;
+    onEarned?.call(earned);
+  }
+
+  /// Puts on an earned outfit, or takes it off with null.
+  Future<void> wear(String? id) async {
+    if (id != null && !room.contains(id)) return;
+    outfit = id;
+    await save();
+  }
+
+  /// Days with something done: a task ticked off or a focus session finished.
+  Set<String> get _activeDays => {
+    for (final at in _doneTimes) dayKey(at),
+    for (final e in focus)
+      if (!e.quit) dayKey(e.at),
+  };
+
+  /// Days in a row with something done. Up to [restDays] missed days a week
+  /// are rest days and don't break it, and today doesn't until it's over.
+  int streak([DateTime? now]) {
+    final active = _activeDays;
+    if (active.isEmpty) return 0;
+    final first = dayOf(DateTime.parse((active.toList()..sort()).first));
+    final today = dayOf(now ?? DateTime.now());
+    var d = active.contains(dayKey(today)) ? today : _back(today);
+    var n = 0;
+    final rests = <String, int>{};
+    while (!d.isBefore(first)) {
+      if (active.contains(dayKey(d))) {
+        n++;
+      } else {
+        final week = dayKey(_monday(d));
+        final used = rests[week] ?? 0;
+        if (used >= restDays) break;
+        rests[week] = used + 1;
+      }
+      d = _back(d);
+    }
+    return n;
+  }
+
+  /// Rest days taken so far this week: days before today with nothing done,
+  /// counted from the first day anything was.
+  int restDaysUsed([DateTime? now]) {
+    final active = _activeDays;
+    if (active.isEmpty) return 0;
+    final first = dayOf(DateTime.parse((active.toList()..sort()).first));
+    final today = dayOf(now ?? DateTime.now());
+    var used = 0;
+    for (var d = _monday(today); d.isBefore(today); d = _next(d)) {
+      if (!d.isBefore(first) && !active.contains(dayKey(d))) used++;
+    }
+    return min(used, restDays);
+  }
+
+  /// Whether [day] had something done.
+  bool activeOn(DateTime day) => _activeDays.contains(dayKey(day));
+
+  /// The first day anything was done, or null before then.
+  DateTime? get firstActiveDay {
+    final active = _activeDays.toList()..sort();
+    return active.isEmpty ? null : DateTime.parse(active.first);
+  }
+
+  static DateTime _back(DateTime d) => DateTime(d.year, d.month, d.day - 1);
+  static DateTime _next(DateTime d) => DateTime(d.year, d.month, d.day + 1);
+  static DateTime _monday(DateTime d) =>
+      DateTime(d.year, d.month, d.day - (d.weekday - 1));
 }

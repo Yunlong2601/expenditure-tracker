@@ -9,6 +9,7 @@ import 'onboarding.dart';
 import 'prefs.dart';
 import 'records.dart';
 import 'remind.dart';
+import 'room.dart';
 import 'stack_sheet.dart';
 import 'l10n.dart';
 import 'theme.dart';
@@ -172,6 +173,8 @@ class _HomeTabState extends State<HomeTab> {
               RoomScene(
                 height: 300 + MediaQuery.paddingOf(context).top,
                 catSize: 160,
+                items: _s.room,
+                outfit: _s.outfit,
                 child: Positioned(
                   left: 20,
                   right: 20,
@@ -213,25 +216,26 @@ class _HomeTabState extends State<HomeTab> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      if (countdowns.isNotEmpty) ...[
-                        ChipRow(
-                          children: [
-                            for (final c in countdowns)
-                              Chip(
-                                avatar: const Icon(
-                                  Icons.hourglass_bottom,
-                                  size: 16,
-                                ),
-                                label: Text(
-                                  c.daysLeft() == 0
-                                      ? tr('${c.title} is today!', '${c.title} 就是今天！')
-                                      : tr('${c.title} in ${count(c.daysLeft(), 'day')}', '${c.title} 还有 ${c.daysLeft()} 天'),
-                                ),
+                      // The streak, the paws that fill the room above,
+                      // and the next big days, on one line.
+                      ChipRow(
+                        children: [
+                          ...roomChips(context, _s),
+                          for (final c in countdowns)
+                            Chip(
+                              avatar: const Icon(
+                                Icons.hourglass_bottom,
+                                size: 16,
                               ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                      ],
+                              label: Text(
+                                c.daysLeft() == 0
+                                    ? tr('${c.title} is today!', '${c.title} 就是今天！')
+                                    : tr('${c.title} in ${count(c.daysLeft(), 'day')}', '${c.title} 还有 ${c.daysLeft()} 天'),
+                              ),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
                       Row(
                         children: [
                           // On a small phone with big text the headings

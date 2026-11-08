@@ -432,7 +432,7 @@ class _DashboardTabState extends State<DashboardTab> {
                   _Stat(
                     icon: Icons.local_fire_department,
                     color: const Color(0xFFEB8A5A),
-                    value: '${_streak()}',
+                    value: '${_s.streak()}',
                     label: tr('Day streak', '连续天数'),
                   ),
                 ],
@@ -577,16 +577,6 @@ class _DashboardTabState extends State<DashboardTab> {
   }
 
   /// Days in a row, ending today, with at least one thing done.
-  int _streak() {
-    var d = dayOf(DateTime.now());
-    if (_s.doneOn(d).isEmpty) d = d.subtract(const Duration(days: 1));
-    var n = 0;
-    while (_s.doneOn(d).isNotEmpty) {
-      n++;
-      d = d.subtract(const Duration(days: 1));
-    }
-    return n;
-  }
 }
 
 /// The orange of days since, as Days Matter colours the past.
