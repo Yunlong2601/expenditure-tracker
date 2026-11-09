@@ -1,0 +1,364 @@
+import 'dart:async';
+
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+
+import 'app.dart';
+import 'chat.dart';
+import 'companion.dart';
+import 'dashboard.dart';
+import 'day.dart';
+import 'feel.dart';
+import 'home_screen.dart';
+import 'home_tab.dart';
+import 'kitty.dart';
+import 'l10n.dart';
+import 'ledger.dart';
+import 'me_tab.dart';
+import 'reader.dart';
+import 'prefs.dart';
+import 'records.dart';
+import 'remind.dart';
+import 'room.dart';
+import 'settings_screen.dart';
+import 'today_widget.dart';
+
+/// The three tabs from the wireframes: Pet, Dashboard and Me.
+class AppShell extends StatefulWidget {
+  const AppShell({
+    super.key,
+    required this.store,
+    this.ledger,
+    this.reader,
+    this.picker,
+    this.onThemeChanged,
+    this.initialTab = 0,
+  });
+  final DayStore store;
+
+  /// The Money module. Without it the money parts are hidden.
+  final Ledger? ledger;
+  final ReceiptReader? reader;
+  final ReceiptPicker? picker;
+  final VoidCallback? onThemeChanged;
+
+  /// The tab shown first: 0 Pet, 1 Dashboard, 2 Me.
+  final int initialTab;
+
+  @override
+  State<AppShell> createState() => _AppShellState();
+}
+
+class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
+  late var _tab = widget.initialTab;
+  bool _alertsQueued = false;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.store.addListener(_queueAlerts);
+    widget.store.onEarned = _earned;
+    WidgetsBinding.instance.addObserver(this);
+    _queueAlerts();
+  }
+
+  /// Something new for Mochi: the cat cheers, and a note says what it is.
+  void _earned(List<RoomItem> items) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      KittyLayer.cheer();
+      CatFigure.hop();
+      final name = Prefs.current.catName;
+      final what = items.map((r) => r.label).join(tr(', ', '、'));
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            key: const Key('earned'),
+            content: Text(tr('New for $name: $what!', '$name 得到了新东西：$what！')),
+            action: SnackBarAction(
+              label: tr('See', '去看看'),
+              onPressed: () => showRoomSheet(context, widget.store),
+            ),
+          ),
+        );
+    });
+  }
+
+  @override
+  void dispose() {
+    if (widget.store.onEarned == _earned) widget.store.onEarned = null;
+    widget.store.removeListener(_queueAlerts);
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  /// Study mode keeps watch: going to another app (or locking the phone)
+  /// while the focus clock runs counts as leaving. Pulling down Control
+  /// Center or a notification only makes the app inactive, and doesn't.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    switch (state) {
+      case AppLifecycleState.hidden || AppLifecycleState.paused:
+        FocusSession.current.appLeft();
+        // A new day may have begun since the last change.
+        TodayWidget.push(widget.store);
+      case AppLifecycleState.resumed:
+        FocusSession.current.appBack();
+      case _:
+        break;
+    }
+  }
+
+  /// Task and countdown reminders, and the Home Screen widget, follow
+  /// every change, once per batch.
+  void _queueAlerts() {
+    if (_alertsQueued) return;
+    _alertsQueued = true;
+    scheduleMicrotask(() {
+      _alertsQueued = false;
+      Remind.syncAlerts(widget.store);
+      TodayWidget.push(widget.store);
+    });
+  }
+
+  Future<void> _push(Widget w) =>
+      Navigator.of(context).push<void>(MaterialPageRoute(builder: (_) => w));
+
+  void _chat() {
+    Feel.tap();
+    Navigator.of(context).push<void>(
+      _slide(
+        ChatScreen(store: widget.store, spentToday: _spentToday),
+        fromLeft: true,
+      ),
+    );
+  }
+
+  void _records({int tab = 0}) {
+    Feel.tap();
+    Navigator.of(context).push<void>(
+      _slide(RecordsScreen(store: widget.store, tab: tab), fromLeft: false),
+    );
+  }
+
+  String _spentToday() =>
+      spentOn(widget.ledger, DateTime.now()) ?? tr('nothing so far', '还没有');
+
+  VoidCallback? get _money {
+    final l = widget.ledger;
+    final r = widget.reader;
+    if (l == null || r == null) return null;
+    return () async {
+      Feel.tap();
+      await _push(HomeScreen(ledger: l, reader: r, picker: widget.picker));
+      // Expenses may have changed: redraw the Dashboard's money and calendar.
+      if (mounted) setState(() {});
+    };
+  }
+
+  Future<void> _settings() async {
+    final l = widget.ledger;
+    await _push(
+      SettingsScreen(
+        ledger: l,
+        onReminderChanged: l == null ? null : () => Remind.sync(l),
+        onExport: l == null
+            ? null
+            : () => Clipboard.setData(ClipboardData(text: l.toCsv())),
+      ),
+    );
+    // A restore can bring back other expenses and check-ins.
+    Remind.syncCheckIns(widget.store);
+    if (mounted) setState(() {});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: ListenableBuilder(
+        listenable: widget.store,
+        builder: (context, _) => IndexedStack(
+          index: _tab,
+          children: [
+            HomeTab(
+              store: widget.store,
+              onChat: _chat,
+              onRecords: _records,
+              onFocus: () => _records(tab: 1),
+              onExpense: _money,
+            ),
+            DashboardTab(
+              store: widget.store,
+              ledger: widget.ledger,
+              onMoney: _money,
+              onFocus: () => _records(tab: 1),
+            ),
+            MeTab(
+              onSettings: _settings,
+              onThemeChanged: widget.onThemeChanged ?? () {},
+              onLanguageChanged: () {
+                final l = widget.ledger;
+                if (l != null) Remind.sync(l);
+                TodayWidget.push(widget.store);
+              },
+            ),
+          ],
+        ),
+      ),
+      bottomNavigationBar: TabBarCard(
+        tab: _tab,
+        child: NavigationBar(
+          selectedIndex: _tab,
+          onDestinationSelected: (i) {
+            HapticFeedback.selectionClick();
+            setState(() => _tab = i);
+          },
+          destinations: [
+            NavigationDestination(
+              icon: const SizedBox.square(
+                dimension: 28,
+                child: CustomPaint(painter: CatPainter(paw: false)),
+              ),
+              label: tr('Pet', '宠物'),
+            ),
+            NavigationDestination(
+              icon: const LineIcon(LineGlyph.bars),
+              label: tr('Dashboard', '看板'),
+            ),
+            NavigationDestination(
+              icon: const LineIcon(LineGlyph.person),
+              label: tr('Me', '我'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Slides a screen in from the edge she swiped from.
+Route<void> _slide(Widget w, {required bool fromLeft}) =>
+    PageRouteBuilder<void>(
+      pageBuilder: (_, _, _) => w,
+      transitionsBuilder: (context, a, _, child) {
+        if (MediaQuery.disableAnimationsOf(context)) return child;
+        return SlideTransition(
+          position: Tween(
+            begin: Offset(fromLeft ? -1 : 1, 0),
+            end: Offset.zero,
+          ).animate(CurvedAnimation(parent: a, curve: Curves.easeOutCubic)),
+          child: child,
+        );
+      },
+    );
+
+/// The white tab bar card from the wireframes: rounded top corners, a soft
+/// shadow and a short green line under the open tab's label.
+class TabBarCard extends StatelessWidget {
+  const TabBarCard({super.key, required this.tab, required this.child});
+  final int tab;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: dark ? const Color(0xFF242521) : Colors.white,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(26)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: dark ? 0.3 : 0.05),
+            blurRadius: 18,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
+      child: LayoutBuilder(
+        builder: (context, box) {
+          final slot = box.maxWidth / 3;
+          return Stack(
+            children: [
+              child,
+              AnimatedPositioned(
+                duration: MediaQuery.disableAnimationsOf(context)
+                    ? Duration.zero
+                    : const Duration(milliseconds: 220),
+                curve: Curves.easeOutCubic,
+                top: 64,
+                left: slot * tab + slot / 2 - 9,
+                child: ExcludeSemantics(
+                  child: Container(
+                    width: 18,
+                    height: 3,
+                    decoration: BoxDecoration(
+                      color: cs.primary,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+/// Thin line icons drawn to match the wireframes' tab bar.
+enum LineGlyph { bars, person }
+
+class LineIcon extends StatelessWidget {
+  const LineIcon(this.glyph, {super.key});
+  final LineGlyph glyph;
+
+  @override
+  Widget build(BuildContext context) {
+    final icon = IconTheme.of(context);
+    final size = icon.size ?? 24;
+    return SizedBox.square(
+      dimension: size,
+      child: CustomPaint(
+        painter: _LinePainter(glyph, icon.color ?? Colors.grey),
+      ),
+    );
+  }
+}
+
+class _LinePainter extends CustomPainter {
+  _LinePainter(this.glyph, this.color);
+  final LineGlyph glyph;
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final u = size.width / 24;
+    final pen = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.8 * u
+      ..strokeCap = StrokeCap.round;
+    switch (glyph) {
+      case LineGlyph.bars:
+        canvas.drawLine(Offset(7 * u, 11 * u), Offset(7 * u, 19 * u), pen);
+        canvas.drawLine(Offset(12 * u, 5 * u), Offset(12 * u, 19 * u), pen);
+        canvas.drawLine(Offset(17 * u, 9 * u), Offset(17 * u, 19 * u), pen);
+      case LineGlyph.person:
+        canvas.drawCircle(Offset(12 * u, 8 * u), 3.8 * u, pen);
+        canvas.drawPath(
+          Path()
+            ..moveTo(4.5 * u, 20.5 * u)
+            ..cubicTo(4.5 * u, 16 * u, 8 * u, 13.5 * u, 12 * u, 13.5 * u)
+            ..cubicTo(16 * u, 13.5 * u, 19.5 * u, 16 * u, 19.5 * u, 20.5 * u),
+          pen,
+        );
+    }
+  }
+
+  @override
+  bool shouldRepaint(_LinePainter old) =>
+      old.glyph != glyph || old.color != color;
+}

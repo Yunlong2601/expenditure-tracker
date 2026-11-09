@@ -1,7 +1,7 @@
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:spendsnap/app.dart';
 import 'package:spendsnap/home_screen.dart';
@@ -11,9 +11,13 @@ import 'package:spendsnap/reader.dart';
 
 class FakePicker implements ReceiptPicker {
   int camCalls = 0, galleryCalls = 0;
+
+  /// She said no to the camera.
+  bool denied = false;
   @override
   Future<PickedImage?> camera() async {
     camCalls++;
+    if (denied) throw PlatformException(code: 'camera_access_denied');
     return const PickedImage([0xff, 0xd8, 0, 0], 'cam.jpg');
   }
 
@@ -56,7 +60,13 @@ void main() {
     picker = FakePicker();
     Prefs.current = Prefs.memory();
   });
-  tearDown(() async => dir.delete(recursive: true));
+  tearDown(() async {
+    // A save can still be writing on a slow machine; let it finish first.
+    // A save started in test time (like Undo's) may never resume, so don't
+    // wait on it forever.
+    await ledger.idle.timeout(const Duration(seconds: 3), onTimeout: () {});
+    await dir.delete(recursive: true);
+  });
 
   Widget wrap(ReceiptReader reader) => MaterialApp(
     home: HomeScreen(ledger: ledger, reader: reader, picker: picker),
@@ -68,6 +78,9 @@ void main() {
     await t.runAsync(() async {
       await t.tap(f);
       await Future<void>.delayed(const Duration(milliseconds: 200));
+      // A slow disk can take longer: wait for every save to finish too.
+      await ledger.idle.timeout(const Duration(seconds: 5), onTimeout: () {});
+      await Future<void>.delayed(Duration.zero);
     });
     await t.pumpAndSettle();
   }
@@ -303,5 +316,29 @@ void main() {
     final e = ledger.all.single;
     expect((e.amount, e.currency, e.category), (4.5, 'SGD', 'Food & drink'));
     expect(find.text(r'Logged S$4.50 (Food & drink)'), findsOneWidget);
+  });
+
+  testWidgets('without the camera, the message opens Settings', (t) async {
+    final calls = <MethodCall>[];
+    t.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      const MethodChannel('spendsnap/remind'),
+      (c) async {
+        calls.add(c);
+        return null;
+      },
+    );
+    addTearDown(
+      () => t.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        const MethodChannel('spendsnap/remind'),
+        null,
+      ),
+    );
+    picker.denied = true;
+    await t.pumpWidget(wrap(unreadable));
+    await tapAndSettle(t, find.byKey(const Key('snap')));
+    expect(find.textContaining('Allow camera access'), findsOneWidget);
+    await t.tap(find.text('Open Settings'));
+    await t.pumpAndSettle();
+    expect(calls.single, isMethodCall('openSettings', arguments: null));
   });
 }

@@ -8,7 +8,9 @@ import 'draft.dart';
 import 'feel.dart';
 import 'format.dart';
 import 'goal.dart';
+import 'jar.dart';
 import 'kitty.dart';
+import 'l10n.dart';
 import 'ledger.dart';
 import 'picker.dart';
 import 'prefs.dart';
@@ -49,9 +51,11 @@ class _HomeScreenState extends State<HomeScreen> {
       ..showSnackBar(SnackBar(content: Text(text), action: action, behavior: SnackBarBehavior.floating));
   }
 
-  String _describe(Expense e) =>
-      '${e.moneyIn ? 'got ' : ''}${money(e.amount, e.currency)}${e.merchant != null ? ' at ${e.merchant}' : ''}'
-      '${e.category != null ? ' (${e.category})' : ''}';
+  String _describe(Expense e) => zh
+      ? '${e.moneyIn ? '收入 ' : ''}${money(e.amount, e.currency)}${e.merchant != null ? '（${e.merchant}）' : ''}'
+            '${e.category != null ? ' · ${catLabel(e.category!)}' : ''}'
+      : '${e.moneyIn ? 'got ' : ''}${money(e.amount, e.currency)}${e.merchant != null ? ' at ${e.merchant}' : ''}'
+            '${e.category != null ? ' (${e.category})' : ''}';
 
   Future<void> _save(ExpenseDraft d, {Uint8List? image}) async {
     var e = await _ledger.add(
@@ -73,12 +77,15 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() => _fresh = e.id);
     _toast(
       e.moneyIn
-          ? 'Yay, ${_describe(e)}'
+          ? tr('Yay, ${_describe(e)}', '耶，${_describe(e)}')
           : d.splitPeople > 1
-          ? 'Logged your share, ${_describe(e)}. Friends owe you ${money(d.amount - e.amount, e.currency)}'
-          : 'Logged ${_describe(e)}',
+          ? tr(
+              'Logged your share, ${_describe(e)}. Friends owe you ${money(d.amount - e.amount, e.currency)}',
+              '已记下你那份：${_describe(e)}。朋友欠你 ${money(d.amount - e.amount, e.currency)}',
+            )
+          : tr('Logged ${_describe(e)}', '已记下 ${_describe(e)}'),
       action: SnackBarAction(
-        label: 'Undo',
+        label: tr('Undo', '撤销'),
         onPressed: () async {
           Feel.removed();
           await _ledger.delete(e.id);
@@ -102,26 +109,35 @@ class _HomeScreenState extends State<HomeScreen> {
       img = camera ? await _picker.camera() : await _picker.gallery();
     } catch (_) {
       Feel.oops();
-      _toast(camera ? 'Allow camera access in Settings to snap receipts.' : 'Allow photo access in Settings.');
+      _toast(
+        camera ? tr('Allow camera access in Settings to snap receipts.', '请在设置里允许使用相机来拍小票。') : tr('Allow photo access in Settings.', '请在设置里允许访问照片。'),
+        action: Remind.settingsAction(),
+      );
       return;
     }
     if (img == null || !mounted) return;
     final bytes = Uint8List.fromList(img.bytes);
 
     var receipt = const ReadReceipt();
-    var message = 'Type in the amount.';
+    var message = tr('Type in the amount.', '请输入金额。');
     {
       setState(() {
         _busy = true;
-        _busyText = 'Reading your receipt…';
+        _busyText = tr('Reading your receipt…', '正在识别小票……');
       });
       try {
         receipt = await widget.reader.read(bytes, categories: _ledger.categories());
         message = !receipt.isReceipt
-            ? "This doesn't look like a receipt${receipt.problem != null ? ': ${receipt.problem}' : ''}."
+            ? tr(
+                "This doesn't look like a receipt${receipt.problem != null ? ': ${receipt.problem}' : ''}.",
+                '这看起来不像小票${receipt.problem != null ? '：${receipt.problem}' : ''}。',
+              )
             : receipt.total == null
-            ? "I couldn't read the total."
-            : "I'm not sure about this one${receipt.problem != null ? ' (${receipt.problem})' : ''}.";
+            ? tr("I couldn't read the total.", '我没看清总金额。')
+            : tr(
+                "I'm not sure about this one${receipt.problem != null ? ' (${receipt.problem})' : ''}.",
+                '这张我不太确定${receipt.problem != null ? '（${receipt.problem}）' : ''}。',
+              );
       } on ReadException catch (e) {
         message = e.message;
       } finally {
@@ -150,7 +166,7 @@ class _HomeScreenState extends State<HomeScreen> {
       );
       return;
     }
-    if (duplicate) message = 'This looks like one you already logged. Save it again?';
+    if (duplicate) message = tr('This looks like one you already logged. Save it again?', '这笔好像已经记过了。还要再存一次吗？');
     final d = await _review(receipt, bytes, message);
     if (d != null) await _save(d, image: bytes);
   }
@@ -174,7 +190,7 @@ class _HomeScreenState extends State<HomeScreen> {
           onReminderChanged: () => Remind.sync(_ledger),
           onExport: () async {
             await Clipboard.setData(ClipboardData(text: _ledger.toCsv()));
-            _toast('Copied. Paste it into Notes, Mail or a spreadsheet.');
+            _toast(tr('Copied. Paste it into Notes, Mail or a spreadsheet.', '已复制。可以粘贴到备忘录、邮件或表格里。'));
           },
         ),
       ),
@@ -204,10 +220,10 @@ class _HomeScreenState extends State<HomeScreen> {
             shrinkWrap: true,
             padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
             children: [
-              Text('Friends owe you', style: Theme.of(ctx).textTheme.titleLarge),
+              Text(tr('Friends owe you', '朋友欠你的'), style: Theme.of(ctx).textTheme.titleLarge),
               const SizedBox(height: 8),
               if (owed.isEmpty)
-                const Padding(padding: EdgeInsets.symmetric(vertical: 16), child: Text('All paid back. Yay!')),
+                Padding(padding: EdgeInsets.symmetric(vertical: 16), child: Text(tr('All paid back. Yay!', '都还清啦，耶！'))),
               for (final (i, d) in owed.indexed)
                 ListTile(
                   contentPadding: EdgeInsets.zero,
@@ -222,7 +238,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       refresh(() {});
                       if (mounted) setState(() {});
                     },
-                    child: const Text('Paid back'),
+                    child: Text(tr('Paid back', '已还')),
                   ),
                 ),
             ],
@@ -239,7 +255,7 @@ class _HomeScreenState extends State<HomeScreen> {
       useSafeArea: true,
       showDragHandle: true,
       builder: (_) => ReviewSheet(
-        title: 'Edit',
+        title: tr('Edit', '编辑'),
         receipt: ReadReceipt(
           merchant: e.merchant,
           total: e.amount,
@@ -262,7 +278,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!mounted) return;
     Feel.logged();
     setState(() {});
-    _toast('Saved ${money(d.amount, d.currency)}');
+    _toast(tr('Saved ${money(d.amount, d.currency)}', '已保存 ${money(d.amount, d.currency)}'));
   }
 
   void _showExpense(Expense e) {
@@ -279,9 +295,9 @@ class _HomeScreenState extends State<HomeScreen> {
           Text(money(e.amount, e.currency), style: Theme.of(ctx).textTheme.headlineMedium),
           Text(
             [
-              e.merchant ?? 'Expense',
+              e.merchant ?? tr('Expense', '支出'),
               shortDate(e.date),
-              if (e.category != null) e.category!,
+              if (e.category != null) catLabel(e.category!),
               if (e.paymentMethod != null) e.paymentMethod!,
             ].join(' · '),
           ),
@@ -313,7 +329,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   );
                 },
                 icon: const Icon(Icons.replay),
-                label: const Text('Log again today'),
+                label: Text(tr('Log again today', '今天再记一笔')),
                 style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52)),
               ),
             ),
@@ -334,12 +350,16 @@ class _HomeScreenState extends State<HomeScreen> {
                   Feel.logged();
                   setState(() {});
                   _toast(
-                    'Your share is ${money(mine.amount, mine.currency)}. '
-                    'Friends owe you ${money(e.amount - mine.amount, e.currency)}',
+                    tr(
+                      'Your share is ${money(mine.amount, mine.currency)}. '
+                          'Friends owe you ${money(e.amount - mine.amount, e.currency)}',
+                      '你那份是 ${money(mine.amount, mine.currency)}。'
+                          '朋友欠你 ${money(e.amount - mine.amount, e.currency)}',
+                    ),
                   );
                 },
                 icon: const Icon(Icons.groups_outlined),
-                label: const Text('Split with friends'),
+                label: Text(tr('Split with friends', '和朋友分摊')),
                 style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(52)),
               ),
             ),
@@ -355,7 +375,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 _edit(e);
               },
               icon: const Icon(Icons.edit_outlined),
-              label: const Text('Edit'),
+              label: Text(tr('Edit', '编辑')),
               style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52)),
             ),
           ),
@@ -370,11 +390,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 await _ledger.delete(e.id);
                 if (mounted) {
                   setState(() {});
-                  _toast('Deleted ${_describe(e)}');
+                  _toast(tr('Deleted ${_describe(e)}', '已删除 ${_describe(e)}'));
                 }
               },
               icon: const Icon(Icons.delete_outline),
-              label: const Text('Delete'),
+              label: Text(tr('Delete', '删除')),
               style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(52)),
             ),
           ),
@@ -393,13 +413,13 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       appBar: AppBar(
         title: prefs.allowance == null
-            ? const Text('This month')
+            ? Text(tr('This month', '本月'))
             : SegmentedButton<bool>(
                 key: const Key('period'),
                 showSelectedIcon: false,
                 segments: [
-                  ButtonSegment(value: false, label: Text(prefs.allowanceDaily ? 'Today' : 'This week')),
-                  const ButtonSegment(value: true, label: Text('This month')),
+                  ButtonSegment(value: false, label: Text(prefs.allowanceDaily ? tr('Today', '今天') : tr('This week', '本周'))),
+                  ButtonSegment(value: true, label: Text(tr('This month', '本月'))),
                 ],
                 selected: {prefs.showMonth},
                 onSelectionChanged: (s) async {
@@ -412,7 +432,7 @@ class _HomeScreenState extends State<HomeScreen> {
           Pressable(
             child: IconButton(
               key: const Key('open-summary'),
-              tooltip: 'My month as a picture',
+              tooltip: tr('My month as a picture', '把本月做成一张图'),
               icon: const Icon(Icons.auto_awesome_outlined),
               onPressed: () {
                 Feel.tap();
@@ -422,7 +442,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           Pressable(
             child: IconButton(
-              tooltip: 'Settings',
+              tooltip: tr('Settings', '设置'),
               icon: const Icon(Icons.settings_outlined),
               onPressed: () {
                 Feel.tap();
@@ -456,7 +476,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: _BigAction(
                       key: const Key('screenshot'),
                       icon: Icons.screenshot_outlined,
-                      label: 'Payment\nscreenshot',
+                      label: tr('Payment\nscreenshot', '付款\n截图'),
                       onPressed: _busy ? null : () => _scan(camera: false),
                     ),
                   ),
@@ -465,7 +485,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: _BigAction(
                       key: const Key('snap'),
                       icon: Icons.photo_camera,
-                      label: 'Snap\nreceipt',
+                      label: tr('Snap\nreceipt', '拍小票'),
                       onPressed: _busy ? null : () => _scan(camera: true),
                     ),
                   ),
@@ -486,7 +506,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             _quickAdd();
                           },
                     icon: const Icon(Icons.payments_outlined),
-                    label: const Text('Paid cash? Type the amount', style: TextStyle(fontSize: 16)),
+                    label: Text(tr('Paid cash? Type the amount', '付现金？输入金额'), style: TextStyle(fontSize: 16)),
                     style:
                         FilledButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)))
                             .copyWith(
@@ -512,10 +532,10 @@ class _HomeScreenState extends State<HomeScreen> {
                       key: const Key('owed'),
                       leading: Icon(Icons.groups_outlined, color: cs.onTertiaryContainer),
                       title: Text(
-                        'Friends owe you ${_owedText()}',
+                        tr('Friends owe you ${_owedText()}', '朋友欠你 ${_owedText()}'),
                         style: TextStyle(color: cs.onTertiaryContainer, fontWeight: FontWeight.w600),
                       ),
-                      subtitle: Text('Tap when someone pays you back', style: TextStyle(color: cs.onTertiaryContainer)),
+                      subtitle: Text(tr('Tap when someone pays you back', '有人还钱时点一下'), style: TextStyle(color: cs.onTertiaryContainer)),
                       trailing: Icon(Icons.chevron_right, color: cs.onTertiaryContainer),
                       onTap: () {
                         Feel.tap();
@@ -529,7 +549,7 @@ class _HomeScreenState extends State<HomeScreen> {
               const GoalCard(),
               if (usuals.isNotEmpty) ...[
                 const SizedBox(height: 20),
-                Text('Usual', style: Theme.of(context).textTheme.titleMedium),
+                Text(tr('Usual', '常用'), style: Theme.of(context).textTheme.titleMedium),
                 const SizedBox(height: 8),
                 Wrap(
                   spacing: 8,
@@ -563,7 +583,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
               if (o.byCategory.isNotEmpty) ...[
                 const SizedBox(height: 28),
-                Text('Where it went', style: Theme.of(context).textTheme.titleMedium),
+                Text(tr('Where it went', '花在哪了'), style: Theme.of(context).textTheme.titleMedium),
                 const SizedBox(height: 8),
                 for (final c in o.byCategory.take(5))
                   ListTile(
@@ -572,21 +592,21 @@ class _HomeScreenState extends State<HomeScreen> {
                       backgroundColor: cs.primaryContainer,
                       child: Icon(iconFor(c.category), color: cs.onPrimaryContainer),
                     ),
-                    title: Text(c.category),
+                    title: Text(catLabel(c.category)),
                     trailing: Text(money(c.amount, c.currency), style: const TextStyle(fontWeight: FontWeight.w600)),
                   ),
               ],
               const SizedBox(height: 20),
-              Text('Recent', style: Theme.of(context).textTheme.titleMedium),
+              Text(tr('Recent', '最近'), style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 8),
               if (o.recent.isEmpty)
-                const Padding(
+                Padding(
                   padding: EdgeInsets.symmetric(vertical: 16),
                   child: Column(
                     children: [
                       SizedBox(width: 120, height: 100, child: CustomPaint(painter: CatPainter(asleep: true))),
                       SizedBox(height: 12),
-                      Text('Nothing yet. Add your first expense above.', textAlign: TextAlign.center),
+                      Text(tr('Nothing yet. Add your first expense above.', '还没有记录。在上面记下第一笔吧。'), textAlign: TextAlign.center),
                     ],
                   ),
                 ),
@@ -603,11 +623,11 @@ class _HomeScreenState extends State<HomeScreen> {
                         _showExpense(e);
                       },
                       leading: Icon(e.moneyIn ? Icons.savings_outlined : iconFor(e.category)),
-                      title: Text(e.merchant ?? e.category ?? 'Expense', maxLines: 1, overflow: TextOverflow.ellipsis),
+                      title: Text(e.merchant ?? (e.category == null ? null : catLabel(e.category!)) ?? tr('Expense', '支出'), maxLines: 1, overflow: TextOverflow.ellipsis),
                       subtitle: Text(
                         [
                           shortDate(e.date),
-                          if (e.category != null) e.category!,
+                          if (e.category != null) catLabel(e.category!),
                           if (e.paymentMethod != null) e.paymentMethod!,
                         ].join(' · '),
                       ),
@@ -675,7 +695,7 @@ class _TotalCard extends StatelessWidget {
     final spent = overview.spent('SGD');
     final main = totals.isEmpty ? null : totals.firstWhere((m) => m.currency == 'SGD', orElse: () => totals.first);
     final others = totals.where((m) => m.currency != (budget == null ? main?.currency : 'SGD'));
-    final when = period == Period.day ? 'today' : 'this week';
+    final when = period == Period.day ? tr('today', '今天') : tr('this week', '本周');
 
     Widget big(double value, String currency) => FittedBox(
       fit: BoxFit.scaleDown,
@@ -701,53 +721,52 @@ class _TotalCard extends StatelessWidget {
       final left = budget - spent;
       final used = budget <= 0 ? 1.0 : spent / budget;
       final mood = used > 1 ? CatMood.sad : (used >= 0.8 ? CatMood.worried : CatMood.happy);
-      cat = SizedBox(
-        width: 76,
-        height: 76,
-        child: CustomPaint(
-          key: Key('cat-${mood.name}'),
-          painter: CatPainter(mood: mood, paw: false),
-        ),
+      // The pocket money jar empties as she spends, with the cat on the lid.
+      cat = Jar(
+        key: const Key('money-jar'),
+        fill: budget <= 0 ? 0 : (left / budget).clamp(0.0, 1.0),
+        size: const Size(70, 84),
+        mood: mood,
+        catKey: Key('cat-${mood.name}'),
       );
+      final treats = treatsLeft(left);
       body = [
-        Text(left >= 0 ? 'Left $when' : 'Over $when', style: t.titleMedium?.copyWith(color: on)),
+        Text(left >= 0 ? tr('Left $when', '$when还剩') : tr('Over $when', '$when超支'), style: t.titleMedium?.copyWith(color: on)),
         const SizedBox(height: 4),
         big(left.abs(), 'SGD'),
         const SizedBox(height: 8),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(8),
-          child: LinearProgressIndicator(
-            value: used.clamp(0.0, 1.0),
-            minHeight: 10,
-            backgroundColor: on.withValues(alpha: 0.15),
-            color: mood == CatMood.happy ? cs.primary : cs.error,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text('Spent ${money(spent, 'SGD')} of ${money(budget, 'SGD')}', style: t.bodyMedium?.copyWith(color: on)),
+        Text(tr('Spent ${money(spent, 'SGD')} of ${money(budget, 'SGD')}', '已花 ${money(spent, 'SGD')}，共 ${money(budget, 'SGD')}'), style: t.bodyMedium?.copyWith(color: on)),
         if (overview.received('SGD') > 0)
           Text(
-            'Includes ${money(overview.received('SGD'), 'SGD')} money in',
+            tr('Includes ${money(overview.received('SGD'), 'SGD')} money in', '含收入 ${money(overview.received('SGD'), 'SGD')}'),
             style: t.bodySmall?.copyWith(color: on.withValues(alpha: 0.8)),
+          ),
+        if (treats != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Text(treats, key: const Key('treats-left'), style: t.bodyMedium?.copyWith(color: on)),
           ),
         if (mood != CatMood.happy)
           Padding(
             padding: const EdgeInsets.only(top: 6),
             child: Text(
               mood == CatMood.sad
-                  ? "It's okay. A fresh start ${period == Period.day ? 'tomorrow' : 'on Monday'}."
-                  : 'Careful, almost used up!',
+                  ? tr(
+                      "It's okay. A fresh start ${period == Period.day ? 'tomorrow' : 'on Monday'}.",
+                      '没关系，${period == Period.day ? '明天' : '下周一'}重新开始。',
+                    )
+                  : tr('Careful, almost used up!', '小心，快用完啦！'),
               style: t.bodyMedium?.copyWith(color: on, fontWeight: FontWeight.w600),
             ),
           ),
       ];
     } else {
       body = [
-        Text(period == Period.month ? 'Spent this month' : 'Spent $when', style: t.titleMedium?.copyWith(color: on)),
+        Text(period == Period.month ? tr('Spent this month', '本月已花') : tr('Spent $when', '$when已花'), style: t.titleMedium?.copyWith(color: on)),
         const SizedBox(height: 4),
         big(main?.amount ?? 0, main?.currency ?? 'SGD'),
         if (overview.received('SGD') > 0)
-          Text('Money in: ${money(overview.received('SGD'), 'SGD')}', style: t.bodyMedium?.copyWith(color: on)),
+          Text(tr('Money in: ${money(overview.received('SGD'), 'SGD')}', '收入：${money(overview.received('SGD'), 'SGD')}'), style: t.bodyMedium?.copyWith(color: on)),
         if (allowance == null)
           Padding(
             padding: const EdgeInsets.only(top: 4),
@@ -756,7 +775,7 @@ class _TotalCard extends StatelessWidget {
               onPressed: onSetAllowance,
               style: TextButton.styleFrom(foregroundColor: on, padding: EdgeInsets.zero),
               icon: const Icon(Icons.savings_outlined),
-              label: const Text('Set my pocket money'),
+              label: Text(tr('Set my pocket money', '设置我的零花钱')),
             ),
           ),
       ];

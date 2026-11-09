@@ -2,11 +2,14 @@ import 'package:flutter/material.dart';
 
 import 'feel.dart';
 import 'format.dart';
+import 'jar.dart';
 import 'kitty.dart';
+import 'l10n.dart';
 import 'prefs.dart';
 
-/// "Saving for concert tickets: S$45 of S$120", with a cat that gets happier
-/// as the jar fills. Shows a small "Start a savings goal" button when unset.
+/// "Saving for concert tickets: S$45 of S$120", with the thing's picture in a
+/// jar that fills up and a cat on the lid that gets happier as it does.
+/// Shows a small "Start a savings goal" button when unset.
 class GoalCard extends StatefulWidget {
   const GoalCard({super.key});
 
@@ -18,15 +21,16 @@ class _GoalCardState extends State<GoalCard> {
   Prefs get _p => Prefs.current;
 
   Future<void> _setGoal() async {
-    final r = await showDialog<(String, double)?>(
+    final r = await showDialog<(String, double, String?)?>(
       context: context,
-      builder: (_) => _GoalDialog(name: _p.goalName, target: _p.goalName == null ? null : _p.goalTarget),
+      builder: (_) =>
+          _GoalDialog(name: _p.goalName, target: _p.goalName == null ? null : _p.goalTarget, pic: _p.goalPic),
     );
     if (r == null) return;
     if (r.$1.isEmpty) {
       await _p.setGoal(null);
     } else {
-      await _p.setGoal(r.$1, target: r.$2, saved: _p.goalName == null ? 0 : _p.goalSaved);
+      await _p.setGoal(r.$1, target: r.$2, saved: _p.goalName == null ? 0 : _p.goalSaved, pic: r.$3);
     }
     setState(() {});
   }
@@ -56,7 +60,7 @@ class _GoalCardState extends State<GoalCard> {
             _setGoal();
           },
           icon: const Icon(Icons.flag_outlined),
-          label: const Text('Start a savings goal'),
+          label: Text(tr('Start a savings goal', '开始一个存钱目标')),
         ),
       );
     }
@@ -64,8 +68,7 @@ class _GoalCardState extends State<GoalCard> {
     final saved = _p.goalSaved;
     final done = saved >= target;
     final part = target <= 0 ? 1.0 : (saved / target).clamp(0.0, 1.0);
-    // Grows from small to full size as the jar fills.
-    final catSize = 44 + 24 * part;
+    final pic = _p.goalPic ?? goalPicFor(name);
     return Pressable(
       scale: 0.98,
       child: Card(
@@ -81,40 +84,25 @@ class _GoalCardState extends State<GoalCard> {
             padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
             child: Row(
               children: [
-                SizedBox(
-                  width: 68,
-                  height: 68,
-                  child: Center(
-                    child: SizedBox(
-                      width: catSize,
-                      height: catSize,
-                      child: CustomPaint(
-                        painter: CatPainter(mood: part >= 0.75 ? CatMood.delighted : CatMood.happy, paw: done),
-                      ),
-                    ),
-                  ),
+                Jar(
+                  key: const Key('goal-jar'),
+                  fill: part,
+                  size: const Size(58, 68),
+                  mood: part >= 0.75 ? CatMood.delighted : CatMood.happy,
+                  child: Text(pic, key: const Key('goal-pic'), style: const TextStyle(fontSize: 24)),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        done ? 'You did it! $name' : 'Saving for $name',
+                        done ? tr('You did it! $name', '做到啦！$name') : tr('Saving for $name', '正在为 $name 存钱'),
                         style: t.titleMedium?.copyWith(color: cs.onSecondaryContainer, fontWeight: FontWeight.w600),
                       ),
-                      const SizedBox(height: 6),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: LinearProgressIndicator(
-                          value: part,
-                          minHeight: 8,
-                          backgroundColor: cs.onSecondaryContainer.withValues(alpha: 0.15),
-                        ),
-                      ),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 4),
                       Text(
-                        '${money(saved, 'SGD')} of ${money(target, 'SGD')}',
+                        tr('${money(saved, 'SGD')} of ${money(target, 'SGD')}', '${money(saved, 'SGD')} / ${money(target, 'SGD')}'),
                         key: const Key('goal-progress'),
                         style: t.bodyMedium?.copyWith(color: cs.onSecondaryContainer),
                       ),
@@ -123,7 +111,7 @@ class _GoalCardState extends State<GoalCard> {
                 ),
                 IconButton.filledTonal(
                   key: const Key('goal-add'),
-                  tooltip: 'Add to savings',
+                  tooltip: tr('Add to savings', '存一笔'),
                   onPressed: () {
                     Feel.tap();
                     _add();
@@ -140,9 +128,10 @@ class _GoalCardState extends State<GoalCard> {
 }
 
 class _GoalDialog extends StatefulWidget {
-  const _GoalDialog({this.name, this.target});
+  const _GoalDialog({this.name, this.target, this.pic});
   final String? name;
   final double? target;
+  final String? pic;
 
   @override
   State<_GoalDialog> createState() => _GoalDialogState();
@@ -151,6 +140,8 @@ class _GoalDialog extends StatefulWidget {
 class _GoalDialogState extends State<_GoalDialog> {
   late final _name = TextEditingController(text: widget.name ?? '');
   late final _target = TextEditingController(text: widget.target?.toStringAsFixed(2) ?? '');
+  // Picked by her, else guessed from the name as she types.
+  late String? _pic = widget.pic;
   String? _error;
 
   @override
@@ -162,7 +153,8 @@ class _GoalDialogState extends State<_GoalDialog> {
 
   @override
   Widget build(BuildContext context) => AlertDialog(
-    title: const Text('Savings goal'),
+    scrollable: true,
+    title: Text(tr('Savings goal', '存钱目标')),
     content: Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -171,33 +163,54 @@ class _GoalDialogState extends State<_GoalDialog> {
           controller: _name,
           autofocus: widget.name == null,
           textCapitalization: TextCapitalization.sentences,
-          decoration: const InputDecoration(labelText: "What's it for?", hintText: 'Concert tickets'),
+          decoration: InputDecoration(labelText: tr("What's it for?", '为了什么存钱？'), hintText: tr('Concert tickets', '演唱会门票')),
+          onChanged: (_) => setState(() {}),
+        ),
+        const SizedBox(height: 12),
+        Align(
+          alignment: AlignmentDirectional.centerStart,
+          child: Text(tr('Picture', '图片'), style: Theme.of(context).textTheme.labelLarge),
+        ),
+        const SizedBox(height: 6),
+        Wrap(
+          spacing: 4,
+          runSpacing: 4,
+          children: [
+            for (final p in goalPics)
+              ChoiceChip(
+                key: Key('goal-pic-$p'),
+                label: Text(p, style: const TextStyle(fontSize: 20)),
+                showCheckmark: false,
+                selected: p == (_pic ?? goalPicFor(_name.text)),
+                onSelected: (_) => setState(() => _pic = p),
+              ),
+          ],
         ),
         const SizedBox(height: 12),
         TextField(
           key: const Key('goal-target'),
           controller: _target,
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          decoration: InputDecoration(labelText: 'How much does it cost?', prefixText: r'S$ ', errorText: _error),
+          decoration: InputDecoration(labelText: tr('How much does it cost?', '需要多少钱？'), prefixText: r'S$ ', errorText: _error),
         ),
       ],
     ),
     actions: [
       if (widget.name != null)
-        TextButton(onPressed: () => Navigator.of(context).pop(('', 0.0)), child: const Text('Remove')),
-      TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
+        TextButton(onPressed: () => Navigator.of(context).pop(('', 0.0, null)), child: Text(tr('Remove', '移除'))),
+      TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(tr('Cancel', '取消'))),
       FilledButton(
         key: const Key('goal-save'),
         onPressed: () {
           final v = double.tryParse(_target.text.replaceAll(',', '').trim()) ?? 0;
           if (_name.text.trim().isEmpty || v <= 0) {
             Feel.oops();
-            setState(() => _error = 'Give it a name and a price');
+            setState(() => _error = tr('Give it a name and a price', '写上名字和价格'));
             return;
           }
-          Navigator.of(context).pop((_name.text.trim(), v));
+          Navigator.of(context).pop((_name.text.trim(), v, _pic));
         },
-        child: const Text('Save'),
+        child: Text(tr('Save', '保存')),
       ),
     ],
   );
@@ -221,7 +234,7 @@ class _AmountDialogState extends State<_AmountDialog> {
 
   @override
   Widget build(BuildContext context) => AlertDialog(
-    title: const Text('Add to savings'),
+    title: Text(tr('Add to savings', '存一笔')),
     content: TextField(
       key: const Key('goal-amount'),
       controller: _amount,
@@ -231,11 +244,11 @@ class _AmountDialogState extends State<_AmountDialog> {
       decoration: const InputDecoration(prefixText: r'S$ ', hintText: '5.00'),
     ),
     actions: [
-      TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
+      TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(tr('Cancel', '取消'))),
       FilledButton(
         key: const Key('goal-amount-save'),
         onPressed: () => Navigator.of(context).pop(double.tryParse(_amount.text.replaceAll(',', '').trim())),
-        child: const Text('Add'),
+        child: Text(tr('Add', '添加')),
       ),
     ],
   );

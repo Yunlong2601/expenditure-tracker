@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'feel.dart';
+import 'l10n.dart';
 import 'prefs.dart';
 
 /// Asks how much pocket money she gets, per week or per day, and saves it.
@@ -40,7 +41,7 @@ class _AllowanceDialogState extends State<_AllowanceDialog> {
     final v = double.tryParse(_amount.text.replaceAll(',', '').trim()) ?? 0;
     if (v <= 0) {
       Feel.oops();
-      setState(() => _error = 'How much do you get?');
+      setState(() => _error = tr('How much do you get?', '你能拿到多少？'));
       return;
     }
     Navigator.of(context).pop((v, _daily));
@@ -48,7 +49,7 @@ class _AllowanceDialogState extends State<_AllowanceDialog> {
 
   @override
   Widget build(BuildContext context) => AlertDialog(
-    title: const Text('Pocket money'),
+    title: Text(tr('Pocket money', '零花钱')),
     content: Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -62,9 +63,9 @@ class _AllowanceDialogState extends State<_AllowanceDialog> {
         ),
         const SizedBox(height: 16),
         SegmentedButton<bool>(
-          segments: const [
-            ButtonSegment(value: false, label: Text('Per week')),
-            ButtonSegment(value: true, label: Text('Per day')),
+          segments: [
+            ButtonSegment(value: false, label: Text(tr('Per week', '每周'))),
+            ButtonSegment(value: true, label: Text(tr('Per day', '每天'))),
           ],
           selected: {_daily},
           onSelectionChanged: (s) => setState(() => _daily = s.first),
@@ -73,9 +74,9 @@ class _AllowanceDialogState extends State<_AllowanceDialog> {
     ),
     actions: [
       if (widget.amount != null)
-        TextButton(onPressed: () => Navigator.of(context).pop((null, false)), child: const Text('Remove')),
-      TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
-      FilledButton(key: const Key('allowance-save'), onPressed: _save, child: const Text('Save')),
+        TextButton(onPressed: () => Navigator.of(context).pop((null, false)), child: Text(tr('Remove', '移除'))),
+      TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(tr('Cancel', '取消'))),
+      FilledButton(key: const Key('allowance-save'), onPressed: _save, child: Text(tr('Save', '保存'))),
     ],
   );
 }

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'l10n.dart';
+
 /// Quick-pick categories for a student in Singapore, most used first.
 const quickCategories = <(String, IconData)>[
   ('Food & drink', Icons.ramen_dining),
@@ -12,6 +14,28 @@ const quickCategories = <(String, IconData)>[
   ('Gifts', Icons.card_giftcard),
   ('Other', Icons.more_horiz),
 ];
+
+const _zhNames = {
+  'food & drink': '餐饮',
+  'bubble tea': '奶茶',
+  'snacks': '零食',
+  'transport': '交通',
+  'stationery': '文具',
+  'shopping': '购物',
+  'fun': '娱乐',
+  'gifts': '礼物',
+  'other': '其他',
+  'groceries': '日用品',
+  'bills': '账单',
+  'pocket money': '零花钱',
+  'from family': '家人给的',
+  'friend paid back': '朋友还钱',
+  'red packet': '红包',
+};
+
+/// A built-in category's name in the app's language. Her own stay as typed.
+String catLabel(String name) =>
+    zh ? (_zhNames[name.toLowerCase()] ?? name) : name;
 
 IconData iconFor(String? category) {
   final c = (category ?? '').toLowerCase();

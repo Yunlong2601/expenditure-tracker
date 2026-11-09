@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'draft.dart';
 import 'feel.dart';
 import 'format.dart';
+import 'l10n.dart';
 import 'reader.dart';
 
 /// Shown only when the receipt couldn't be read with confidence. Everything
@@ -16,7 +17,7 @@ class ReviewSheet extends StatefulWidget {
     this.image,
     this.message,
     this.categories = const [],
-    this.title = 'Quick check',
+    this.title,
   });
 
   final ReadReceipt receipt;
@@ -25,7 +26,7 @@ class ReviewSheet extends StatefulWidget {
   final Uint8List? image;
   final String? message;
   final List<String> categories;
-  final String title;
+  final String? title;
 
   @override
   State<ReviewSheet> createState() => _ReviewSheetState();
@@ -80,7 +81,7 @@ class _ReviewSheetState extends State<ReviewSheet> {
           shrinkWrap: true,
           padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
           children: [
-            Text(widget.title, style: t.titleLarge),
+            Text(widget.title ?? tr('Quick check', '快速核对'), style: t.titleLarge),
             if (widget.message != null) ...[const SizedBox(height: 4), Text(widget.message!, style: t.bodyMedium)],
             const SizedBox(height: 12),
             if (widget.image != null)
@@ -105,9 +106,9 @@ class _ReviewSheetState extends State<ReviewSheet> {
                     autofocus: r.total == null,
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
                     style: t.headlineSmall,
-                    decoration: const InputDecoration(labelText: 'Amount', border: OutlineInputBorder()),
+                    decoration: InputDecoration(labelText: tr('Amount', '金额'), border: OutlineInputBorder()),
                     validator: (v) =>
-                        (double.tryParse((v ?? '').replaceAll(',', '')) ?? 0) > 0 ? null : 'Enter the amount',
+                        (double.tryParse((v ?? '').replaceAll(',', '')) ?? 0) > 0 ? null : tr('Enter the amount', '请输入金额'),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -124,7 +125,7 @@ class _ReviewSheetState extends State<ReviewSheet> {
             const SizedBox(height: 12),
             TextFormField(
               controller: _merchant,
-              decoration: const InputDecoration(labelText: 'Shop', border: OutlineInputBorder()),
+              decoration: InputDecoration(labelText: tr('Shop', '商家'), border: OutlineInputBorder()),
             ),
             const SizedBox(height: 12),
             Autocomplete<String>(
@@ -135,7 +136,7 @@ class _ReviewSheetState extends State<ReviewSheet> {
                 controller: controller,
                 focusNode: focus,
                 onChanged: (v) => _category.text = v,
-                decoration: const InputDecoration(labelText: 'Category', border: OutlineInputBorder()),
+                decoration: InputDecoration(labelText: tr('Category', '分类'), border: OutlineInputBorder()),
               ),
             ),
             const SizedBox(height: 12),
@@ -160,7 +161,7 @@ class _ReviewSheetState extends State<ReviewSheet> {
                 key: const Key('review-save'),
                 onPressed: _save,
                 style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(56)),
-                child: const Text('Save', style: TextStyle(fontSize: 18)),
+                child: Text(tr('Save', '保存'), style: TextStyle(fontSize: 18)),
               ),
             ),
           ],
