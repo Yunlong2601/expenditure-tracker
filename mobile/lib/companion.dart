@@ -134,8 +134,14 @@ class RoomScene extends StatelessWidget {
     this.items = const {},
     this.outfit,
     this.child,
+    this.top = 0,
   });
   final double height, catSize;
+
+  /// How much of [height] is behind the status bar and the Dynamic Island
+  /// or notch. The wall runs up behind it, and nothing is drawn there: the
+  /// window, the calendar and the rest hang on the wall below it.
+  final double top;
 
   /// What she has earned for the room, by [RoomItem.id].
   final Set<String> items;
@@ -159,6 +165,7 @@ class RoomScene extends StatelessWidget {
               dark,
               items,
               calm: context.calm,
+              top: top,
             ),
           ),
           Align(
@@ -335,8 +342,11 @@ void paintRoomItem(Canvas canvas, String id, Rect r) {
 const _roomInk = Color(0xFF3B3A36);
 
 class _RoomPainter extends CustomPainter {
-  _RoomPainter(this.weekday, this.date, this.dark, this.items, {this.calm = false});
+  _RoomPainter(this.weekday, this.date, this.dark, this.items, {this.calm = false, this.top = 0});
   final String weekday;
+
+  /// See [RoomScene.top].
+  final double top;
 
   /// Today's day of the month, big on the wall calendar.
   final int date;
@@ -347,7 +357,9 @@ class _RoomPainter extends CustomPainter {
   final bool calm;
 
   @override
-  void paint(Canvas canvas, Size size) {
+  void paint(Canvas canvas, Size full) {
+    // The room itself is the part below the status bar.
+    final size = Size(full.width, math.max(0, full.height - top));
     final w = size.width, h = size.height;
     final wall = Paint()
       ..shader = LinearGradient(
@@ -359,8 +371,10 @@ class _RoomPainter extends CustomPainter {
           (false, true) => [const Color(0xFF2B2A25), const Color(0xFF22221E)],
           (false, false) => [const Color(0xFFF7EFE3), const Color(0xFFF4EADB)],
         },
-      ).createShader(Offset.zero & size);
-    canvas.drawRect(Offset.zero & size, wall);
+      ).createShader(Offset.zero & full);
+    canvas.drawRect(Offset.zero & full, wall);
+    canvas.save();
+    canvas.translate(0, top);
 
     // Window with a sun.
     final win = RRect.fromRectAndRadius(
@@ -453,6 +467,7 @@ class _RoomPainter extends CustomPainter {
     // Plants: a big leafy one on the left (not in Calm), a small pot on the desk.
     if (!calm) _plant(canvas, Offset(w * 0.06, h * 0.98), w * 0.2);
     _plant(canvas, Offset(w * 0.9, h * 0.62), w * 0.09);
+    canvas.restore();
   }
 
   void _plant(Canvas canvas, Offset base, double s) {
@@ -490,6 +505,7 @@ class _RoomPainter extends CustomPainter {
       old.date != date ||
       old.dark != dark ||
       old.calm != calm ||
+      old.top != top ||
       !setEquals(old.items, items);
 }
 

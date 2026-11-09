@@ -172,6 +172,7 @@ class _HomeTabState extends State<HomeTab> {
               // comes up sooner.
               RoomScene(
                 height: (context.calm ? 250 : 300) + MediaQuery.paddingOf(context).top,
+                top: MediaQuery.paddingOf(context).top,
                 catSize: context.calm ? 128 : 160,
                 items: _s.room,
                 outfit: _s.outfit,
