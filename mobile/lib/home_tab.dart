@@ -485,6 +485,39 @@ class TaskRow extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final top = task.topStep;
     final title = top?.title ?? task.title;
+    // At iOS's accessibility text sizes the time and its icons go under
+    // the title, so the title keeps the width it needs to be read.
+    final stacked = MediaQuery.textScalerOf(context).scale(10) >= 15;
+    final meta = <Widget>[
+      if (task.private)
+        Icon(
+          Icons.lock_outline,
+          size: 16,
+          color: context.muted,
+          semanticLabel: tr('Private', '不公开'),
+        ),
+      if (task.isStack) Icon(Icons.layers_outlined, size: 18, color: context.muted),
+      if (task.repeat != Repeat.none)
+        Icon(
+          Icons.repeat,
+          size: 16,
+          color: context.muted,
+          semanticLabel: task.repeat.label,
+        ),
+      if (task.remind && task.minutes != null)
+        Icon(
+          Icons.notifications_none,
+          size: 16,
+          color: context.muted,
+          semanticLabel: tr('Reminder on', '会提醒'),
+        ),
+      TextButton(
+        onPressed: onTime,
+        child: Text(
+          task.minutes == null ? tr('Any time', '随时') : clock(context, task.minutes!),
+        ),
+      ),
+    ];
     return Panel(
       padding: const EdgeInsets.fromLTRB(6, 6, 12, 6),
       onTap: onTap,
@@ -517,38 +550,16 @@ class TaskRow extends StatelessWidget {
                     tr('${task.title} · ${task.stepsDone} of ${task.steps.length}', '${task.title} · ${task.stepsDone}/${task.steps.length}'),
                     style: t.bodySmall?.copyWith(color: context.muted),
                   ),
+                if (stacked)
+                  Wrap(
+                    spacing: 6,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: meta,
+                  ),
               ],
             ),
           ),
-          if (task.private)
-            Icon(
-              Icons.lock_outline,
-              size: 16,
-              color: context.muted,
-              semanticLabel: tr('Private', '不公开'),
-            ),
-          if (task.isStack)
-            Icon(Icons.layers_outlined, size: 18, color: context.muted),
-          if (task.repeat != Repeat.none)
-            Icon(
-              Icons.repeat,
-              size: 16,
-              color: context.muted,
-              semanticLabel: task.repeat.label,
-            ),
-          if (task.remind && task.minutes != null)
-            Icon(
-              Icons.notifications_none,
-              size: 16,
-              color: context.muted,
-              semanticLabel: tr('Reminder on', '会提醒'),
-            ),
-          TextButton(
-            onPressed: onTime,
-            child: Text(
-              task.minutes == null ? tr('Any time', '随时') : clock(context, task.minutes!),
-            ),
-          ),
+          if (!stacked) ...meta,
         ],
       ),
     );
@@ -1043,12 +1054,19 @@ class WeekStrip extends StatelessWidget {
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Text(
-                                '${d.day}',
-                                style: t.titleMedium?.copyWith(
-                                  color: on ? cs.onPrimary : cs.onSurface.withValues(alpha: 0.75),
-                                  fontWeight: on ? FontWeight.w700 : FontWeight.w400,
-                                  height: 1.1,
+                              // Two-digit days shrink to fit the circle
+                              // rather than breaking onto a second line.
+                              FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Text(
+                                  '${d.day}',
+                                  maxLines: 1,
+                                  softWrap: false,
+                                  style: t.titleMedium?.copyWith(
+                                    color: on ? cs.onPrimary : cs.onSurface.withValues(alpha: 0.75),
+                                    fontWeight: on ? FontWeight.w700 : FontWeight.w400,
+                                    height: 1.1,
+                                  ),
                                 ),
                               ),
                               // The small dot under today, as in the wireframe.
